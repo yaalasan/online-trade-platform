@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+
+data.db
+
+.env
+.env.*
+
+.agents/
+.codex/
