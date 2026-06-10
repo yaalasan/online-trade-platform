@@ -1,435 +1,466 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SinoSource | AI-Powered Trade Matching & Consulting</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SinoSource — AI-Powered Global Sourcing Platform</title>
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-    <header class="site-header">
-        <div class="utility-bar">
-            <span data-i18n="utilitySlogan">AI-powered sourcing, compliance, and global supplier matching</span>
-            <div class="utility-controls">
-                <div class="utility-links">
-                    <button class="text-button" data-scroll-target="about" data-i18n="navAbout">About</button>
-                    <button class="text-button" data-scroll-target="contact" data-i18n="navContact">Contact</button>
-                </div>
-                <div class="lang-switch">
-                    <button class="lang-button active" data-lang="en">EN</button>
-                    <button class="lang-button" data-lang="zh">中文</button>
-                    <button class="lang-button" data-lang="ru">RU</button>
-                </div>
-            </div>
-        </div>
 
-        <nav class="main-nav">
-            <button class="brand-mark" data-scroll-target="home" aria-label="SinoSource home">
-                <strong>SinoSource</strong><span>.com</span>
-            </button>
-            <div class="nav-links">
-                <button class="text-button" data-scroll-target="about" data-i18n="navAboutUs">About Us</button>
-                <button class="text-button" data-scroll-target="membership" data-i18n="navMembership">Membership</button>
-                <button class="text-button" data-scroll-target="ai-functions" data-i18n="navAiFunctions">AI Functions</button>
-                <button class="text-button" data-scroll-target="faq" data-i18n="navFaq">FAQ</button>
-                <button class="text-button" data-scroll-target="contact" data-i18n="navContact">Contact</button>
-            </div>
-            <div class="nav-actions">
-                <button id="open-login" data-i18n="authSignIn">Sign in</button>
-                <button id="open-register" class="primary" data-i18n="authJoinFree">Join Free</button>
-            </div>
-        </nav>
-    </header>
-
-    <main id="home">
-        <section class="hero-section">
-            <div class="hero-copy">
-                <span class="eyebrow" data-i18n="heroEyebrow">AI驱动 · 一站式外贸撮合与咨询服务</span>
-                <h1 data-i18n="heroTitle">智能匹配全球供需 · 多语种实时沟通 · 全流程风控护航</h1>
-                <p class="hero-text" data-i18n="heroSubtitle">AI-Powered One-Stop Foreign Trade Matching & Consulting Service<br />Intelligent Global Sourcing | Multilingual Real-Time Communication | Full-Risk Control</p>
-                <div class="hero-actions">
-                    <button class="primary" data-scroll-target="marketplace" data-i18n="heroBuyerBtn">海外买家 立即找货源<br /><small data-i18n="heroBuyerBtnSub">Find Suppliers</small></button>
-                    <button class="secondary" data-scroll-target="contact" data-i18n="heroSupplierBtn">国内供应商 免费入驻<br /><small data-i18n="heroSupplierBtnSub">Join Us Free</small></button>
-                    <button class="text-button" data-scroll-target="contact" data-i18n="heroConsultBtn">在线咨询 · Online Consultation</button>
-                </div>
-                <div class="hero-highlights">
-                    <span data-i18n="heroHighlights">AI paraphrase: Intelligent matching, multilingual support, risk control, and full-process consulting.</span>
-                </div>
-                <div class="hero-search-block">
-                    <form id="search-form" class="hero-search">
-                        <select id="search-type" aria-label="Search type">
-                            <option value="products" data-i18n="searchProducts">Products</option>
-                            <option value="suppliers" data-i18n="searchSuppliers">Suppliers</option>
-                        </select>
-                        <input id="search-query" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search products, suppliers, certifications..." />
-                        <button id="header-search" class="primary" data-i18n="searchButton">Search</button>
-                    </form>
-                    <div class="category-rail">
-                        <h3 data-i18n="topCategories">Top categories</h3>
-                        <div id="category-list"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="hero-panel">
-                <div class="hero-stat-card">
-                    <strong data-i18n="statsCountries">Serving XX+ Countries & Regions</strong>
-                    <p data-i18n="statsCountriesSub">服务全球XX+国家和地区</p>
-                </div>
-                <div class="hero-stat-card">
-                    <strong data-i18n="statsFactories">Cooperated Factories XX+</strong>
-                    <p data-i18n="statsFactoriesSub">合作工厂XX+家</p>
-                </div>
-                <div class="hero-stat-card">
-                    <strong data-i18n="statsOrders">Completed Orders XX+</strong>
-                    <p data-i18n="statsOrdersSub">累计撮合订单XX+笔</p>
-                </div>
-                <div class="hero-stat-card">
-                    <strong data-i18n="statsExperience">Years of Industry Experience</strong>
-                    <p data-i18n="statsExperienceSub">行业服务经验XX年</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="section advantage-section" id="advantage-section">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="advantageEyebrow">Platform advantages</span>
-                    <h2 data-i18n="advantageTitle">Four AI-powered strengths for global trade</h2>
-                </div>
-            </div>
-            <div class="feature-cards">
-                <article>
-                    <strong data-i18n="featureMatchTitle">AI智能精准匹配</strong>
-                    <p data-i18n="featureMatchCopy">依托智能算法，根据产品品类、产能、报价、认证、交货周期等维度，自动筛选最优合作方，告别低效筛选，快速达成合作。</p>
-                    <p class="small" data-i18n="featureMatchSub">Powered by AI algorithm, we automatically match ideal partners based on product category, production capacity, quotation, certification and lead time.</p>
-                </article>
-                <article>
-                    <strong data-i18n="featureCommTitle">7×24小时多语种智能沟通</strong>
-                    <p data-i18n="featureCommCopy">支持英语、西班牙语、法语、阿拉伯语等主流语种，AI实时翻译+智能应答，全天候承接询盘，打破语言与时区壁垒。</p>
-                    <p class="small" data-i18n="featureCommSub">Supports English, Spanish, French, Arabic and other mainstream languages with real-time AI translation and intelligent response.</p>
-                </article>
-                <article>
-                    <strong data-i18n="featureRiskTitle">全流程外贸合规风控</strong>
-                    <p data-i18n="featureRiskCopy">AI企业资质核验、交易风险评级、订单履约监控，覆盖报关、结汇、物流、合同全环节，降低跨境交易风险。</p>
-                    <p class="small" data-i18n="featureRiskSub">AI-powered qualification verification, transaction risk rating and order monitoring across customs, logistics and contracts.</p>
-                </article>
-                <article>
-                    <strong data-i18n="featureConsultTitle">全链条外贸咨询服务</strong>
-                    <p data-i18n="featureConsultCopy">外贸政策解读、市场调研、关税咨询、验厂质检、单证制作，专业团队+AI工具结合，解决各类外贸难题。</p>
-                    <p class="small" data-i18n="featureConsultSub">Trade policy analysis, market research, tariff consulting, factory audit, quality inspection and document production.</p>
-                </article>
-            </div>
-        </section>
-
-        <section class="section stats-strip">
-            <div class="stat-card">
-                <strong><span id="metric-products">0</span>+</strong>
-                <span data-i18n="statsProducts">Products available for sourcing</span>
-            </div>
-            <div class="stat-card">
-                <strong><span id="metric-verified">0</span>+</strong>
-                <span data-i18n="statsVerified">Verified suppliers</span>
-            </div>
-            <div class="stat-card">
-                <strong><span id="metric-rfqs">0</span>+</strong>
-                <span data-i18n="statsRfqs">Live RFQ requests</span>
-            </div>
-            <div class="stat-card">
-                <strong><span id="metric-orders">0</span></strong>
-                <span data-i18n="statsOrdersMetric">Orders tracked in dashboard</span>
-            </div>
-        </section>
-
-        <section class="section service-section">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="servicesEyebrow">Service scenarios</span>
-                    <h2 data-i18n="servicesTitle">Buyer & supplier services for global trade</h2>
-                </div>
-            </div>
-            <div class="service-grid">
-                <article>
-                    <h3 data-i18n="buyersSectionTitle">采购商专区 / Services for Buyers</h3>
-                    <ul>
-                        <li data-i18n="buyersList1">智能发布采购需求，AI自动推送优质供应商</li>
-                        <li data-i18n="buyersList2">在线比价、资质查看、历史成交记录查询</li>
-                        <li data-i18n="buyersList3">一站式物流、报关、结算配套服务</li>
-                        <li data-i18n="buyersList4">专属外贸顾问，全程协助谈判与履约</li>
-                    </ul>
-                    <p class="small" data-i18n="buyersSub">Post purchasing requests & get AI-matched qualified suppliers, compare quotes, and access logistics, customs and payment support.</p>
-                </article>
-                <article>
-                    <h3 data-i18n="suppliersSectionTitle">国内供应商专区 / Services for Suppliers</h3>
-                    <ul>
-                        <li data-i18n="suppliersList1">免费入驻平台，直面全球海外采购商</li>
-                        <li data-i18n="suppliersList2">AI多语种产品翻译、海外SEO曝光引流</li>
-                        <li data-i18n="suppliersList3">精准询盘智能分发，提升接单效率</li>
-                        <li data-i18n="suppliersList4">外贸合规指导、单证模板、风险预警</li>
-                    </ul>
-                    <p class="small" data-i18n="suppliersSub">Register free, translate product information with AI, receive targeted inquiries and gain compliance guidance.</p>
-                </article>
-            </div>
-        </section>
-
-        <section class="section service-list">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="serviceListEyebrow">Core services</span>
-                    <h2 data-i18n="serviceListTitle">Value-added service modules</h2>
-                </div>
-            </div>
-            <div class="service-cards">
-                <article>
-                    <strong data-i18n="serviceMatch">外贸中介撮合</strong>
-                    <p data-i18n="serviceMatchSub">供需对接、订单居间、商务谈判协助。</p>
-                </article>
-                <article>
-                    <strong data-i18n="serviceCompliance">合规咨询</strong>
-                    <p data-i18n="serviceComplianceSub">进出口政策、关税、退税、认证办理咨询。</p>
-                </article>
-                <article>
-                    <strong data-i18n="serviceDocument">单证服务</strong>
-                    <p data-i18n="serviceDocumentSub">AI自动生成合同、PI、装箱单、报关资料。</p>
-                </article>
-                <article>
-                    <strong data-i18n="serviceInspection">验厂 & 质检</strong>
-                    <p data-i18n="serviceInspectionSub">实地验厂、出货质检、第三方品控。</p>
-                </article>
-                <article>
-                    <strong data-i18n="serviceLogistics">物流方案</strong>
-                    <p data-i18n="serviceLogisticsSub">国际海运、空运、专线物流整合方案。</p>
-                </article>
-            </div>
-        </section>
-
-        <section class="section" id="marketplace">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="marketplaceEyebrow">Products</span>
-                    <h2 data-i18n="marketplaceTitle">Featured sourcing opportunities</h2>
-                </div>
-            </div>
-            <div id="marketplace-grid" class="product-grid"></div>
-        </section>
-
-        <section class="section supplier-section" id="suppliers">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="suppliersEyebrow">Suppliers</span>
-                    <h2 data-i18n="suppliersTitle">Supplier network</h2>
-                </div>
-                <input id="supplier-search" type="search" data-i18n-placeholder="supplierSearchPlaceholder" placeholder="Search suppliers, locations, certifications..." />
-            </div>
-            <div id="supplier-grid" class="supplier-grid"></div>
-        </section>
-
-        <section class="section" id="about">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="aboutEyebrow">About Us</span>
-                    <h2 data-i18n="aboutTitle">AI and trade expertise bridging global buyers and suppliers</h2>
-                </div>
-            </div>
-            <div class="content-grid about-grid">
-                <div>
-                    <p data-i18n="aboutCopy1">我们是一家专注于跨境外贸的综合服务平台，融合人工智能技术与传统外贸服务经验，搭建海内外供需桥梁。</p>
-                    <p data-i18n="aboutCopy2">平台秉持诚信、专业、高效、合规的服务理念，为海外采购商匹配靠谱货源，为国内工厂开拓全球市场，同时提供全流程外贸咨询、风控、履约配套服务。</p>
-                </div>
-                <div>
-                    <p data-i18n="aboutCopy3">We are a comprehensive cross-border trade platform combining AI technology and traditional trade experience to connect global buyers and domestic suppliers.</p>
-                    <p data-i18n="aboutCopy4">Adhering to Integrity, Professionalism, Efficiency and Compliance, we match reliable sources for buyers and help domestic factories expand globally with consulting and risk-control support.</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="section" id="membership">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="membershipEyebrow">Membership & Fees</span>
-                    <h2 data-i18n="membershipTitle">Flexible registration, transparent membership</h2>
-                </div>
-            </div>
-            <div class="content-grid membership-grid">
-                <div>
-                    <h3 data-i18n="supplierRegistrationTitle">供应商入驻 / Supplier Registration</h3>
-                    <p data-i18n="supplierRegistrationReq">入驻要求：具备合法营业执照、生产/供货资质，产品符合进出口标准。</p>
-                    <p data-i18n="supplierRegistrationPlans">基础版：免费入驻，免费接收基础询盘。进阶版：付费会员，AI优先匹配、首页曝光、专属流量扶持。</p>
-                    <p data-i18n="supplierRegistrationPricing">收费模式：撮合订单收取合理居间服务费，无隐形消费。</p>
-                </div>
-                <div>
-                    <h3 data-i18n="buyerServiceTitle">采购商服务 / Buyer Service</h3>
-                    <p data-i18n="buyerServiceCopy">采购商发布需求、查找供应商永久免费；仅在使用定制验厂、专属顾问、加急单证等增值服务时收取对应费用。</p>
-                    <p data-i18n="buyerServiceCopy2">Post requests and find suppliers for FREE forever. Fees only apply to customized audits, dedicated consulting and expedited documents.</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="section" id="ai-functions">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="aiFunctionsEyebrow">AI Functions</span>
-                    <h2 data-i18n="aiFunctionsTitle">AI tooling for intelligent matching and risk management</h2>
-                </div>
-            </div>
-            <div class="feature-list">
-                <article>
-                    <h4 data-i18n="aiFunctionMatch">智能匹配系统 / Intelligent Matching</h4>
-                    <p data-i18n="aiFunctionMatchSub">大数据算法精准配对供需双方。</p>
-                </article>
-                <article>
-                    <h4 data-i18n="aiFunctionChat">多语种智能客服 / Multilingual AI Chatbot</h4>
-                    <p data-i18n="aiFunctionChatSub">24/7自动应答，支持多语言自由切换。</p>
-                </article>
-                <article>
-                    <h4 data-i18n="aiFunctionDocs">智能单证系统 / Smart Document System</h4>
-                    <p data-i18n="aiFunctionDocsSub">一键生成各类外贸标准单据，自动填充信息。</p>
-                </article>
-                <article>
-                    <h4 data-i18n="aiFunctionRisk">风险风控系统 / Risk Control System</h4>
-                    <p data-i18n="aiFunctionRiskSub">AI核验企业资质，评估交易风险，实时预警异常。</p>
-                </article>
-            </div>
-        </section>
-
-        <section class="section" id="news">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="newsEyebrow">News & Blog</span>
-                    <h2 data-i18n="newsTitle">Industry updates and trade intelligence</h2>
-                </div>
-            </div>
-            <div class="news-copy">
-                <p data-i18n="newsCopy1">每日更新全球外贸行情、各国进出口政策、关税变动、防骗指南、运营技巧，AI辅助整理行业干货，助力客户把握市场趋势。</p>
-                <p data-i18n="newsCopy2">Daily updates on global trade trends, import & export policies, tariff changes, fraud prevention and operation tips with AI-assisted insight.</p>
-            </div>
-        </section>
-
-        <section class="section faq-section" id="faq">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="faqEyebrow">FAQ</span>
-                    <h2 data-i18n="faqTitle">Frequently asked questions</h2>
-                </div>
-            </div>
-            <div class="faq-grid">
-                <article>
-                    <h4 data-i18n="faqSafetyQ">平台如何保障交易安全？</h4>
-                    <p data-i18n="faqSafetyA">平台搭载AI风控系统，核验双方资质，同时提供交易担保、合同监管服务，降低合作风险。</p>
-                    <p class="small" data-i18n="faqSafetySub">Our AI risk control system verifies both parties and offers transaction guarantee and contract supervision.</p>
-                </article>
-                <article>
-                    <h4 data-i18n="faqFeesQ">入驻平台需要收费吗？</h4>
-                    <p data-i18n="faqFeesA">基础入驻完全免费，付费仅针对推广、高级会员、增值服务。</p>
-                    <p class="small" data-i18n="faqFeesSub">Basic registration is free. Charges only apply to promotion, premium membership and value-added services.</p>
-                </article>
-                <article>
-                    <h4 data-i18n="faqPostQ">可以发布采购需求吗？</h4>
-                    <p data-i18n="faqPostA">可以，注册账号后即可免费发布，AI会自动匹配合适供应商并推送。</p>
-                    <p class="small" data-i18n="faqPostSub">Yes. Post purchasing requests for free after registration and AI will recommend suitable suppliers.</p>
-                </article>
-                <article>
-                    <h4 data-i18n="faqLangQ">支持哪些语种沟通？</h4>
-                    <p data-i18n="faqLangA">支持英语、西班牙语、法语、阿拉伯语等主流语种，AI实时翻译。</p>
-                    <p class="small" data-i18n="faqLangSub">We support English, Spanish, French, Arabic and more with real-time AI translation.</p>
-                </article>
-                <article>
-                    <h4 data-i18n="faqMultiQ">产品可以做多语种展示吗？</h4>
-                    <p data-i18n="faqMultiA">可以，平台AI自动完成产品名称、详情、参数的多语种翻译。</p>
-                    <p class="small" data-i18n="faqMultiSub">Yes. AI automatically translates product names, descriptions and specifications into multiple languages.</p>
-                </article>
-                <article>
-                    <h4 data-i18n="faqAssignQ">询盘如何分配？</h4>
-                    <p data-i18n="faqAssignA">根据产品品类、产能、报价等条件，AI智能分发精准询盘。</p>
-                    <p class="small" data-i18n="faqAssignSub">Inquiries are intelligently distributed by AI based on category, capacity and pricing.</p>
-                </article>
-            </div>
-        </section>
-
-        <section class="section contact-section" id="contact">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="contactEyebrow">Contact Us</span>
-                    <h2 data-i18n="contactTitle">Start your AI-enabled trade matching journey</h2>
-                </div>
-            </div>
-            <div class="contact-layout">
-                <div class="contact-details">
-                    <p data-i18n="contactLine1">在线客服 | 企业邮箱 | 联系电话 | 办公地址</p>
-                    <p data-i18n="contactLine2">支持多语种咨询，欢迎海内外客户垂询合作。</p>
-                    <p data-i18n="contactLine3">Online Support | Email | Phone | Address</p>
-                    <p data-i18n="contactLine4">Multilingual consultation available. Welcome global partners.</p>
-                </div>
-                <form id="contact-form" class="data-form contact-form">
-                    <label data-i18n="contactLabelName">Name<input type="text" name="name" data-i18n-placeholder="contactNamePlaceholder" placeholder="Your name" required /></label>
-                    <label data-i18n="contactLabelEmail">Company Email<input type="email" name="email" data-i18n-placeholder="contactEmailPlaceholder" placeholder="name@company.com" required /></label>
-                    <label data-i18n="contactLabelCompany">Company<input type="text" name="company" data-i18n-placeholder="contactCompanyPlaceholder" placeholder="Your company" required /></label>
-                    <label data-i18n="contactLabelMessage">Request<textarea name="message" rows="5" data-i18n-placeholder="contactMessagePlaceholder" placeholder="Product specs, quantity, delivery port, certifications" required></textarea></label>
-                    <button type="submit" class="primary" data-i18n="contactSubmit">Submit sourcing request</button>
-                    <div id="contact-feedback" class="feedback"></div>
-                </form>
-            </div>
-        </section>
-
-        <section class="section dashboard" id="dashboard">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="dashboardEyebrow">Account</span>
-                    <h2 data-i18n="dashboardTitle">My SinoSource</h2>
-                </div>
-                <span id="metric-orders" class="small-metric">0 orders</span>
-            </div>
-            <div id="user-panel" class="workspace"></div>
-        </section>
-
-        <section class="section audit-section">
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow" data-i18n="auditEyebrow">Operations</span>
-                    <h2 data-i18n="auditTitle">Recent audit trail</h2>
-                </div>
-            </div>
-            <div id="audit-list" class="audit-list"></div>
-        </section>
-    </main>
-
-    <footer>
-        <div>
-            <strong data-i18n="footerCopyright">©2026 SinoSource</strong>
-            <span data-i18n="footerDescription">AI-powered trade mediation, consulting & full-process cross-border service.</span>
-        </div>
-        <div class="footer-links">
-            <button class="text-button" data-i18n="footerPrivacy">Privacy Policy</button>
-            <button class="text-button" data-i18n="footerAgreement">User Agreement</button>
-            <button class="text-button" data-i18n="footerDisclaimer">Disclaimer</button>
-            <button class="text-button" data-i18n="footerSitemap">Sitemap</button>
-        </div>
-    </footer>
-
-    <div id="account-modal" class="modal hidden">
-        <div class="modal-content">
-            <button class="modal-close" id="close-modal">x</button>
-            <div class="modal-body" id="modal-body"></div>
-        </div>
+<!-- ============================
+     HEADER
+=============================== -->
+<header class="site-header">
+  <div class="utility-bar">
+    <span class="utility-slogan" data-i18n="utilitySlogan">AI-powered sourcing, compliance, and global supplier matching</span>
+    <div class="utility-controls">
+      <div class="utility-links">
+        <button class="text-button" data-scroll-target="about" data-i18n="navAbout">About</button>
+        <button class="text-button" data-scroll-target="contact" data-i18n="navContact">Contact</button>
+      </div>
+      <div class="lang-switch" role="group" aria-label="Language">
+        <button class="lang-button active" data-lang="en">EN</button>
+        <button class="lang-button" data-lang="zh">中文</button>
+        <button class="lang-button" data-lang="ru">РУ</button>
+      </div>
     </div>
+  </div>
 
-    <div id="quote-modal" class="modal hidden">
-        <div class="modal-content">
-            <button class="modal-close" id="close-quote-modal">x</button>
-            <div class="modal-body">
-                <h3 data-i18n="quoteHeader">Request quote</h3>
-                <form id="quote-form" class="data-form">
-                    <input type="hidden" id="quote-product-id" />
-                    <label data-i18n="quoteLabelQuantity">Quantity<input type="text" id="quote-quantity" data-i18n-placeholder="quoteQuantityPlaceholder" placeholder="e.g. 5,000 units" required /></label>
-                    <label data-i18n="quoteLabelPrice">Target price<input type="text" id="quote-target-price" data-i18n-placeholder="quotePricePlaceholder" placeholder="Optional target landed price" /></label>
-                    <label data-i18n="quoteLabelDestination">Destination<input type="text" id="quote-destination" data-i18n-placeholder="quoteDestinationPlaceholder" placeholder="Port or delivery city" /></label>
-                    <label data-i18n="quoteLabelNotes">Notes<textarea id="quote-notes" rows="4" data-i18n-placeholder="quoteNotesPlaceholder" placeholder="Specs, packaging, inspection, deadline"></textarea></label>
-                    <button type="submit" class="primary" data-i18n="quoteSubmit">Send RFQ</button>
-                    <div id="quote-feedback" class="feedback"></div>
-                </form>
-            </div>
-        </div>
+  <nav class="main-nav" role="navigation">
+    <button class="brand-mark" data-scroll-target="home" aria-label="SinoSource home">
+      <strong>SinoSource</strong><span>.com</span>
+    </button>
+    <div class="nav-search">
+      <select id="search-type" aria-label="Search type">
+        <option value="products" data-i18n="searchProducts">Products</option>
+        <option value="suppliers" data-i18n="searchSuppliers">Suppliers</option>
+      </select>
+      <input id="search-query" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search products, suppliers, certifications..." />
+      <button id="header-search" class="primary" data-i18n="searchButton">Search</button>
     </div>
+    <div class="nav-links">
+      <button class="text-button" data-scroll-target="about" data-i18n="navAboutUs">About Us</button>
+      <button class="text-button" data-scroll-target="membership" data-i18n="navMembership">Membership</button>
+      <button class="text-button" data-scroll-target="ai-functions" data-i18n="navAiFunctions">AI Functions</button>
+      <button class="text-button" data-scroll-target="faq" data-i18n="navFaq">FAQ</button>
+      <button class="text-button" data-scroll-target="contact" data-i18n="navContact">Contact</button>
+    </div>
+    <div class="nav-actions">
+      <button id="open-login" data-i18n="authSignIn">Sign in</button>
+      <button id="open-register" class="primary" data-i18n="authJoinFree">Join Free</button>
+    </div>
+  </nav>
 
-    <script src="/static/app.js"></script>
+  <div class="category-bar">
+    <div id="category-list" class="category-rail"></div>
+  </div>
+</header>
+
+<!-- ============================
+     MAIN
+=============================== -->
+<main id="home">
+
+  <!-- Hero -->
+  <section class="hero-section">
+    <div class="hero-copy">
+      <span class="eyebrow" data-i18n="heroEyebrow">AI-driven one-stop trade matching</span>
+      <h1 data-i18n="heroTitle">Intelligent global sourcing</h1>
+      <p class="hero-subtitle" data-i18n="heroSubtitle">AI-Powered One-Stop Foreign Trade Matching & Consulting Service</p>
+      <div class="hero-search-block">
+        <form id="search-form" class="hero-search">
+          <input id="hero-search-query" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search products, suppliers, certifications..." />
+          <button type="submit" class="primary" data-i18n="searchButton">Search</button>
+        </form>
+        <div class="hero-highlights" data-i18n="heroHighlights">AI-powered matching, multilingual support, risk control, and full-process consulting.</div>
+      </div>
+      <div class="hero-actions">
+        <button class="primary" data-scroll-target="marketplace" data-i18n="heroBuyerBtn">Find Suppliers</button>
+        <button class="secondary" data-scroll-target="contact" data-i18n="heroSupplierBtn">Join Free as Supplier</button>
+        <button class="text-button hero-consult" data-scroll-target="contact" data-i18n="heroConsultBtn">Online Consultation</button>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <strong data-i18n="statsCountries">Serving XX+ Countries</strong>
+        <span data-i18n="statsCountriesSub">Countries & regions served</span>
+      </div>
+      <div class="hero-stat">
+        <strong data-i18n="statsFactories">XX+ Factories</strong>
+        <span data-i18n="statsFactoriesSub">Cooperated factories</span>
+      </div>
+      <div class="hero-stat">
+        <strong data-i18n="statsOrders">XX+ Orders</strong>
+        <span data-i18n="statsOrdersSub">Completed orders</span>
+      </div>
+      <div class="hero-stat">
+        <strong data-i18n="statsExperience">XX Years</strong>
+        <span data-i18n="statsExperienceSub">Industry experience</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live stats strip -->
+  <section class="stats-strip" aria-label="Platform metrics">
+    <div class="stat-card">
+      <strong><span id="metric-products">0</span>+</strong>
+      <span data-i18n="statsProducts">Products available for sourcing</span>
+    </div>
+    <div class="stat-card">
+      <strong><span id="metric-verified">0</span>+</strong>
+      <span data-i18n="statsVerified">Verified suppliers</span>
+    </div>
+    <div class="stat-card">
+      <strong><span id="metric-rfqs">0</span>+</strong>
+      <span data-i18n="statsRfqs">Live RFQ requests</span>
+    </div>
+    <div class="stat-card">
+      <strong><span id="metric-orders-count">0</span></strong>
+      <span data-i18n="statsOrdersMetric">Orders tracked in dashboard</span>
+    </div>
+  </section>
+
+  <!-- Platform advantages -->
+  <section class="section advantage-section" id="advantage-section">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="advantageEyebrow">Platform advantages</span>
+        <h2 data-i18n="advantageTitle">Four AI-powered strengths for global trade</h2>
+      </div>
+    </div>
+    <div class="feature-cards">
+      <article>
+        <div class="feature-icon">🎯</div>
+        <strong data-i18n="featureMatchTitle">AI Intelligent Matching</strong>
+        <p data-i18n="featureMatchCopy">Powered by AI algorithm, automatically match ideal partners based on product category, production capacity, quotation, certification and lead time.</p>
+      </article>
+      <article>
+        <div class="feature-icon">🌐</div>
+        <strong data-i18n="featureCommTitle">24/7 Multilingual Communication</strong>
+        <p data-i18n="featureCommCopy">Supports English, Spanish, French, Arabic and other mainstream languages with real-time AI translation and intelligent response.</p>
+      </article>
+      <article>
+        <div class="feature-icon">🛡️</div>
+        <strong data-i18n="featureRiskTitle">Full-Trade Compliance & Risk Control</strong>
+        <p data-i18n="featureRiskCopy">AI qualification checks, transaction risk ratings and order monitoring across customs, logistics and contracts.</p>
+      </article>
+      <article>
+        <div class="feature-icon">📋</div>
+        <strong data-i18n="featureConsultTitle">End-to-End Trade Consulting</strong>
+        <p data-i18n="featureConsultCopy">Policy analysis, market research, tariff consulting, factory audit, quality inspection and document production.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Buyer & Supplier Services -->
+  <section class="section service-section">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="servicesEyebrow">Service scenarios</span>
+        <h2 data-i18n="servicesTitle">Buyer & supplier services for global trade</h2>
+      </div>
+    </div>
+    <div class="service-grid">
+      <article>
+        <h3 data-i18n="buyersSectionTitle">Services for Buyers</h3>
+        <ul>
+          <li data-i18n="buyersList1">Post purchasing requests, get AI-matched qualified suppliers</li>
+          <li data-i18n="buyersList2">Compare quotes, review qualifications and transaction history</li>
+          <li data-i18n="buyersList3">One-stop logistics, customs, and payment support</li>
+          <li data-i18n="buyersList4">Dedicated trade consultant for negotiation and fulfillment</li>
+        </ul>
+        <p class="service-sub" data-i18n="buyersSub">Post purchasing requests & get AI-matched qualified suppliers, compare quotes, and access logistics, customs and payment support.</p>
+        <button class="primary" data-scroll-target="marketplace" data-i18n="heroBuyerBtn">Find Suppliers</button>
+      </article>
+      <article>
+        <h3 data-i18n="suppliersSectionTitle">Services for Suppliers</h3>
+        <ul>
+          <li data-i18n="suppliersList1">Register free and connect with global buyers</li>
+          <li data-i18n="suppliersList2">AI multilingual product translation and overseas visibility</li>
+          <li data-i18n="suppliersList3">Targeted inquiry distribution to boost order volume</li>
+          <li data-i18n="suppliersList4">Compliance guidance, document templates, and risk alerts</li>
+        </ul>
+        <p class="service-sub" data-i18n="suppliersSub">Register free, translate product information with AI, receive targeted inquiries and gain compliance guidance.</p>
+        <button class="secondary" data-scroll-target="contact" data-i18n="heroSupplierBtn">Join Free as Supplier</button>
+      </article>
+    </div>
+  </section>
+
+  <!-- Core service modules -->
+  <section class="section service-list">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="serviceListEyebrow">Core services</span>
+        <h2 data-i18n="serviceListTitle">Value-added service modules</h2>
+      </div>
+    </div>
+    <div class="service-cards">
+      <article>
+        <div class="service-icon">🤝</div>
+        <strong data-i18n="serviceMatch">Trade Mediation</strong>
+        <p data-i18n="serviceMatchSub">Supply-demand matching, order brokerage and negotiation support.</p>
+      </article>
+      <article>
+        <div class="service-icon">⚖️</div>
+        <strong data-i18n="serviceCompliance">Compliance Consulting</strong>
+        <p data-i18n="serviceComplianceSub">Import/export policy, tariff, rebate and certification support.</p>
+      </article>
+      <article>
+        <div class="service-icon">📄</div>
+        <strong data-i18n="serviceDocument">Document Service</strong>
+        <p data-i18n="serviceDocumentSub">AI auto-generate contracts, PI, packing lists and customs documents.</p>
+      </article>
+      <article>
+        <div class="service-icon">🔍</div>
+        <strong data-i18n="serviceInspection">Factory Audit & QC</strong>
+        <p data-i18n="serviceInspectionSub">On-site audit, pre-shipment inspection and third-party quality control.</p>
+      </article>
+      <article>
+        <div class="service-icon">🚢</div>
+        <strong data-i18n="serviceLogistics">Logistics Solution</strong>
+        <p data-i18n="serviceLogisticsSub">Integrated sea freight, air freight and dedicated line services.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Marketplace -->
+  <section class="section" id="marketplace">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="marketplaceEyebrow">Products</span>
+        <h2 data-i18n="marketplaceTitle">Featured sourcing opportunities</h2>
+      </div>
+    </div>
+    <div id="marketplace-grid" class="product-grid"></div>
+  </section>
+
+  <!-- Suppliers -->
+  <section class="section supplier-section" id="suppliers">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="suppliersEyebrow">Suppliers</span>
+        <h2 data-i18n="suppliersTitle">Supplier network</h2>
+      </div>
+      <input id="supplier-search" type="search" data-i18n-placeholder="supplierSearchPlaceholder" placeholder="Search suppliers, locations, certifications..." />
+    </div>
+    <div id="supplier-grid" class="supplier-grid"></div>
+  </section>
+
+  <!-- About -->
+  <section class="section" id="about">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="aboutEyebrow">About Us</span>
+        <h2 data-i18n="aboutTitle">AI and trade expertise bridging global buyers and suppliers</h2>
+      </div>
+    </div>
+    <div class="about-grid">
+      <div>
+        <p data-i18n="aboutCopy1">We are a comprehensive cross-border trade platform combining AI technology and traditional trade experience to connect global buyers and domestic suppliers.</p>
+        <p data-i18n="aboutCopy2">Adhering to Integrity, Professionalism, Efficiency and Compliance, we match reliable sources for buyers and help domestic factories expand globally with consulting and risk-control support.</p>
+      </div>
+      <div class="about-trust">
+        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem1">Verified suppliers only</span></div>
+        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem2">Secure escrow payments</span></div>
+        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem3">Full-process risk control</span></div>
+        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem4">Multilingual support 24/7</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Membership -->
+  <section class="section" id="membership">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="membershipEyebrow">Membership & Fees</span>
+        <h2 data-i18n="membershipTitle">Flexible registration, transparent membership</h2>
+      </div>
+    </div>
+    <div class="membership-grid">
+      <article>
+        <h3 data-i18n="supplierRegistrationTitle">Supplier Registration</h3>
+        <p data-i18n="supplierRegistrationReq">Requirements: valid business license, production or supply qualification, and compliant export products.</p>
+        <p data-i18n="supplierRegistrationPlans">Basic plan: free registration and standard inquiries. Premium plan: priority AI matching, homepage exposure and traffic support.</p>
+        <p data-i18n="supplierRegistrationPricing">Service fees apply only to successful order brokerage, with no hidden charges.</p>
+      </article>
+      <article>
+        <h3 data-i18n="buyerServiceTitle">Buyer Service</h3>
+        <p data-i18n="buyerServiceCopy">Post requests and find suppliers for FREE forever; fees only apply to custom audits, dedicated consultants and expedited documents.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- AI Functions -->
+  <section class="section" id="ai-functions">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="aiFunctionsEyebrow">AI Functions</span>
+        <h2 data-i18n="aiFunctionsTitle">AI tooling for intelligent matching and risk management</h2>
+      </div>
+    </div>
+    <div class="feature-list">
+      <article>
+        <h4 data-i18n="aiFunctionMatch">Intelligent Matching</h4>
+        <p data-i18n="aiFunctionMatchSub">Match buyers and suppliers using big data algorithms.</p>
+      </article>
+      <article>
+        <h4 data-i18n="aiFunctionChat">Multilingual AI Chatbot</h4>
+        <p data-i18n="aiFunctionChatSub">24/7 auto-reply with multilingual support.</p>
+      </article>
+      <article>
+        <h4 data-i18n="aiFunctionDocs">Smart Document System</h4>
+        <p data-i18n="aiFunctionDocsSub">Generate standard trade documents with one click.</p>
+      </article>
+      <article>
+        <h4 data-i18n="aiFunctionRisk">Risk Control System</h4>
+        <p data-i18n="aiFunctionRiskSub">Verify qualification and assess transaction risks in real time.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- News -->
+  <section class="section" id="news">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="newsEyebrow">News & Blog</span>
+        <h2 data-i18n="newsTitle">Industry updates and trade intelligence</h2>
+      </div>
+    </div>
+    <div class="news-copy">
+      <p data-i18n="newsCopy1">Daily updates on global trade trends, import and export policies, tariff changes, fraud prevention and operation tips with AI-assisted insight.</p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section faq-section" id="faq">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="faqEyebrow">FAQ</span>
+        <h2 data-i18n="faqTitle">Frequently asked questions</h2>
+      </div>
+    </div>
+    <div class="faq-grid">
+      <article>
+        <h4 data-i18n="faqSafetyQ">How does the platform secure transactions?</h4>
+        <p data-i18n="faqSafetyA">Our AI risk control system verifies both parties and provides transaction guarantees and contract supervision.</p>
+      </article>
+      <article>
+        <h4 data-i18n="faqFeesQ">Is registration free?</h4>
+        <p data-i18n="faqFeesA">Basic registration is free. Charges only apply to promotion, premium membership and value-added services.</p>
+      </article>
+      <article>
+        <h4 data-i18n="faqPostQ">Can I post purchasing requests?</h4>
+        <p data-i18n="faqPostA">Yes. Post purchasing requests for free after registration and AI will recommend suitable suppliers.</p>
+      </article>
+      <article>
+        <h4 data-i18n="faqLangQ">Which languages are supported?</h4>
+        <p data-i18n="faqLangA">We support English, Spanish, French, Arabic and more with real-time AI translation.</p>
+      </article>
+      <article>
+        <h4 data-i18n="faqMultiQ">Can products be shown in multiple languages?</h4>
+        <p data-i18n="faqMultiA">Yes. AI automatically translates product names, descriptions and specifications into multiple languages.</p>
+      </article>
+      <article>
+        <h4 data-i18n="faqAssignQ">How are inquiries assigned?</h4>
+        <p data-i18n="faqAssignA">Inquiries are distributed intelligently by AI based on category, capacity and pricing.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section class="section contact-section" id="contact">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="contactEyebrow">Contact Us</span>
+        <h2 data-i18n="contactTitle">Start your AI-enabled trade matching journey</h2>
+      </div>
+    </div>
+    <div class="contact-layout">
+      <div class="contact-details">
+        <p data-i18n="contactLine1">Online support | Email | Phone | Address</p>
+        <p data-i18n="contactLine2">Multilingual consultation available. Welcome global partners.</p>
+      </div>
+      <form id="contact-form" class="data-form contact-form">
+        <label data-i18n="contactLabelName">Name<input type="text" name="name" data-i18n-placeholder="contactNamePlaceholder" placeholder="Your name" required /></label>
+        <label data-i18n="contactLabelEmail">Company Email<input type="email" name="email" data-i18n-placeholder="contactEmailPlaceholder" placeholder="name@company.com" required /></label>
+        <label data-i18n="contactLabelCompany">Company<input type="text" name="company" data-i18n-placeholder="contactCompanyPlaceholder" placeholder="Your company" required /></label>
+        <label data-i18n="contactLabelMessage">Request<textarea name="message" rows="5" data-i18n-placeholder="contactMessagePlaceholder" placeholder="Product specs, quantity, delivery port, certifications" required></textarea></label>
+        <button type="submit" class="primary" data-i18n="contactSubmit">Submit sourcing request</button>
+        <div id="contact-feedback" class="feedback"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Dashboard -->
+  <section class="section dashboard" id="dashboard">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="dashboardEyebrow">Account</span>
+        <h2 data-i18n="dashboardTitle">My SinoSource</h2>
+      </div>
+      <span id="metric-orders" class="small-metric">0 orders</span>
+    </div>
+    <div id="user-panel" class="workspace"></div>
+  </section>
+
+  <!-- Audit trail -->
+  <section class="section audit-section">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="auditEyebrow">Operations</span>
+        <h2 data-i18n="auditTitle">Recent audit trail</h2>
+      </div>
+    </div>
+    <div id="audit-list" class="audit-list"></div>
+  </section>
+
+</main>
+
+<!-- ============================
+     FOOTER
+=============================== -->
+<footer>
+  <div class="footer-brand">
+    <strong data-i18n="footerCopyright">©2026 SinoSource</strong>
+    <span data-i18n="footerDescription">AI-powered trade mediation, consulting & full-process cross-border service.</span>
+  </div>
+  <div class="footer-links">
+    <button class="text-button" data-i18n="footerPrivacy">Privacy Policy</button>
+    <button class="text-button" data-i18n="footerAgreement">User Agreement</button>
+    <button class="text-button" data-i18n="footerDisclaimer">Disclaimer</button>
+    <button class="text-button" data-i18n="footerSitemap">Sitemap</button>
+  </div>
+</footer>
+
+<!-- ============================
+     MODALS
+=============================== -->
+<div id="account-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-content">
+    <button class="modal-close" id="close-modal" aria-label="Close">×</button>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div id="quote-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-content">
+    <button class="modal-close" id="close-quote-modal" aria-label="Close">×</button>
+    <div class="modal-body">
+      <h3 data-i18n="quoteHeader">Request quote</h3>
+      <form id="quote-form" class="data-form">
+        <input type="hidden" id="quote-product-id" />
+        <label data-i18n="quoteLabelQuantity">Quantity<input type="text" id="quote-quantity" data-i18n-placeholder="quoteQuantityPlaceholder" placeholder="e.g. 5,000 units" required /></label>
+        <label data-i18n="quoteLabelPrice">Target price<input type="text" id="quote-target-price" data-i18n-placeholder="quotePricePlaceholder" placeholder="Optional target landed price" /></label>
+        <label data-i18n="quoteLabelDestination">Destination<input type="text" id="quote-destination" data-i18n-placeholder="quoteDestinationPlaceholder" placeholder="Port or delivery city" /></label>
+        <label data-i18n="quoteLabelNotes">Notes<textarea id="quote-notes" rows="4" data-i18n-placeholder="quoteNotesPlaceholder" placeholder="Specs, packaging, inspection, deadline"></textarea></label>
+        <button type="submit" class="primary" data-i18n="quoteSubmit">Send RFQ</button>
+        <div id="quote-feedback" class="feedback"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
 </body>
 </html>

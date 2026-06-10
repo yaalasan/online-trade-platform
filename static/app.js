@@ -6,7 +6,7 @@ const headerSearch = document.getElementById('header-search');
 const searchType = document.getElementById('search-type');
 const searchQuery = document.getElementById('search-query');
 const heroSearchForm = document.getElementById('search-form');
-const heroSearchQuery = document.getElementById('search-query');
+const heroSearchQuery = document.getElementById('hero-search-query');
 const supplierSearch = document.getElementById('supplier-search');
 const contactForm = document.getElementById('contact-form');
 const contactFeedback = document.getElementById('contact-feedback');
@@ -40,11 +40,11 @@ const translations = {
     authSignIn: 'Sign in',
     authJoinFree: 'Join Free',
     heroEyebrow: 'AI-driven one-stop trade matching & consulting',
-    heroTitle: 'Intelligent global sourcing · Multilingual real-time communication · Full-risk control',
-    heroSubtitle: 'AI-powered one-stop foreign trade matching and consulting service.<br />Intelligent global sourcing, real-time translation, and compliance support.',
-    heroBuyerBtn: 'Buyers: Find suppliers<br /><small>Find Suppliers</small>',
+    heroTitle: 'Intelligent global sourcing · Multilingual communication · Full risk control',
+    heroSubtitle: 'AI-Powered One-Stop Foreign Trade Matching & Consulting Service — intelligent global sourcing, real-time translation, and compliance support.',
+    heroBuyerBtn: 'Find Suppliers',
     heroBuyerBtnSub: 'Find Suppliers',
-    heroSupplierBtn: 'Suppliers: Join free<br /><small>Join Us Free</small>',
+    heroSupplierBtn: 'Join Free as Supplier',
     heroSupplierBtnSub: 'Join Us Free',
     heroConsultBtn: 'Online Consultation',
     heroHighlights: 'AI-powered matching, multilingual support, risk control, and full-process consulting.',
@@ -207,7 +207,11 @@ const translations = {
     authBuyerRequiredTitle: 'Buyer account required',
     authBuyerRequiredDesc: 'Supplier and admin accounts can manage listings and RFQs, but only buyers can send new quote requests.',
     authClose: 'Close',
-    noAuditEvents: 'No audit events yet.'
+    noAuditEvents: 'No audit events yet.',
+    trustItem1: 'Verified suppliers only',
+    trustItem2: 'Secure escrow payments',
+    trustItem3: 'Full-process risk control',
+    trustItem4: 'Multilingual support 24/7'
   },
   zh: {
     utilitySlogan: 'AI驱动采购、合规和全球供应商撮合',
@@ -221,10 +225,10 @@ const translations = {
     authJoinFree: '免费入驻',
     heroEyebrow: 'AI驱动 · 一站式外贸撮合与咨询服务',
     heroTitle: '智能匹配全球供需 · 多语种实时沟通 · 全流程风控护航',
-    heroSubtitle: 'AI驱动的一站式外贸撮合与咨询服务。<br />智能全球采购、实时翻译与合规支持。',
-    heroBuyerBtn: '海外买家 立即找货源<br /><small>找供应商</small>',
+    heroSubtitle: 'AI驱动的一站式外贸撮合与咨询服务——智能全球采购、实时翻译与合规支持。',
+    heroBuyerBtn: '海外买家：立即找货源',
     heroBuyerBtnSub: '找供应商',
-    heroSupplierBtn: '国内供应商 免费入驻<br /><small>免费加入</small>',
+    heroSupplierBtn: '国内供应商：免费入驻',
     heroSupplierBtnSub: '免费加入',
     heroConsultBtn: '在线咨询',
     heroHighlights: 'AI撮合、多语种支持、风控合规、全流程服务。',
@@ -387,7 +391,11 @@ const translations = {
     authBuyerRequiredTitle: '需要买家账号',
     authBuyerRequiredDesc: '供应商和管理账号可以管理商品和询盘，但只有买家可以发送新询盘。',
     authClose: '关闭',
-    noAuditEvents: '暂无审计记录。'
+    noAuditEvents: '暂无审计记录。',
+    trustItem1: '仅限认证供应商',
+    trustItem2: '安全资金托管支付',
+    trustItem3: '全流程风险管控',
+    trustItem4: '7×24小时多语种服务'
   },
   ru: {
     utilitySlogan: 'ИИ-поддержка закупок, комплаенса и глобального поиска поставщиков',
@@ -401,10 +409,10 @@ const translations = {
     authJoinFree: 'Бесплатная регистрация',
     heroEyebrow: 'ИИ‑платформа для комплексного внешнеторгового посредничества',
     heroTitle: 'Интеллектуальный глобальный поиск · Мультиязычная связь · Полный контроль рисков',
-    heroSubtitle: 'ИИ‑управляемая платформа для внешнеторгового посредничества и консультаций.<br />Глобальный поиск, перевод в реальном времени и комплаенс.',
-    heroBuyerBtn: 'Закупщики: найдите поставщиков<br /><small>Найти поставщиков</small>',
+    heroSubtitle: 'ИИ-управляемая платформа для внешнеторгового посредничества и консультаций — глобальный поиск, перевод в реальном времени и комплаенс.',
+    heroBuyerBtn: 'Найти поставщиков',
     heroBuyerBtnSub: 'Найти поставщиков',
-    heroSupplierBtn: 'Поставщики: бесплатная регистрация<br /><small>Присоединиться</small>',
+    heroSupplierBtn: 'Зарегистрироваться поставщику',
     heroSupplierBtnSub: 'Присоединиться',
     heroConsultBtn: 'Онлайн-консультация',
     heroHighlights: 'ИИ-сопоставление, мультиязычие, контроль рисков и полный цикл услуг.',
@@ -567,7 +575,11 @@ const translations = {
     authBuyerRequiredTitle: 'Требуется аккаунт покупателя',
     authBuyerRequiredDesc: 'Поставщики и администраторы могут управлять товарами, но только покупатели могут отправлять новые запросы.',
     authClose: 'Закрыть',
-    noAuditEvents: 'Пока нет аудиторских событий.'
+    noAuditEvents: 'Пока нет аудиторских событий.',
+    trustItem1: 'Только проверенные поставщики',
+    trustItem2: 'Безопасные эскроу-платежи',
+    trustItem3: 'Контроль рисков на всех этапах',
+    trustItem4: 'Мультиязычная поддержка 24/7'
   }
 };
 
@@ -690,6 +702,7 @@ async function loadOverview() {
     document.getElementById('metric-products').textContent = data.stats.products;
     document.getElementById('metric-verified').textContent = data.stats.verified_suppliers;
     document.getElementById('metric-rfqs').textContent = data.stats.open_rfqs;
+    document.getElementById('metric-orders-count').textContent = data.stats.orders;
     document.getElementById('metric-orders').textContent = `${data.stats.orders} orders`;
     document.getElementById('audit-list').innerHTML = data.audit.length ? data.audit.map(item => `
       <article>
@@ -770,7 +783,7 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
       </article>
     `).join('');
 
-    await loadCategories();
+    // categories reloaded at page init only
   } catch (error) {
     marketplaceGrid.innerHTML = '<p class="error">Unable to load marketplace data.</p>';
   }
@@ -1159,8 +1172,8 @@ async function demoLogin(email) {
 }
 
 async function runProductSearch(query) {
-  searchQuery.value = query;
-  heroSearchQuery.value = query;
+  if (searchQuery) searchQuery.value = query;
+  if (heroSearchQuery) heroSearchQuery.value = query;
   activeCategory = '';
   await loadMarketplace(query, '');
   scrollToId('marketplace');
@@ -1178,7 +1191,8 @@ headerSearch?.addEventListener('click', async () => {
 
 heroSearchForm?.addEventListener('submit', async event => {
   event.preventDefault();
-  await runProductSearch(heroSearchQuery.value.trim());
+  const q = (heroSearchQuery || searchQuery)?.value?.trim() || '';
+  await runProductSearch(q);
 });
 
 supplierSearch?.addEventListener('input', event => {
