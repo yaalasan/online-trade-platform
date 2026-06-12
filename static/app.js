@@ -26,7 +26,7 @@ let activeQuoteId = null;
 let activeCategory = '';
 let lastMarketplaceQuery = '';
 let currentLang = 'en';
-const languageButtons = document.querySelectorAll('.lang-button');
+
 
 const translations = {
   en: {
@@ -43,38 +43,31 @@ const translations = {
     heroTitle: 'Intelligent global sourcing · Multilingual communication · Full risk control',
     heroSubtitle: 'AI-Powered One-Stop Foreign Trade Matching & Consulting Service — intelligent global sourcing, real-time translation, and compliance support.',
     heroBuyerBtn: 'Find Suppliers',
-    heroBuyerBtnSub: 'Find Suppliers',
     heroSupplierBtn: 'Join Free as Supplier',
-    heroSupplierBtnSub: 'Join Us Free',
     heroConsultBtn: 'Online Consultation',
     heroHighlights: 'AI-powered matching, multilingual support, risk control, and full-process consulting.',
     searchProducts: 'Products',
     searchSuppliers: 'Suppliers',
     searchPlaceholder: 'Search products, suppliers, certifications...',
     searchButton: 'Search',
-    topCategories: 'Top categories',
-    statsCountries: 'Serving XX+ Countries & Regions',
-    statsCountriesSub: 'Serving XX+ countries and regions',
-    statsFactories: 'Cooperated Factories XX+',
-    statsFactoriesSub: 'Cooperated factories XX+',
-    statsOrders: 'Completed Orders XX+',
-    statsOrdersSub: 'Completed orders XX+',
-    statsExperience: 'Years of Industry Experience',
-    statsExperienceSub: 'Years of industry experience',
+    statsCountries: 'Serving 30+ Countries & Regions',
+    statsCountriesSub: 'Serving 30+ countries and regions',
+    statsFactories: '500+ Cooperated Factories',
+    statsFactoriesSub: '500+ cooperated factories',
+    statsOrders: '12,000+ Completed Orders',
+    statsOrdersSub: '12,000+ completed orders',
+    statsExperience: '15+ Years of Industry Experience',
+    statsExperienceSub: '15+ years of industry experience',
     advantageEyebrow: 'Platform advantages',
     advantageTitle: 'Four AI-powered strengths for global trade',
     featureMatchTitle: 'AI intelligent matching',
     featureMatchCopy: 'Powered by AI algorithm, we automatically match ideal partners based on product category, production capacity, quotation, certification and lead time.',
-    featureMatchSub: 'Powered by AI algorithm, we automatically match ideal partners based on product category, production capacity, quotation, certification and lead time.',
     featureCommTitle: '24/7 multilingual communication',
     featureCommCopy: 'Supports English, Spanish, French, Arabic and other mainstream languages with real-time AI translation and intelligent response.',
-    featureCommSub: 'Supports English, Spanish, French, Arabic and other mainstream languages with real-time AI translation and intelligent response.',
     featureRiskTitle: 'Full-trade compliance and risk control',
     featureRiskCopy: 'AI qualification checks, transaction risk ratings and order monitoring across customs, logistics and contracts.',
-    featureRiskSub: 'AI qualification checks, transaction risk ratings and order monitoring across customs, logistics and contracts.',
     featureConsultTitle: 'End-to-end trade consulting',
     featureConsultCopy: 'Policy analysis, market research, tariff consulting, factory audit, quality inspection and document production.',
-    featureConsultSub: 'Policy analysis, market research, tariff consulting, factory audit, quality inspection and document production.',
     statsProducts: 'Products available for sourcing',
     statsVerified: 'Verified suppliers',
     statsRfqs: 'Live RFQ requests',
@@ -122,7 +115,6 @@ const translations = {
     supplierRegistrationPricing: 'Service fees apply only to successful order brokerage, with no hidden charges.',
     buyerServiceTitle: 'Buyer Service',
     buyerServiceCopy: 'Post requests and find suppliers for FREE forever; fees only apply to custom audits, dedicated consultants and expedited documents.',
-    buyerServiceCopy2: 'Post requests and find suppliers for FREE forever. Fees only apply to customized audits, dedicated consulting and expedited documents.',
     aiFunctionsEyebrow: 'AI Functions',
     aiFunctionsTitle: 'AI tooling for intelligent matching and risk management',
     aiFunctionMatch: 'Intelligent matching',
@@ -136,33 +128,24 @@ const translations = {
     newsEyebrow: 'News & Blog',
     newsTitle: 'Industry updates and trade intelligence',
     newsCopy1: 'Daily updates on global trade trends, import and export policies, tariff changes, fraud prevention and operation tips with AI-assisted insight.',
-    newsCopy2: 'Daily updates on global trade trends, import & export policies, tariff changes, fraud prevention and operation tips with AI-assisted insight.',
     faqEyebrow: 'FAQ',
     faqTitle: 'Frequently asked questions',
     faqSafetyQ: 'How does the platform secure transactions?',
     faqSafetyA: 'Our AI risk control system verifies both parties and provides transaction guarantees and contract supervision.',
-    faqSafetySub: 'Our AI risk control system verifies both parties and offers transaction guarantee and contract supervision.',
     faqFeesQ: 'Is there a fee to join the platform?',
     faqFeesA: 'Basic registration is free. Fees apply only for promotion, premium membership and value-added services.',
-    faqFeesSub: 'Basic registration is free. Charges only apply to promotion, premium membership and value-added services.',
     faqPostQ: 'Can I post purchasing requests?',
     faqPostA: 'Yes, after registration you can post requests for free and AI will recommend suitable suppliers.',
-    faqPostSub: 'Yes. Post purchasing requests for free after registration and AI will recommend suitable suppliers.',
     faqLangQ: 'What languages does the platform support?',
     faqLangA: 'We support English, Spanish, French, Arabic and more with real-time AI translation.',
-    faqLangSub: 'We support English, Spanish, French, Arabic and more with real-time AI translation.',
     faqMultiQ: 'Can products be displayed in multiple languages?',
     faqMultiA: 'Yes, AI auto-translates product names, details and specifications into multiple languages.',
-    faqMultiSub: 'Yes. AI automatically translates product names, descriptions and specifications into multiple languages.',
     faqAssignQ: 'How are inquiries assigned?',
     faqAssignA: 'Inquiries are distributed intelligently by AI based on category, capacity and pricing.',
-    faqAssignSub: 'Inquiries are intelligently distributed by AI based on category, capacity and pricing.',
     contactEyebrow: 'Contact Us',
     contactTitle: 'Start your AI-enabled trade matching journey',
     contactLine1: 'Online support | Email | Phone | Address',
     contactLine2: 'Multilingual consultation available. Welcome global partners.',
-    contactLine3: 'Online support | Email | Phone | Address',
-    contactLine4: 'Multilingual consultation available. Welcome global partners.',
     contactLabelName: 'Name',
     contactNamePlaceholder: 'Your name',
     contactLabelEmail: 'Company Email',
@@ -211,7 +194,130 @@ const translations = {
     trustItem1: 'Verified suppliers only',
     trustItem2: 'Secure escrow payments',
     trustItem3: 'Full-process risk control',
-    trustItem4: 'Multilingual support 24/7'
+    trustItem4: 'Multilingual support 24/7',
+    howEyebrow: 'How It Works',
+    howTitle: 'Three steps to global trade',
+    howStep1Num: '01',
+    howStep1Title: 'Register & Post',
+    howStep1Copy: 'Create a free buyer or supplier account and post your products or sourcing requests in minutes.',
+    howStep2Num: '02',
+    howStep2Title: 'AI Matching',
+    howStep2Copy: 'Our AI engine analyzes your requirements and instantly connects you with verified buyers or qualified suppliers.',
+    howStep3Num: '03',
+    howStep3Title: 'Connect & Trade',
+    howStep3Copy: 'Communicate, exchange RFQs, negotiate terms, and complete trades with full compliance and logistics support.',
+    testimonialsEyebrow: 'Testimonials',
+    testimonialsTitle: 'Trusted by global traders',
+    testimonial1Quote: 'SinoSource connected us with 3 verified Chinese factories in 48 hours — the AI matching saved weeks of manual sourcing work.',
+    testimonial1Name: 'James Kowalski',
+    testimonial1Company: 'Procurement Manager, MechParts EU · Poland',
+    testimonial2Quote: 'As an exporter in Shenzhen, we gained 12 new overseas buyers in our first quarter. The multilingual support and AI translation are excellent.',
+    testimonial2Name: 'Zhang Wei',
+    testimonial2Company: 'Export Manager, Delta Precision Works · Shenzhen',
+    testimonial3Quote: 'The compliance and document support eliminated our main bottleneck. Our sourcing cycle shortened by 40% within two months.',
+    testimonial3Name: 'Aisha Kolenova',
+    testimonial3Company: 'Supply Chain Director, TradeCo CIS · Russia',
+    dashboardTabRfqs: 'RFQs',
+    dashboardTabOrders: 'Orders',
+    dashboardTabVerification: 'Verification',
+    dashboardTabProducts: 'Products',
+    dashboardLogout: 'Logout',
+    dashboardRfqThread: 'RFQ Thread',
+    dashboardRfqThreadEmpty: 'Select an RFQ to open the thread.',
+    categoriesAll: 'All Categories',
+    categoryProducts: 'products',
+    systemActor: 'System',
+    metricOrdersLabel: 'orders',
+    pillVerified: 'Verified',
+    pillReview: 'Review',
+    specMoq: 'MOQ',
+    specLeadTime: 'Lead time',
+    specCapacity: 'Capacity',
+    specAsk: 'Ask',
+    cardRequestQuote: 'Request quote',
+    cardViewDetails: 'View details',
+    marketplaceEmpty: 'No matching products found.',
+    marketplaceError: 'Unable to load marketplace data.',
+    categoriesError: 'Categories unavailable.',
+    auditError: 'Unable to load audit trail.',
+    detailSupplier: 'Supplier',
+    detailLocation: 'Location',
+    detailPrice: 'Price',
+    detailCertifications: 'Certifications',
+    detailPending: 'Pending',
+    productUnavailable: 'Product unavailable',
+    supplierProducts: 'Products',
+    supplierCategories: 'Categories',
+    supplierCertifications: 'Certifications',
+    supplierLocationPending: 'Location pending',
+    supplierPending: 'Pending',
+    suppliersEmpty: 'No suppliers found.',
+    suppliersError: 'Unable to load suppliers.',
+    rfqMine: 'My RFQs',
+    rfqQueue: 'RFQ queue',
+    rfqActiveRecords: 'active records',
+    recordQuantity: 'Quantity',
+    recordStatus: 'Status',
+    recordTarget: 'Target',
+    recordDestination: 'Destination',
+    recordNotSet: 'Not set',
+    openThread: 'Open thread',
+    createOrderBtn: 'Create order',
+    rfqEmpty: 'No RFQs yet. Buyers can request quotes from product cards.',
+    statusRequested: 'Requested',
+    statusReviewing: 'Reviewing',
+    statusQuoted: 'Quoted',
+    statusSampleRequested: 'Sample requested',
+    statusAccepted: 'Accepted',
+    statusClosed: 'Closed',
+    ordersTitle: 'Orders',
+    ordersTradeRecords: 'trade records',
+    orderLabel: 'Order',
+    orderIncoterm: 'Incoterm',
+    orderPayment: 'Payment',
+    orderInspection: 'Inspection',
+    ordersEmpty: 'No orders created yet.',
+    threadPlaceholder: 'Write to this RFQ thread',
+    threadSend: 'Send',
+    verificationTitle: 'Supplier verification',
+    verificationRecords: 'records',
+    verifStatus: 'Status',
+    verifFactory: 'Factory',
+    verifEvidence: 'Evidence',
+    verifNextReview: 'Next review',
+    verifMissing: 'Missing',
+    verifUnset: 'Unset',
+    verifBusinessLicense: 'Business license',
+    verifBusinessLicensePh: 'License number or document reference',
+    verifFactoryAddress: 'Factory address',
+    verifFactoryAddressPh: 'Registered factory address',
+    verifEvidenceLabel: 'Evidence',
+    verifEvidencePh: 'Certificates, ownership, audit notes',
+    verifSubmit: 'Submit evidence',
+    productFormTitle: 'Add product listing',
+    productFormSub: 'Supplier listings enter verification review',
+    pfCategory: 'Category',
+    pfCategoryPh: 'Machinery, Packaging, Components',
+    pfName: 'Name',
+    pfNamePh: 'Product title',
+    pfLocation: 'Location',
+    pfLocationPh: 'City, country',
+    pfPrice: 'Price',
+    pfPricePh: '$ / unit',
+    pfMoq: 'MOQ',
+    pfMoqPh: 'Minimum order quantity',
+    pfLeadTime: 'Lead time',
+    pfLeadTimePh: 'e.g. 21 days',
+    pfCapacity: 'Capacity',
+    pfCapacityPh: 'Monthly production capacity',
+    pfCertifications: 'Certifications',
+    pfCertificationsPh: 'ISO, CE, RoHS...',
+    pfPhoto: 'Photo URL',
+    pfPhotoPh: 'https://...',
+    pfDescription: 'Description',
+    pfDescriptionPh: 'Materials, specs, packaging, use cases',
+    pfSubmit: 'Add listing',
+    rfqSubmitted: 'RFQ submitted. Check My SinoSource.'
   },
   zh: {
     utilitySlogan: 'AI驱动采购、合规和全球供应商撮合',
@@ -227,38 +333,31 @@ const translations = {
     heroTitle: '智能匹配全球供需 · 多语种实时沟通 · 全流程风控护航',
     heroSubtitle: 'AI驱动的一站式外贸撮合与咨询服务——智能全球采购、实时翻译与合规支持。',
     heroBuyerBtn: '海外买家：立即找货源',
-    heroBuyerBtnSub: '找供应商',
     heroSupplierBtn: '国内供应商：免费入驻',
-    heroSupplierBtnSub: '免费加入',
     heroConsultBtn: '在线咨询',
     heroHighlights: 'AI撮合、多语种支持、风控合规、全流程服务。',
     searchProducts: '产品',
     searchSuppliers: '供应商',
     searchPlaceholder: '搜索产品、供应商、认证...',
     searchButton: '搜索',
-    topCategories: '热门品类',
-    statsCountries: '服务全球XX+国家和地区',
-    statsCountriesSub: '服务全球XX+国家和地区',
-    statsFactories: '合作工厂XX+家',
-    statsFactoriesSub: '合作工厂XX+家',
-    statsOrders: '累计撮合订单XX+笔',
-    statsOrdersSub: '累计撮合订单XX+笔',
-    statsExperience: '行业服务经验XX年',
-    statsExperienceSub: '行业服务经验XX年',
+    statsCountries: '服务全球30+国家和地区',
+    statsCountriesSub: '服务全球30+国家和地区',
+    statsFactories: '合作工厂500+家',
+    statsFactoriesSub: '合作工厂500+家',
+    statsOrders: '累计撮合订单12,000+笔',
+    statsOrdersSub: '累计撮合订单12,000+笔',
+    statsExperience: '行业服务经验15+年',
+    statsExperienceSub: '行业服务经验15+年',
     advantageEyebrow: '平台优势',
     advantageTitle: '四大AI优势，驱动全球外贸',
     featureMatchTitle: 'AI智能精准匹配',
     featureMatchCopy: '依托智能算法，根据品类、产能、报价、认证、交期等维度筛选最优合作方，快速达成合作。',
-    featureMatchSub: '依托智能算法，根据品类、产能、报价、认证、交期等维度筛选最优合作方。',
     featureCommTitle: '7×24小时多语种沟通',
     featureCommCopy: '支持英语、西班牙语、法语、阿拉伯语等主流语种，AI实时翻译，打破语言与时区壁垒。',
-    featureCommSub: '支持英语、西班牙语、法语、阿拉伯语等主流语种，AI实时翻译。',
     featureRiskTitle: '全流程合规风控',
     featureRiskCopy: 'AI核验资质、交易评级、履约监控，覆盖报关、结汇、物流、合同各环节。',
-    featureRiskSub: 'AI核验资质、交易评级、履约监控，覆盖报关、结汇、物流、合同各环节。',
     featureConsultTitle: '全链条外贸咨询',
     featureConsultCopy: '政策解读、市场调研、关税咨询、验厂质检、单证制作，一站式解决外贸问题。',
-    featureConsultSub: '政策解读、市场调研、关税咨询、验厂质检、单证制作。',
     statsProducts: '可采购产品',
     statsVerified: '认证供应商',
     statsRfqs: '实时询盘',
@@ -306,7 +405,6 @@ const translations = {
     supplierRegistrationPricing: '撮合服务费仅针对成交订单，拒绝隐形消费。',
     buyerServiceTitle: '采购商服务',
     buyerServiceCopy: '发布需求、查找供应商永久免费，仅对定制验厂、专属顾问、加急单证等增值服务收费。',
-    buyerServiceCopy2: '发布需求、查找供应商永久免费，仅对定制验厂、专属顾问、加急单证等增值服务收费。',
     aiFunctionsEyebrow: 'AI功能',
     aiFunctionsTitle: '智能匹配与风控工具',
     aiFunctionMatch: '智能匹配',
@@ -320,33 +418,24 @@ const translations = {
     newsEyebrow: '资讯中心',
     newsTitle: '行业动态与贸易情报',
     newsCopy1: '每日更新全球外贸行情、进出口政策、关税变动、防骗指南与运营技巧。',
-    newsCopy2: '每日更新全球外贸行情、进出口政策、关税变动、防骗指南与运营技巧。',
     faqEyebrow: '常见问答',
     faqTitle: '常见问题',
     faqSafetyQ: '平台如何保障交易安全？',
     faqSafetyA: '平台搭载AI风控系统，核验双方资质并提供交易担保与合同监管。',
-    faqSafetySub: '平台AI风控系统核验双方资质并提供担保与合同监管。',
     faqFeesQ: '入驻平台需要收费吗？',
     faqFeesA: '基础入驻免费，付费仅针对推广、高级会员和增值服务。',
-    faqFeesSub: '基础入驻免费，付费仅针对推广、高级会员和增值服务。',
     faqPostQ: '可以发布采购需求吗？',
     faqPostA: '可以，注册后免费发布，AI会自动推荐合适供应商。',
-    faqPostSub: '可以，注册后免费发布，AI会自动推荐合适供应商。',
     faqLangQ: '支持哪些语种沟通？',
     faqLangA: '支持英语、西班牙语、法语、阿拉伯语等主流语种，AI实时翻译。',
-    faqLangSub: '支持英语、西班牙语、法语、阿拉伯语等主流语种，AI实时翻译。',
     faqMultiQ: '产品可以做多语种展示吗？',
     faqMultiA: '可以，AI自动翻译产品名称、详情和参数。',
-    faqMultiSub: '可以，AI自动翻译产品名称、详情和参数。',
     faqAssignQ: '询盘如何分配？',
     faqAssignA: 'AI根据品类、产能、报价等条件智能分发询盘。',
-    faqAssignSub: 'AI根据品类、产能、报价等条件智能分发询盘。',
     contactEyebrow: '联系我们',
     contactTitle: '开启AI外贸撮合之旅',
     contactLine1: '在线客服 | 企业邮箱 | 联系电话 | 办公地址',
     contactLine2: '支持多语种咨询，欢迎海内外客户合作。',
-    contactLine3: '在线客服 | 企业邮箱 | 联系电话 | 办公地址',
-    contactLine4: '支持多语种咨询，欢迎海内外客户合作。',
     contactLabelName: '姓名',
     contactNamePlaceholder: '您的姓名',
     contactLabelEmail: '公司邮箱',
@@ -395,7 +484,130 @@ const translations = {
     trustItem1: '仅限认证供应商',
     trustItem2: '安全资金托管支付',
     trustItem3: '全流程风险管控',
-    trustItem4: '7×24小时多语种服务'
+    trustItem4: '7×24小时多语种服务',
+    howEyebrow: '服务流程',
+    howTitle: '三步开启全球贸易',
+    howStep1Num: '01',
+    howStep1Title: '注册发布',
+    howStep1Copy: '免费创建买家或供应商账号，几分钟内发布产品或采购需求。',
+    howStep2Num: '02',
+    howStep2Title: 'AI智能匹配',
+    howStep2Copy: 'AI引擎分析您的需求，即时匹配认证买家或合格供应商。',
+    howStep3Num: '03',
+    howStep3Title: '对接成交',
+    howStep3Copy: '直接沟通、交换询盘、谈判条款，并在全程合规与物流支持下完成交易。',
+    testimonialsEyebrow: '客户评价',
+    testimonialsTitle: '全球贸易商的信任之选',
+    testimonial1Quote: 'SinoSource在48小时内为我们匹配了3家经过认证的中国工厂——AI匹配节省了数周的人工寻源工作。',
+    testimonial1Name: 'James Kowalski',
+    testimonial1Company: '采购经理，MechParts EU · 波兰',
+    testimonial2Quote: '作为深圳的出口商，我们在平台第一个季度就获得了12个新的海外买家。多语种支持和AI翻译非常出色。',
+    testimonial2Name: '张伟',
+    testimonial2Company: '出口经理，达尔特精密制造 · 深圳',
+    testimonial3Quote: '合规与单证支持消除了我们的主要瓶颈，两个月内采购周期缩短了40%。',
+    testimonial3Name: 'Aisha Kolenova',
+    testimonial3Company: '供应链总监，TradeCo CIS · 俄罗斯',
+    dashboardTabRfqs: '询盘',
+    dashboardTabOrders: '订单',
+    dashboardTabVerification: '资质认证',
+    dashboardTabProducts: '产品管理',
+    dashboardLogout: '退出登录',
+    dashboardRfqThread: '询盘会话',
+    dashboardRfqThreadEmpty: '选择询盘查看对话。',
+    categoriesAll: '全部品类',
+    categoryProducts: '件产品',
+    systemActor: '系统',
+    metricOrdersLabel: '个订单',
+    pillVerified: '已认证',
+    pillReview: '审核中',
+    specMoq: '起订量',
+    specLeadTime: '交期',
+    specCapacity: '产能',
+    specAsk: '面议',
+    cardRequestQuote: '索取报价',
+    cardViewDetails: '查看详情',
+    marketplaceEmpty: '未找到匹配的产品。',
+    marketplaceError: '无法加载产品数据。',
+    categoriesError: '品类暂不可用。',
+    auditError: '无法加载审计记录。',
+    detailSupplier: '供应商',
+    detailLocation: '所在地',
+    detailPrice: '价格',
+    detailCertifications: '认证',
+    detailPending: '待定',
+    productUnavailable: '产品不可用',
+    supplierProducts: '产品数',
+    supplierCategories: '品类',
+    supplierCertifications: '认证',
+    supplierLocationPending: '地点待定',
+    supplierPending: '待定',
+    suppliersEmpty: '未找到供应商。',
+    suppliersError: '无法加载供应商。',
+    rfqMine: '我的询盘',
+    rfqQueue: '询盘队列',
+    rfqActiveRecords: '条有效记录',
+    recordQuantity: '数量',
+    recordStatus: '状态',
+    recordTarget: '目标价',
+    recordDestination: '目的地',
+    recordNotSet: '未设置',
+    openThread: '打开会话',
+    createOrderBtn: '创建订单',
+    rfqEmpty: '暂无询盘。买家可在产品卡片上索取报价。',
+    statusRequested: '已提交',
+    statusReviewing: '审核中',
+    statusQuoted: '已报价',
+    statusSampleRequested: '已索样',
+    statusAccepted: '已接受',
+    statusClosed: '已关闭',
+    ordersTitle: '订单',
+    ordersTradeRecords: '条交易记录',
+    orderLabel: '订单',
+    orderIncoterm: '贸易术语',
+    orderPayment: '付款',
+    orderInspection: '验货',
+    ordersEmpty: '暂无订单。',
+    threadPlaceholder: '在此询盘会话中留言',
+    threadSend: '发送',
+    verificationTitle: '供应商认证',
+    verificationRecords: '条记录',
+    verifStatus: '状态',
+    verifFactory: '工厂',
+    verifEvidence: '证明材料',
+    verifNextReview: '下次审核',
+    verifMissing: '缺失',
+    verifUnset: '未设置',
+    verifBusinessLicense: '营业执照',
+    verifBusinessLicensePh: '执照编号或文件编号',
+    verifFactoryAddress: '工厂地址',
+    verifFactoryAddressPh: '注册工厂地址',
+    verifEvidenceLabel: '证明材料',
+    verifEvidencePh: '证书、产权、审核记录',
+    verifSubmit: '提交材料',
+    productFormTitle: '添加产品',
+    productFormSub: '供应商发布的产品将进入认证审核',
+    pfCategory: '品类',
+    pfCategoryPh: '机械、包装、零部件',
+    pfName: '名称',
+    pfNamePh: '产品标题',
+    pfLocation: '所在地',
+    pfLocationPh: '城市、国家',
+    pfPrice: '价格',
+    pfPricePh: '$ / 单位',
+    pfMoq: '起订量',
+    pfMoqPh: '最小起订量',
+    pfLeadTime: '交期',
+    pfLeadTimePh: '例如 21 天',
+    pfCapacity: '产能',
+    pfCapacityPh: '月生产能力',
+    pfCertifications: '认证',
+    pfCertificationsPh: 'ISO、CE、RoHS...',
+    pfPhoto: '图片链接',
+    pfPhotoPh: 'https://...',
+    pfDescription: '描述',
+    pfDescriptionPh: '材料、规格、包装、用途',
+    pfSubmit: '添加产品',
+    rfqSubmitted: '询盘已提交，请查看“我的 SinoSource”。'
   },
   ru: {
     utilitySlogan: 'ИИ-поддержка закупок, комплаенса и глобального поиска поставщиков',
@@ -411,38 +623,31 @@ const translations = {
     heroTitle: 'Интеллектуальный глобальный поиск · Мультиязычная связь · Полный контроль рисков',
     heroSubtitle: 'ИИ-управляемая платформа для внешнеторгового посредничества и консультаций — глобальный поиск, перевод в реальном времени и комплаенс.',
     heroBuyerBtn: 'Найти поставщиков',
-    heroBuyerBtnSub: 'Найти поставщиков',
     heroSupplierBtn: 'Зарегистрироваться поставщику',
-    heroSupplierBtnSub: 'Присоединиться',
     heroConsultBtn: 'Онлайн-консультация',
     heroHighlights: 'ИИ-сопоставление, мультиязычие, контроль рисков и полный цикл услуг.',
     searchProducts: 'Товары',
     searchSuppliers: 'Поставщики',
     searchPlaceholder: 'Искать товары, поставщиков, сертификаты...',
     searchButton: 'Поиск',
-    topCategories: 'Топ категории',
-    statsCountries: 'Работаем в XX+ странах и регионах',
-    statsCountriesSub: 'Работаем в XX+ странах и регионах',
-    statsFactories: 'XX+ партнерских фабрик',
-    statsFactoriesSub: 'XX+ партнерских фабрик',
-    statsOrders: 'XX+ завершенных заказов',
-    statsOrdersSub: 'XX+ завершенных заказов',
+    statsCountries: 'Работаем в 30+ странах и регионах',
+    statsCountriesSub: 'Работаем в 30+ странах и регионах',
+    statsFactories: '500+ партнерских фабрик',
+    statsFactoriesSub: '500+ партнерских фабрик',
+    statsOrders: '12,000+ завершенных заказов',
+    statsOrdersSub: '12,000+ завершенных заказов',
     statsExperience: 'Годы отраслевого опыта',
     statsExperienceSub: 'Годы отраслевого опыта',
     advantageEyebrow: 'Преимущества платформы',
     advantageTitle: 'Четыре AI-преимущества для глобальной торговли',
     featureMatchTitle: 'ИИ интеллектуальное сопоставление',
     featureMatchCopy: 'ИИ автоматически подбирает лучших партнеров по категории, мощности, цене, сертификатам и срокам.',
-    featureMatchSub: 'ИИ автоматически подбирает лучших партнеров по категории, мощности, цене, сертификатам и срокам.',
     featureCommTitle: '24/7 мультиязычная связь',
     featureCommCopy: 'Поддержка английского, испанского, французского, арабского и других языков с переводом в реальном времени.',
-    featureCommSub: 'Поддержка английского, испанского, французского, арабского и других языков с переводом в реальном времени.',
     featureRiskTitle: 'Полный комплаенс и контроль рисков',
     featureRiskCopy: 'ИИ проверяет квалификацию, оценивает риски и контролирует исполнение заказа на всех этапах.',
-    featureRiskSub: 'ИИ проверяет квалификацию, оценивает риски и контролирует исполнение заказа на всех этапах.',
     featureConsultTitle: 'Консультации по цепочке поставок',
     featureConsultCopy: 'Анализ политики, исследование рынка, тарифы, аудит, инспекции и подготовка документов.',
-    featureConsultSub: 'Анализ политики, исследование рынка, тарифы, аудит, инспекции и подготовка документов.',
     statsProducts: 'Доступные товары',
     statsVerified: 'Проверенные поставщики',
     statsRfqs: 'Активные запросы',
@@ -490,7 +695,6 @@ const translations = {
     supplierRegistrationPricing: 'Комиссия берется только за успешное посредничество, без скрытых платежей.',
     buyerServiceTitle: 'Сервис для покупателей',
     buyerServiceCopy: 'Размещение запросов и поиск поставщиков бесплатно; оплата только за кастомные аудиты, консультантов и ускоренные документы.',
-    buyerServiceCopy2: 'Размещение запросов и поиск поставщиков бесплатно; оплата только за кастомные аудиты, консультантов и ускоренные документы.',
     aiFunctionsEyebrow: 'Функции ИИ',
     aiFunctionsTitle: 'Инструменты ИИ для сопоставления и контроля рисков',
     aiFunctionMatch: 'Интеллектуальное сопоставление',
@@ -504,33 +708,24 @@ const translations = {
     newsEyebrow: 'Новости',
     newsTitle: 'Отраслевые обновления и торговая аналитика',
     newsCopy1: 'Ежедневные обновления о торговых трендах, политике, тарифах, предупреждениях о мошенничестве и советах по работе.',
-    newsCopy2: 'Ежедневные обновления о торговых трендах, политике, тарифах, предупреждениях о мошенничестве и советах по работе.',
     faqEyebrow: 'Вопросы',
     faqTitle: 'Часто задаваемые вопросы',
     faqSafetyQ: 'Как платформа обеспечивает безопасность сделок?',
     faqSafetyA: 'Наша система ИИ проверяет квалификацию сторон и обеспечивает гарантию сделки и контроль контрактов.',
-    faqSafetySub: 'Наша система ИИ проверяет квалификацию сторон и обеспечивает гарантию сделки и контроль контрактов.',
     faqFeesQ: 'Есть ли плата за регистрацию?',
     faqFeesA: 'Базовая регистрация бесплатна. Плата взимается только за продвижение, премиум и дополнительные сервисы.',
-    faqFeesSub: 'Базовая регистрация бесплатна. Дополнительные платежи только за продвижение, премиум и сервисы.',
     faqPostQ: 'Можно ли разместить запрос на закупку?',
     faqPostA: 'Да, после регистрации запросы размещаются бесплатно, а ИИ подбирает подходящих поставщиков.',
-    faqPostSub: 'Да, после регистрации запросы размещаются бесплатно, а ИИ подбирает поставщиков.',
     faqLangQ: 'Какие языки поддерживаются?',
     faqLangA: 'Поддерживаются английский, испанский, французский, арабский и другие языки с мгновенным переводом.',
-    faqLangSub: 'Поддерживаются английский, испанский, французский, арабский и другие языки с мгновенным переводом.',
     faqMultiQ: 'Можно ли отображать товары на нескольких языках?',
     faqMultiA: 'Да, ИИ автоматически переводит названия, описания и спецификации товаров.',
-    faqMultiSub: 'Да, ИИ автоматически переводит названия, описания и спецификации товаров.',
     faqAssignQ: 'Как распределяются запросы?',
     faqAssignA: 'ИИ распределяет запросы по категориям, мощности и ценам.',
-    faqAssignSub: 'ИИ распределяет запросы по категориям, мощности и ценам.',
     contactEyebrow: 'Контакты',
     contactTitle: 'Начните работу с AI в торговле',
     contactLine1: 'Онлайн-поддержка | Email | Телефон | Адрес',
     contactLine2: 'Доступна мультиязычная поддержка. Добро пожаловать партнёры.',
-    contactLine3: 'Онлайн-поддержка | Email | Телефон | Адрес',
-    contactLine4: 'Доступна мультиязычная поддержка. Добро пожаловать партнёры.',
     contactLabelName: 'Имя',
     contactNamePlaceholder: 'Ваше имя',
     contactLabelEmail: 'Email компании',
@@ -579,7 +774,130 @@ const translations = {
     trustItem1: 'Только проверенные поставщики',
     trustItem2: 'Безопасные эскроу-платежи',
     trustItem3: 'Контроль рисков на всех этапах',
-    trustItem4: 'Мультиязычная поддержка 24/7'
+    trustItem4: 'Мультиязычная поддержка 24/7',
+    howEyebrow: 'Как это работает',
+    howTitle: 'Три шага к глобальной торговле',
+    howStep1Num: '01',
+    howStep1Title: 'Регистрация',
+    howStep1Copy: 'Создайте бесплатный аккаунт покупателя или поставщика и разместите товары или запросы за несколько минут.',
+    howStep2Num: '02',
+    howStep2Title: 'Подбор ИИ',
+    howStep2Copy: 'Наш ИИ анализирует ваши требования и мгновенно связывает вас с проверенными партнёрами.',
+    howStep3Num: '03',
+    howStep3Title: 'Сотрудничество',
+    howStep3Copy: 'Общайтесь, обменивайтесь запросами, согласовывайте условия и завершайте сделки с полной поддержкой.',
+    testimonialsEyebrow: 'Отзывы',
+    testimonialsTitle: 'Доверие глобальных трейдеров',
+    testimonial1Quote: 'SinoSource подобрал нам 3 проверенные китайские фабрики за 48 часов — ИИ сэкономил недели поиска.',
+    testimonial1Name: 'James Kowalski',
+    testimonial1Company: 'Менеджер по закупкам, MechParts EU · Польша',
+    testimonial2Quote: 'Как экспортёр из Шэньчжэня, мы привлекли 12 новых зарубежных покупателей за первый квартал. Поддержка множества языков отличная.',
+    testimonial2Name: 'Чжан Вэй',
+    testimonial2Company: 'Менеджер экспорта, Delta Precision Works · Шэньчжэнь',
+    testimonial3Quote: 'Поддержка комплаенса и документов устранила наше главное узкое место. Цикл поставок сократился на 40% за два месяца.',
+    testimonial3Name: 'Айша Коленова',
+    testimonial3Company: 'Директор цепочки поставок, TradeCo CIS · Россия',
+    dashboardTabRfqs: 'Запросы',
+    dashboardTabOrders: 'Заказы',
+    dashboardTabVerification: 'Верификация',
+    dashboardTabProducts: 'Товары',
+    dashboardLogout: 'Выйти',
+    dashboardRfqThread: 'Тред запроса',
+    dashboardRfqThreadEmpty: 'Выберите запрос для просмотра треда.',
+    categoriesAll: 'Все категории',
+    categoryProducts: 'товаров',
+    systemActor: 'Система',
+    metricOrdersLabel: 'заказов',
+    pillVerified: 'Проверен',
+    pillReview: 'На проверке',
+    specMoq: 'MOQ',
+    specLeadTime: 'Срок',
+    specCapacity: 'Мощность',
+    specAsk: 'Уточнить',
+    cardRequestQuote: 'Запросить цену',
+    cardViewDetails: 'Подробнее',
+    marketplaceEmpty: 'Подходящие товары не найдены.',
+    marketplaceError: 'Не удалось загрузить товары.',
+    categoriesError: 'Категории недоступны.',
+    auditError: 'Не удалось загрузить журнал аудита.',
+    detailSupplier: 'Поставщик',
+    detailLocation: 'Местоположение',
+    detailPrice: 'Цена',
+    detailCertifications: 'Сертификаты',
+    detailPending: 'В ожидании',
+    productUnavailable: 'Товар недоступен',
+    supplierProducts: 'Товары',
+    supplierCategories: 'Категории',
+    supplierCertifications: 'Сертификаты',
+    supplierLocationPending: 'Местоположение уточняется',
+    supplierPending: 'В ожидании',
+    suppliersEmpty: 'Поставщики не найдены.',
+    suppliersError: 'Не удалось загрузить поставщиков.',
+    rfqMine: 'Мои запросы',
+    rfqQueue: 'Очередь запросов',
+    rfqActiveRecords: 'активных записей',
+    recordQuantity: 'Количество',
+    recordStatus: 'Статус',
+    recordTarget: 'Цель',
+    recordDestination: 'Назначение',
+    recordNotSet: 'Не задано',
+    openThread: 'Открыть тред',
+    createOrderBtn: 'Создать заказ',
+    rfqEmpty: 'Запросов пока нет. Покупатели могут запросить цену на карточках товаров.',
+    statusRequested: 'Запрошено',
+    statusReviewing: 'На рассмотрении',
+    statusQuoted: 'Цена выставлена',
+    statusSampleRequested: 'Запрошен образец',
+    statusAccepted: 'Принято',
+    statusClosed: 'Закрыто',
+    ordersTitle: 'Заказы',
+    ordersTradeRecords: 'торговых записей',
+    orderLabel: 'Заказ',
+    orderIncoterm: 'Инкотермс',
+    orderPayment: 'Оплата',
+    orderInspection: 'Инспекция',
+    ordersEmpty: 'Заказы пока не созданы.',
+    threadPlaceholder: 'Написать в этот тред запроса',
+    threadSend: 'Отправить',
+    verificationTitle: 'Верификация поставщика',
+    verificationRecords: 'записей',
+    verifStatus: 'Статус',
+    verifFactory: 'Фабрика',
+    verifEvidence: 'Документы',
+    verifNextReview: 'Следующая проверка',
+    verifMissing: 'Отсутствует',
+    verifUnset: 'Не задано',
+    verifBusinessLicense: 'Бизнес-лицензия',
+    verifBusinessLicensePh: 'Номер лицензии или ссылка на документ',
+    verifFactoryAddress: 'Адрес фабрики',
+    verifFactoryAddressPh: 'Зарегистрированный адрес фабрики',
+    verifEvidenceLabel: 'Документы',
+    verifEvidencePh: 'Сертификаты, право собственности, заметки аудита',
+    verifSubmit: 'Отправить документы',
+    productFormTitle: 'Добавить товар',
+    productFormSub: 'Товары поставщиков проходят проверку',
+    pfCategory: 'Категория',
+    pfCategoryPh: 'Машины, упаковка, компоненты',
+    pfName: 'Название',
+    pfNamePh: 'Название товара',
+    pfLocation: 'Местоположение',
+    pfLocationPh: 'Город, страна',
+    pfPrice: 'Цена',
+    pfPricePh: '$ / ед.',
+    pfMoq: 'MOQ',
+    pfMoqPh: 'Минимальный объём заказа',
+    pfLeadTime: 'Срок',
+    pfLeadTimePh: 'например, 21 день',
+    pfCapacity: 'Мощность',
+    pfCapacityPh: 'Месячная производственная мощность',
+    pfCertifications: 'Сертификаты',
+    pfCertificationsPh: 'ISO, CE, RoHS...',
+    pfPhoto: 'URL фото',
+    pfPhotoPh: 'https://...',
+    pfDescription: 'Описание',
+    pfDescriptionPh: 'Материалы, характеристики, упаковка, применение',
+    pfSubmit: 'Добавить',
+    rfqSubmitted: 'Запрос отправлен. Проверьте «Мой SinoSource».'
   }
 };
 
@@ -587,10 +905,31 @@ function t(key) {
   return (translations[currentLang] && translations[currentLang][key]) || translations.en[key] || key;
 }
 
+const QUOTE_STATUSES = ['requested', 'reviewing', 'quoted', 'sample_requested', 'accepted', 'closed'];
+const QUOTE_STATUS_KEYS = {
+  requested: 'statusRequested',
+  reviewing: 'statusReviewing',
+  quoted: 'statusQuoted',
+  sample_requested: 'statusSampleRequested',
+  accepted: 'statusAccepted',
+  closed: 'statusClosed'
+};
+
+function statusLabel(status) {
+  return QUOTE_STATUS_KEYS[status] ? t(QUOTE_STATUS_KEYS[status]) : status;
+}
+
 function applyTranslations() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    el.innerHTML = t(el.dataset.i18n);
-  });
+    const hasFormChild = el.querySelector('input, select, textarea, button');
+    if (hasFormChild) {
+      let textNode = [...el.childNodes].find(n => n.nodeType === Node.TEXT_NODE);
+      if (textNode) textNode.textContent = t(el.dataset.i18n);
+      else el.insertBefore(document.createTextNode(t(el.dataset.i18n)), el.firstChild);
+    } else {
+      el.innerHTML = t(el.dataset.i18n);
+    }
+    });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPlaceholder);
   });
@@ -605,10 +944,12 @@ function setLanguage(lang) {
   if (!translations[lang]) return;
   currentLang = lang;
   document.documentElement.lang = lang;
-  languageButtons.forEach(button => {
+  document.querySelectorAll('.lang-button').forEach(button => {
     button.classList.toggle('active', button.dataset.lang === lang);
   });
   applyTranslations();
+  renderCategories();
+  if (currentUser) renderUserPanel();
 }
 
 function translateButtonsInForm(form) {
@@ -631,9 +972,30 @@ function escapeHtml(value = '') {
   }[char]));
 }
 
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
 async function apiFetch(url, options = {}) {
-  const response = await fetch(url, options);
-  const result = await response.json();
+  const method = (options.method || 'GET').toUpperCase();
+  const headers = { ...(options.headers || {}) };
+  // Attach the CSRF token (double-submit cookie) on state-changing requests.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    headers['X-CSRF-Token'] = getCookie('csrf_token');
+  }
+  const response = await fetch(url, { ...options, headers });
+
+  let result = {};
+  try {
+    result = await response.json();
+  } catch (error) {
+    if (!response.ok) {
+      throw new Error(`Request failed (${response.status}).`);
+    }
+    throw new Error('Unexpected response from server.');
+  }
+
   if (!response.ok) {
     throw new Error(result.error || 'Request failed');
   }
@@ -641,7 +1003,10 @@ async function apiFetch(url, options = {}) {
 }
 
 function scrollToId(id) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const el = document.getElementById(id);
+  if (!el) return;
+  const headerH = document.querySelector('.site-header')?.getBoundingClientRect().height || 0;
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - headerH - 12, behavior: 'smooth' });
 }
 
 function openModal(contentHtml) {
@@ -694,6 +1059,7 @@ async function init() {
     loadMarketplace(),
     loadSuppliers()
   ]);
+  applyTranslations();
 }
 
 async function loadOverview() {
@@ -703,35 +1069,43 @@ async function loadOverview() {
     document.getElementById('metric-verified').textContent = data.stats.verified_suppliers;
     document.getElementById('metric-rfqs').textContent = data.stats.open_rfqs;
     document.getElementById('metric-orders-count').textContent = data.stats.orders;
-    document.getElementById('metric-orders').textContent = `${data.stats.orders} orders`;
+    document.getElementById('metric-orders').textContent = `${data.stats.orders} ${t('metricOrdersLabel')}`;
     document.getElementById('audit-list').innerHTML = data.audit.length ? data.audit.map(item => `
       <article>
         <div>
           <strong>${escapeHtml(item.action)} ${escapeHtml(item.entity_type)}</strong>
-          <span>${escapeHtml(item.actor_name || 'System')} · ${new Date(item.created_at).toLocaleString()}</span>
+          <span>${escapeHtml(item.actor_name || t('systemActor'))} · ${new Date(item.created_at).toLocaleString()}</span>
         </div>
         <p>${escapeHtml(item.details || '')}</p>
       </article>
     `).join('') : `<p class="empty-state">${escapeHtml(t('noAuditEvents'))}</p>`;
   } catch (error) {
-    document.getElementById('audit-list').innerHTML = '<p class="error">Unable to load audit trail.</p>';
+    document.getElementById('audit-list').innerHTML = `<p class="error">${escapeHtml(t('auditError'))}</p>`;
   }
+}
+
+let cachedCategories = null;
+
+function renderCategories() {
+  if (!cachedCategories) return;
+  categoryList.innerHTML = `
+    <button class="${activeCategory ? '' : 'active'}" data-category="">${escapeHtml(t('categoriesAll'))}</button>
+    ${cachedCategories.map(category => `
+      <button class="${activeCategory === category.name ? 'active' : ''}" data-category="${escapeHtml(category.name)}">
+        <span>${escapeHtml(category.name)}</span>
+        <small>${category.product_count} ${t('categoryProducts')}</small>
+      </button>
+    `).join('')}
+  `;
 }
 
 async function loadCategories() {
   try {
     const data = await apiFetch('/api/categories');
-    categoryList.innerHTML = `
-      <button class="${activeCategory ? '' : 'active'}" data-category="">All categories</button>
-      ${data.categories.map(category => `
-        <button class="${activeCategory === category.name ? 'active' : ''}" data-category="${escapeHtml(category.name)}">
-          <span>${escapeHtml(category.name)}</span>
-          <small>${category.product_count} products</small>
-        </button>
-      `).join('')}
-    `;
+    cachedCategories = data.categories;
+    renderCategories();
   } catch (error) {
-    categoryList.innerHTML = '<p class="error">Categories unavailable.</p>';
+    categoryList.innerHTML = `<p class="error">${escapeHtml(t('categoriesError'))}</p>`;
   }
 }
 
@@ -750,34 +1124,34 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
     const data = await apiFetch(`/api/marketplace${params.toString() ? `?${params}` : ''}`);
     const products = flattenCategories(data.categories || []);
     if (!products.length) {
-      marketplaceGrid.innerHTML = '<p class="empty-state">No matching products found.</p>';
+      marketplaceGrid.innerHTML = `<p class="empty-state">${escapeHtml(t('marketplaceEmpty'))}</p>`;
       return;
     }
 
     marketplaceGrid.innerHTML = products.map(product => `
       <article class="product-card">
-        <button class="product-image" data-product-id="${product.id}" aria-label="View ${escapeHtml(product.name)}">
+        <button class="product-image" data-product-id="${product.id}" aria-label="${escapeHtml(t('cardViewDetails'))}">
           <img src="${escapeHtml(product.image_url || '')}" alt="${escapeHtml(product.name)}" loading="lazy" />
         </button>
         <div class="product-body">
           <div class="product-title-row">
             <button class="product-title" data-product-id="${product.id}">${escapeHtml(product.name)}</button>
-            <span class="status-pill ${product.verified ? 'good' : 'warn'}">${product.verified ? 'Verified' : 'Review'}</span>
+            <span class="status-pill ${product.verified ? 'good' : 'warn'}">${escapeHtml(product.verified ? t('pillVerified') : t('pillReview'))}</span>
           </div>
           <p>${escapeHtml(product.description)}</p>
           <strong class="price">${escapeHtml(product.price)}</strong>
           <dl class="spec-grid">
-            <div><dt>MOQ</dt><dd>${escapeHtml(product.moq || 'Ask')}</dd></div>
-            <div><dt>Lead time</dt><dd>${escapeHtml(product.lead_time || 'Ask')}</dd></div>
-            <div><dt>Capacity</dt><dd>${escapeHtml(product.capacity || 'Ask')}</dd></div>
+            <div><dt>${escapeHtml(t('specMoq'))}</dt><dd>${escapeHtml(product.moq || t('specAsk'))}</dd></div>
+            <div><dt>${escapeHtml(t('specLeadTime'))}</dt><dd>${escapeHtml(product.lead_time || t('specAsk'))}</dd></div>
+            <div><dt>${escapeHtml(t('specCapacity'))}</dt><dd>${escapeHtml(product.capacity || t('specAsk'))}</dd></div>
           </dl>
           <div class="supplier-line">
             <span>${escapeHtml(product.supplier)}</span>
             <small>${escapeHtml(product.location)}</small>
           </div>
           <div class="card-actions">
-            <button class="primary quote-button" data-id="${product.id}">Request quote</button>
-            <button class="detail-button" data-product-id="${product.id}">View details</button>
+            <button class="primary quote-button" data-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
+            <button class="detail-button" data-product-id="${product.id}">${escapeHtml(t('cardViewDetails'))}</button>
           </div>
         </div>
       </article>
@@ -785,7 +1159,7 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
 
     // categories reloaded at page init only
   } catch (error) {
-    marketplaceGrid.innerHTML = '<p class="error">Unable to load marketplace data.</p>';
+    marketplaceGrid.innerHTML = `<p class="error">${escapeHtml(t('marketplaceError'))}</p>`;
   }
 }
 
@@ -800,20 +1174,20 @@ async function openProductDetail(productId) {
           <h3>${escapeHtml(product.name)}</h3>
           <p>${escapeHtml(product.description)}</p>
           <dl class="detail-grid">
-            <div><dt>Supplier</dt><dd>${escapeHtml(product.supplier)}</dd></div>
-            <div><dt>Location</dt><dd>${escapeHtml(product.location)}</dd></div>
-            <div><dt>Price</dt><dd>${escapeHtml(product.price)}</dd></div>
-            <div><dt>MOQ</dt><dd>${escapeHtml(product.moq)}</dd></div>
-            <div><dt>Lead time</dt><dd>${escapeHtml(product.lead_time)}</dd></div>
-            <div><dt>Capacity</dt><dd>${escapeHtml(product.capacity)}</dd></div>
-            <div><dt>Certifications</dt><dd>${escapeHtml(product.certifications || 'Pending')}</dd></div>
+            <div><dt>${escapeHtml(t('detailSupplier'))}</dt><dd>${escapeHtml(product.supplier)}</dd></div>
+            <div><dt>${escapeHtml(t('detailLocation'))}</dt><dd>${escapeHtml(product.location)}</dd></div>
+            <div><dt>${escapeHtml(t('detailPrice'))}</dt><dd>${escapeHtml(product.price)}</dd></div>
+            <div><dt>${escapeHtml(t('specMoq'))}</dt><dd>${escapeHtml(product.moq)}</dd></div>
+            <div><dt>${escapeHtml(t('specLeadTime'))}</dt><dd>${escapeHtml(product.lead_time)}</dd></div>
+            <div><dt>${escapeHtml(t('specCapacity'))}</dt><dd>${escapeHtml(product.capacity)}</dd></div>
+            <div><dt>${escapeHtml(t('detailCertifications'))}</dt><dd>${escapeHtml(product.certifications || t('detailPending'))}</dd></div>
           </dl>
-          <button class="primary" data-quote-id="${product.id}">Request quote</button>
+          <button class="primary" data-quote-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
         </div>
       </div>
     `);
   } catch (error) {
-    openModal(`<h3>Product unavailable</h3><p class="error">${escapeHtml(error.message)}</p>`);
+    openModal(`<h3>${escapeHtml(t('productUnavailable'))}</h3><p class="error">${escapeHtml(error.message)}</p>`);
   }
 }
 
@@ -830,33 +1204,36 @@ async function loadSuppliers(query = '') {
             <strong>${escapeHtml(supplier.company)}</strong>
             <span class="status-pill ${supplier.verified ? 'good' : 'warn'}">${escapeHtml(supplier.verification_status)}</span>
           </div>
-          <p>${escapeHtml(supplier.location || 'Location pending')}</p>
+          <p>${escapeHtml(supplier.location || t('supplierLocationPending'))}</p>
           <dl class="supplier-meta">
-            <div><dt>Products</dt><dd>${supplier.product_count}</dd></div>
-            <div><dt>Categories</dt><dd>${escapeHtml(supplier.categories || 'Pending')}</dd></div>
-            <div><dt>Certifications</dt><dd>${escapeHtml(supplier.certifications || 'Pending')}</dd></div>
+            <div><dt>${escapeHtml(t('supplierProducts'))}</dt><dd>${supplier.product_count}</dd></div>
+            <div><dt>${escapeHtml(t('supplierCategories'))}</dt><dd>${escapeHtml(supplier.categories || t('supplierPending'))}</dd></div>
+            <div><dt>${escapeHtml(t('supplierCertifications'))}</dt><dd>${escapeHtml(supplier.certifications || t('supplierPending'))}</dd></div>
           </dl>
         </div>
       </article>
-    `).join('') : '<p class="empty-state">No suppliers found.</p>';
+    `).join('') : `<p class="empty-state">${escapeHtml(t('suppliersEmpty'))}</p>`;
   } catch (error) {
-    supplierGrid.innerHTML = '<p class="error">Unable to load suppliers.</p>';
+    supplierGrid.innerHTML = `<p class="error">${escapeHtml(t('suppliersError'))}</p>`;
   }
 }
 
 function renderUserPanel() {
+  const dashboardSection = document.getElementById('dashboard');
+  const auditSection = document.querySelector('.audit-section');
+
   if (!currentUser) {
-    userPanel.innerHTML = `
-      <div class="workspace-card guest-card">
-        <h3>Sign in to manage trade workflows</h3>
-        <p>Use sample accounts while testing the prototype.</p>
-        <div class="sample-grid">
-          <button data-demo-login="buyer@example.com">Buyer demo</button>
-          <button data-demo-login="aurora@example.com">Supplier demo</button>
-          <button data-demo-login="admin@example.com">Admin demo</button>
-        </div>
-      </div>`;
+    userPanel.innerHTML = '';
+    dashboardSection?.classList.add('hidden');
+    auditSection?.classList.add('hidden');
     return;
+  }
+  dashboardSection?.classList.remove('hidden');
+  // Audit trail is sensitive — admin eyes only
+  if (currentUser.role === 'admin') {
+    auditSection?.classList.remove('hidden');
+  } else {
+    auditSection?.classList.add('hidden');
   }
 
   userPanel.innerHTML = `
@@ -864,20 +1241,20 @@ function renderUserPanel() {
       <span class="eyebrow">${escapeHtml(currentUser.role)}</span>
       <h3>${escapeHtml(currentUser.company)}</h3>
       <p>${escapeHtml(currentUser.name)}</p>
-      <button id="logout-button">Logout</button>
+      <button id="logout-button">${escapeHtml(t('dashboardLogout'))}</button>
     </aside>
     <section class="workspace-card">
       <div class="tabs">
-        <button class="tab-button active" data-tab="rfqs">RFQs</button>
-        <button class="tab-button" data-tab="orders">Orders</button>
-        <button class="tab-button" data-tab="verification">Verification</button>
-        ${currentUser.role === 'supplier' || currentUser.role === 'admin' ? '<button class="tab-button" data-tab="products">Products</button>' : ''}
+        <button class="tab-button active" data-tab="rfqs">${escapeHtml(t('dashboardTabRfqs'))}</button>
+        <button class="tab-button" data-tab="orders">${escapeHtml(t('dashboardTabOrders'))}</button>
+        <button class="tab-button" data-tab="verification">${escapeHtml(t('dashboardTabVerification'))}</button>
+        ${currentUser.role === 'supplier' || currentUser.role === 'admin' ? `<button class="tab-button" data-tab="products">${escapeHtml(t('dashboardTabProducts'))}</button>` : ''}
       </div>
       <div id="workspace-content"></div>
     </section>
     <aside class="thread-card">
-      <h3>RFQ thread</h3>
-      <div id="thread-content" class="stack-list"><p class="empty-state">Select an RFQ thread.</p></div>
+      <h3>${escapeHtml(t('dashboardRfqThread'))}</h3>
+      <div id="thread-content" class="stack-list"><p class="empty-state">${escapeHtml(t('dashboardRfqThreadEmpty'))}</p></div>
     </aside>
   `;
 
@@ -909,32 +1286,32 @@ async function loadQuotes() {
     const items = data.quotes || [];
     container.innerHTML = `
       <div class="workspace-header">
-        <h3>${currentUser.role === 'buyer' ? 'My RFQs' : 'RFQ queue'}</h3>
-        <span>${items.length} active records</span>
+        <h3>${escapeHtml(currentUser.role === 'buyer' ? t('rfqMine') : t('rfqQueue'))}</h3>
+        <span>${items.length} ${escapeHtml(t('rfqActiveRecords'))}</span>
       </div>
       ${items.length ? items.map(quote => `
         <article class="record-card">
           <div>
             <strong>${escapeHtml(quote.product_name)}</strong>
-            <p>${escapeHtml(quote.buyer_company)} to ${escapeHtml(quote.product_supplier)}</p>
+            <p>${escapeHtml(quote.buyer_company)} → ${escapeHtml(quote.product_supplier)}</p>
           </div>
           <dl class="record-meta">
-            <div><dt>Quantity</dt><dd>${escapeHtml(quote.quantity)}</dd></div>
-            <div><dt>Status</dt><dd>${escapeHtml(quote.status)}</dd></div>
-            <div><dt>Target</dt><dd>${escapeHtml(quote.target_price || 'Not set')}</dd></div>
-            <div><dt>Destination</dt><dd>${escapeHtml(quote.destination || 'Not set')}</dd></div>
+            <div><dt>${escapeHtml(t('recordQuantity'))}</dt><dd>${escapeHtml(quote.quantity)}</dd></div>
+            <div><dt>${escapeHtml(t('recordStatus'))}</dt><dd>${escapeHtml(statusLabel(quote.status))}</dd></div>
+            <div><dt>${escapeHtml(t('recordTarget'))}</dt><dd>${escapeHtml(quote.target_price || t('recordNotSet'))}</dd></div>
+            <div><dt>${escapeHtml(t('recordDestination'))}</dt><dd>${escapeHtml(quote.destination || t('recordNotSet'))}</dd></div>
           </dl>
           <div class="record-actions">
             <select class="status-select" data-id="${quote.id}">
-              ${['requested', 'reviewing', 'quoted', 'sample_requested', 'accepted', 'closed'].map(status => `
-                <option value="${status}" ${status === quote.status ? 'selected' : ''}>${status}</option>
+              ${QUOTE_STATUSES.map(status => `
+                <option value="${status}" ${status === quote.status ? 'selected' : ''}>${escapeHtml(statusLabel(status))}</option>
               `).join('')}
             </select>
-            <button class="thread-button" data-id="${quote.id}">Open thread</button>
-            <button class="order-button" data-id="${quote.id}">Create order</button>
+            <button class="thread-button" data-id="${quote.id}">${escapeHtml(t('openThread'))}</button>
+            <button class="order-button" data-id="${quote.id}">${escapeHtml(t('createOrderBtn'))}</button>
           </div>
         </article>
-      `).join('') : '<p class="empty-state">No RFQs yet. Buyers can request quotes from product cards.</p>'}
+      `).join('') : `<p class="empty-state">${escapeHtml(t('rfqEmpty'))}</p>`}
     `;
 
     document.querySelectorAll('.status-select').forEach(select => {
@@ -977,7 +1354,7 @@ async function loadOrders() {
     const data = await apiFetch('/api/orders');
     const items = data.orders || [];
     container.innerHTML = `
-      <div class="workspace-header"><h3>Orders</h3><span>${items.length} trade records</span></div>
+      <div class="workspace-header"><h3>${escapeHtml(t('ordersTitle'))}</h3><span>${items.length} ${escapeHtml(t('ordersTradeRecords'))}</span></div>
       ${items.length ? items.map(order => `
         <article class="record-card">
           <div>
@@ -985,13 +1362,13 @@ async function loadOrders() {
             <p>${escapeHtml(order.buyer_company)} · ${escapeHtml(order.supplier)}</p>
           </div>
           <dl class="record-meta">
-            <div><dt>Order</dt><dd>#${order.id}</dd></div>
-            <div><dt>Incoterm</dt><dd>${escapeHtml(order.incoterm)}</dd></div>
-            <div><dt>Payment</dt><dd>${escapeHtml(order.payment_status)}</dd></div>
-            <div><dt>Inspection</dt><dd>${escapeHtml(order.inspection_status)}</dd></div>
+            <div><dt>${escapeHtml(t('orderLabel'))}</dt><dd>#${order.id}</dd></div>
+            <div><dt>${escapeHtml(t('orderIncoterm'))}</dt><dd>${escapeHtml(order.incoterm)}</dd></div>
+            <div><dt>${escapeHtml(t('orderPayment'))}</dt><dd>${escapeHtml(order.payment_status)}</dd></div>
+            <div><dt>${escapeHtml(t('orderInspection'))}</dt><dd>${escapeHtml(order.inspection_status)}</dd></div>
           </dl>
         </article>
-      `).join('') : '<p class="empty-state">No orders created yet.</p>'}
+      `).join('') : `<p class="empty-state">${escapeHtml(t('ordersEmpty'))}</p>`}
     `;
   } catch (error) {
     container.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
@@ -1012,8 +1389,8 @@ async function loadThread(quoteId) {
         </article>
       `).join('')}
       <form id="message-form" class="inline-form">
-        <textarea name="body" rows="3" placeholder="Write to this RFQ thread" required></textarea>
-        <button type="submit" class="primary">Send</button>
+        <textarea name="body" rows="3" placeholder="${escapeHtml(t('threadPlaceholder'))}" required></textarea>
+        <button type="submit" class="primary">${escapeHtml(t('threadSend'))}</button>
       </form>
     `;
     document.getElementById('message-form').addEventListener('submit', async event => {
@@ -1036,26 +1413,26 @@ async function loadVerifications() {
   try {
     const data = await apiFetch('/api/verifications');
     container.innerHTML = `
-      <div class="workspace-header"><h3>Supplier verification</h3><span>${data.verifications.length} records</span></div>
+      <div class="workspace-header"><h3>${escapeHtml(t('verificationTitle'))}</h3><span>${data.verifications.length} ${escapeHtml(t('verificationRecords'))}</span></div>
       <div class="verification-grid">
         ${data.verifications.map(item => `
           <article class="record-card">
             <strong>${escapeHtml(item.supplier_company)}</strong>
             <dl class="record-meta">
-              <div><dt>Status</dt><dd>${escapeHtml(item.status)}</dd></div>
-              <div><dt>Factory</dt><dd>${escapeHtml(item.factory_address || 'Missing')}</dd></div>
-              <div><dt>Evidence</dt><dd>${escapeHtml(item.evidence || 'Missing')}</dd></div>
-              <div><dt>Next review</dt><dd>${escapeHtml(item.next_review_at || 'Unset')}</dd></div>
+              <div><dt>${escapeHtml(t('verifStatus'))}</dt><dd>${escapeHtml(item.status)}</dd></div>
+              <div><dt>${escapeHtml(t('verifFactory'))}</dt><dd>${escapeHtml(item.factory_address || t('verifMissing'))}</dd></div>
+              <div><dt>${escapeHtml(t('verifEvidence'))}</dt><dd>${escapeHtml(item.evidence || t('verifMissing'))}</dd></div>
+              <div><dt>${escapeHtml(t('verifNextReview'))}</dt><dd>${escapeHtml(item.next_review_at || t('verifUnset'))}</dd></div>
             </dl>
           </article>
         `).join('')}
       </div>
       ${currentUser.role === 'supplier' || currentUser.role === 'admin' ? `
         <form id="verification-form" class="data-form">
-          <label>Business license<input name="business_license" placeholder="License number or document reference" required /></label>
-          <label>Factory address<input name="factory_address" placeholder="Registered factory address" required /></label>
-          <label>Evidence<textarea name="evidence" rows="3" placeholder="Certificates, ownership, audit notes" required></textarea></label>
-          <button type="submit" class="primary">Submit evidence</button>
+          <label>${escapeHtml(t('verifBusinessLicense'))}<input name="business_license" placeholder="${escapeHtml(t('verifBusinessLicensePh'))}" required /></label>
+          <label>${escapeHtml(t('verifFactoryAddress'))}<input name="factory_address" placeholder="${escapeHtml(t('verifFactoryAddressPh'))}" required /></label>
+          <label>${escapeHtml(t('verifEvidenceLabel'))}<textarea name="evidence" rows="3" placeholder="${escapeHtml(t('verifEvidencePh'))}" required></textarea></label>
+          <button type="submit" class="primary">${escapeHtml(t('verifSubmit'))}</button>
         </form>
       ` : ''}
     `;
@@ -1077,19 +1454,19 @@ async function loadVerifications() {
 function renderProductForm() {
   const container = document.getElementById('workspace-content');
   container.innerHTML = `
-    <div class="workspace-header"><h3>Add product listing</h3><span>Supplier listings enter verification review</span></div>
+    <div class="workspace-header"><h3>${escapeHtml(t('productFormTitle'))}</h3><span>${escapeHtml(t('productFormSub'))}</span></div>
     <form id="product-form" class="data-form two-column">
-      <label>Category<input name="category" placeholder="Machinery, Packaging, Components" required /></label>
-      <label>Name<input name="name" placeholder="Product title" required /></label>
-      <label>Location<input name="location" placeholder="City, country" required /></label>
-      <label>Price<input name="price" placeholder="$ / unit" required /></label>
-      <label>MOQ<input name="moq" placeholder="Minimum order quantity" required /></label>
-      <label>Lead time<input name="lead_time" placeholder="e.g. 21 days" required /></label>
-      <label>Capacity<input name="capacity" placeholder="Monthly production capacity" /></label>
-      <label>Certifications<input name="certifications" placeholder="ISO, CE, RoHS..." /></label>
-      <label class="wide">Photo URL<input name="image_url" placeholder="https://..." /></label>
-      <label class="wide">Description<textarea name="description" rows="4" placeholder="Materials, specs, packaging, use cases" required></textarea></label>
-      <button type="submit" class="primary">Add listing</button>
+      <label>${escapeHtml(t('pfCategory'))}<input name="category" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
+      <label>${escapeHtml(t('pfName'))}<input name="name" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
+      <label>${escapeHtml(t('pfLocation'))}<input name="location" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
+      <label>${escapeHtml(t('pfPrice'))}<input name="price" placeholder="${escapeHtml(t('pfPricePh'))}" required /></label>
+      <label>${escapeHtml(t('pfMoq'))}<input name="moq" placeholder="${escapeHtml(t('pfMoqPh'))}" required /></label>
+      <label>${escapeHtml(t('pfLeadTime'))}<input name="lead_time" placeholder="${escapeHtml(t('pfLeadTimePh'))}" required /></label>
+      <label>${escapeHtml(t('pfCapacity'))}<input name="capacity" placeholder="${escapeHtml(t('pfCapacityPh'))}" /></label>
+      <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
+      <label class="wide">${escapeHtml(t('pfPhoto'))}<input name="image_url" placeholder="${escapeHtml(t('pfPhotoPh'))}" /></label>
+      <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required></textarea></label>
+      <button type="submit" class="primary">${escapeHtml(t('pfSubmit'))}</button>
     </form>
   `;
   document.getElementById('product-form').addEventListener('submit', async event => {
@@ -1106,7 +1483,7 @@ function renderProductForm() {
 }
 
 async function handleLogout() {
-  await fetch('/api/auth/logout', { method: 'POST' });
+  await apiFetch('/api/auth/logout', { method: 'POST' });
   currentUser = null;
   activeQuoteId = null;
   renderUserPanel();
@@ -1234,7 +1611,7 @@ quoteForm?.addEventListener('submit', async event => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    quoteFeedback.textContent = 'RFQ submitted. Check My SinoSource.';
+    quoteFeedback.textContent = t('rfqSubmitted');
     quoteFeedback.className = 'feedback success';
     await Promise.all([loadOverview(), loadMarketplace()]);
     if (currentUser) await loadQuotes();
@@ -1293,13 +1670,16 @@ document.addEventListener('click', async event => {
   }
 });
 
-document.getElementById('quick-rfq')?.addEventListener('click', () => scrollToId('marketplace'));
 document.getElementById('open-login')?.addEventListener('click', () => openAuthModal('login'));
 document.getElementById('open-register')?.addEventListener('click', () => openAuthModal('register'));
 document.getElementById('close-modal')?.addEventListener('click', closeModal);
 document.getElementById('close-quote-modal')?.addEventListener('click', closeQuoteModal);
 accountModal?.addEventListener('click', event => {
   if (event.target === accountModal) closeModal();
+});
+
+document.querySelectorAll('.lang-button').forEach(button => {
+  button.addEventListener('click', () => setLanguage(button.dataset.lang));
 });
 
 init();
