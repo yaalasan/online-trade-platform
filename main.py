@@ -162,7 +162,7 @@ SAMPLE_PRODUCTS = [
         "lead_time": "21 days",
         "capacity": "180 tons/month",
         "certifications": "ISO 9001, REACH",
-        "image_url": "https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=900&q=80",
+        "image_url": "https://images.unsplash.com/photo-1535813547-99c456a41d4a?auto=format&fit=crop&w=900&q=80",
         "verified": 1,
     },
     {
@@ -218,7 +218,7 @@ SAMPLE_PRODUCTS = [
         "lead_time": "28 days",
         "capacity": "75,000 units/month",
         "certifications": "ISO 9001, RoHS",
-        "image_url": "https://images.unsplash.com/photo-1565254973040-607b474cb50d?auto=format&fit=crop&w=900&q=80",
+        "image_url": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=900&q=80",
         "verified": 1,
     },
     {
