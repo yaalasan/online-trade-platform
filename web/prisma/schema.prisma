@@ -24,6 +24,30 @@ enum CompanyType {
   BOTH
 }
 
+// Lifecycle of a buyer's request for quotation.
+enum RfqStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+// KYB/trust state shown on a supplier profile. Set by platform admins (the
+// approval workflow itself is a later phase); companies cannot self-verify.
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum MediaAssetType {
+  FACTORY_PHOTO
+  LOGO
+  CERTIFICATE
+  OTHER
+}
+
 /// A person. Identity is owned by Clerk; this row is a synced mirror so we can
 /// foreign-key memberships/audit to a stable id. `id` IS the Clerk user id.
 model User {
@@ -39,6 +63,7 @@ model User {
 
   memberships Membership[]
   auditLogs   AuditLog[]
+  createdRfqs Rfq[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -54,8 +79,10 @@ model Company {
   website     String?
   description String?
 
-  memberships Membership[]
-  auditLogs   AuditLog[]
+  memberships  Membership[]
+  auditLogs    AuditLog[]
+  rfqs         Rfq[]
+  manufacturer Manufacturer? // 1:1 extended supplier profile, present for suppliers
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -98,4 +125,137 @@ model AuditLog {
   @@index([companyId, createdAt])
   @@index([userId, createdAt])
   @@index([action, createdAt])
+}
+
+/// A Request For Quotation owned by a single company. Scope is the owning
+/// `companyId`; every read/write is constrained to the caller's active company.
+/// `targetPrice`/`currency` are an indicative budget the buyer publishes — pure
+/// sourcing metadata, NOT a transaction (no escrow/ledger/payment lives here).
+model Rfq {
+  id              String  @id @default(cuid())
+  companyId       String
+  createdByUserId String? // who raised it; SetNull so deleting a user keeps the RFQ
+
+  title              String
+  description        String
+  category           String?
+  quantity           Int
+  unit               String // e.g. "pcs", "kg", "m"
+  targetPrice        Decimal? @db.Decimal(14, 2) // indicative budget per unit
+  currency           String? // ISO-4217 alpha-3, e.g. "USD"
+  incoterm           String? // e.g. "FOB", "CIF"
+  destinationCountry String? // ISO-3166 alpha-2
+  needBy             DateTime? // requested delivery date
+
+  status RfqStatus @default(OPEN)
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, status, createdAt])
+  @@index([createdByUserId])
+}
+
+/// Extended supplier profile, 1:1 with a Company. Holds factory information that
+/// only matters for companies acting as manufacturers. Scope = companyId.
+model Manufacturer {
+  id        String @id @default(cuid())
+  companyId String @unique
+
+  factoryName        String?
+  description        String?
+  yearEstablished    Int?
+  employeeCount      Int?
+  annualOutput       String? // free-text, e.g. "5M units / year"
+  productionCapacity String?
+  city               String?
+  province           String?
+  country            String? // ISO-3166 alpha-2
+  address            String?
+
+  verification VerificationStatus @default(UNVERIFIED)
+
+  company        Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  categories     ManufacturerCategory[]
+  certifications Certification[]
+  media          MediaAsset[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([verification])
+  @@index([country])
+}
+
+/// Platform-curated taxonomy, shared by manufacturers now and products later.
+/// Optional self-reference gives a simple parent → child hierarchy.
+model Category {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  parentId String?
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
+  manufacturers ManufacturerCategory[]
+
+  createdAt DateTime @default(now())
+
+  @@index([parentId])
+}
+
+/// Join row: a manufacturer is tagged with N categories.
+model ManufacturerCategory {
+  manufacturerId String
+  categoryId     String
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([manufacturerId, categoryId])
+  @@index([categoryId])
+}
+
+/// A certification claimed by a manufacturer (e.g. ISO 9001). Trust is conveyed
+/// by the platform verification status, not by self-declared certs alone.
+model Certification {
+  id             String    @id @default(cuid())
+  manufacturerId String
+  name           String
+  issuer         String?
+  certificateNo  String?
+  issuedAt       DateTime?
+  expiresAt      DateTime?
+  documentUrl    String?
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([manufacturerId])
+}
+
+/// Uploaded media (factory photos, logo, scanned certificates). `storageKey` is
+/// the adapter-specific handle used to delete the underlying object.
+model MediaAsset {
+  id             String         @id @default(cuid())
+  manufacturerId String
+  type           MediaAssetType @default(FACTORY_PHOTO)
+  url            String
+  storageKey     String?
+  fileName       String?
+  contentType    String?
+  size           Int?
+  caption        String?
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([manufacturerId, type])
 }

@@ -86,3 +86,50 @@ export function RoleBadge({ role }: { role: string }) {
     </span>
   );
 }
+
+const RFQ_STATUS_STYLES: Record<string, string> = {
+  DRAFT: "bg-neutral-100 text-neutral-600",
+  OPEN: "bg-green-50 text-green-700",
+  CLOSED: "bg-blue-50 text-blue-700",
+  CANCELLED: "bg-red-50 text-red-700",
+};
+
+export function RfqStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-xs font-medium",
+        RFQ_STATUS_STYLES[status] ?? RFQ_STATUS_STYLES.DRAFT,
+      )}
+    >
+      {status}
+    </span>
+  );
+}
+
+const VERIFICATION_STYLES: Record<string, string> = {
+  UNVERIFIED: "bg-neutral-100 text-neutral-600",
+  PENDING: "bg-amber-50 text-amber-700",
+  VERIFIED: "bg-green-50 text-green-700",
+  REJECTED: "bg-red-50 text-red-700",
+};
+
+const VERIFICATION_LABELS: Record<string, string> = {
+  UNVERIFIED: "Unverified",
+  PENDING: "Pending review",
+  VERIFIED: "Verified",
+  REJECTED: "Rejected",
+};
+
+export function VerificationBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-xs font-medium",
+        VERIFICATION_STYLES[status] ?? VERIFICATION_STYLES.UNVERIFIED,
+      )}
+    >
+      {VERIFICATION_LABELS[status] ?? status}
+    </span>
+  );
+}
