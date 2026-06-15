@@ -39,3 +39,102 @@ export const companyIdSchema = z.object({
 
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
+
+// ---------------------------------------------------------------------------
+// RFQ (Request For Quotation)
+// ---------------------------------------------------------------------------
+
+export const rfqStatusEnum = z.enum(["DRAFT", "OPEN", "CLOSED", "CANCELLED"]);
+
+/** Empty/whitespace-only form values normalize to `undefined` for optional fields. */
+const blankToUndefined = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
+
+export const createRfqSchema = z.object({
+  title: z.string().min(3, "Title is too short").max(160),
+  description: z.string().min(10, "Add a more detailed description").max(5000),
+  category: z.string().max(80).optional().or(z.literal("")),
+  quantity: z.coerce
+    .number({ invalid_type_error: "Quantity must be a number" })
+    .int("Quantity must be a whole number")
+    .positive("Quantity must be greater than zero"),
+  unit: z.string().min(1, "Unit is required").max(24),
+  targetPrice: z.preprocess(
+    blankToUndefined,
+    z.coerce.number().positive("Target price must be greater than zero").optional(),
+  ),
+  currency: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? v.trim().toUpperCase() : undefined),
+    z.string().regex(/^[A-Z]{3}$/, "Use a 3-letter currency code, e.g. USD").optional(),
+  ),
+  incoterm: z.string().max(12).optional().or(z.literal("")),
+  destinationCountry: z.string().length(2).optional().or(z.literal("")),
+  needBy: z.preprocess(blankToUndefined, z.coerce.date().optional()),
+  status: rfqStatusEnum.default("OPEN"),
+});
+
+export const updateRfqSchema = createRfqSchema.extend({
+  id: z.string().min(1),
+});
+
+export const rfqIdSchema = z.object({
+  id: z.string().min(1),
+});
+
+export type CreateRfqInput = z.infer<typeof createRfqSchema>;
+export type UpdateRfqInput = z.infer<typeof updateRfqSchema>;
+
+// ---------------------------------------------------------------------------
+// Manufacturer / supplier profile (Phase 2)
+// ---------------------------------------------------------------------------
+
+const CURRENT_YEAR = new Date().getFullYear();
+
+export const manufacturerProfileSchema = z.object({
+  factoryName: z.string().max(160).optional().or(z.literal("")),
+  description: z.string().max(5000).optional().or(z.literal("")),
+  yearEstablished: z.preprocess(
+    blankToUndefined,
+    z.coerce
+      .number()
+      .int()
+      .min(1800, "Year looks too early")
+      .max(CURRENT_YEAR, "Year cannot be in the future")
+      .optional(),
+  ),
+  employeeCount: z.preprocess(
+    blankToUndefined,
+    z.coerce.number().int().positive("Must be greater than zero").max(10_000_000).optional(),
+  ),
+  annualOutput: z.string().max(120).optional().or(z.literal("")),
+  productionCapacity: z.string().max(200).optional().or(z.literal("")),
+  city: z.string().max(120).optional().or(z.literal("")),
+  province: z.string().max(120).optional().or(z.literal("")),
+  country: z.string().length(2).optional().or(z.literal("")),
+  address: z.string().max(300).optional().or(z.literal("")),
+});
+
+export const setCategoriesSchema = z.object({
+  categoryIds: z.array(z.string().min(1)).max(20, "Pick at most 20 categories"),
+});
+
+export const certificationSchema = z.object({
+  name: z.string().min(2, "Certification name is too short").max(120),
+  issuer: z.string().max(120).optional().or(z.literal("")),
+  certificateNo: z.string().max(120).optional().or(z.literal("")),
+  issuedAt: z.preprocess(blankToUndefined, z.coerce.date().optional()),
+  expiresAt: z.preprocess(blankToUndefined, z.coerce.date().optional()),
+  documentUrl: z.string().url().optional().or(z.literal("")),
+});
+
+export const mediaTypeEnum = z.enum(["FACTORY_PHOTO", "LOGO", "CERTIFICATE", "OTHER"]);
+
+export const mediaMetaSchema = z.object({
+  type: mediaTypeEnum.default("FACTORY_PHOTO"),
+  caption: z.string().max(200).optional().or(z.literal("")),
+});
+
+export const idSchema = z.object({ id: z.string().min(1) });
+
+export type ManufacturerProfileInput = z.infer<typeof manufacturerProfileSchema>;
+export type CertificationInput = z.infer<typeof certificationSchema>;

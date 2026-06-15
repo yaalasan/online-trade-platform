@@ -6,3 +6,6 @@
 .env*.local
 *.tsbuildinfo
 next-env.d.ts
+
+# Runtime-written local media uploads (local storage adapter)
+/public/uploads

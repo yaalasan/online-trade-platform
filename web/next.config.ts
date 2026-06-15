@@ -3,8 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   experimental: {
-    // Server Actions are stable in Next 15; keep body size sane for form posts.
-    serverActions: { bodySizeLimit: "1mb" },
+    // Server Actions are stable in Next 15. Raised to allow factory-photo /
+    // certificate uploads through the media server action.
+    serverActions: { bodySizeLimit: "8mb" },
   },
 };
 
