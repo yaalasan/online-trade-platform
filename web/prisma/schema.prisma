@@ -1,0 +1,101 @@
+// SinoSource — Foundation schema (auth, orgs, membership, RBAC, audit).
+// Scope: foundation only. No products/RFQs/orders/payments here by design.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Role rank (for hierarchy checks in app code): OWNER > ADMIN > MANAGER > MEMBER
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum CompanyType {
+  MANUFACTURER
+  BUYER
+  BOTH
+}
+
+/// A person. Identity is owned by Clerk; this row is a synced mirror so we can
+/// foreign-key memberships/audit to a stable id. `id` IS the Clerk user id.
+model User {
+  id        String   @id // Clerk user id (e.g. "user_2abc...")
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+
+  /// Server-authoritative active company selection. Validated against memberships
+  /// on every read — never trusted from the client. Null => fall back to first membership.
+  activeCompanyId String?
+
+  memberships Membership[]
+  auditLogs   AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// An organization (manufacturer or buyer company).
+model Company {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  type        CompanyType @default(MANUFACTURER)
+  country     String? // ISO-3166 alpha-2
+  website     String?
+  description String?
+
+  memberships Membership[]
+  auditLogs   AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+}
+
+/// Join row: a user belongs to a company with a role. A user may have many memberships.
+model Membership {
+  id        String         @id @default(cuid())
+  userId    String
+  companyId String
+  role      MembershipRole @default(MEMBER)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, companyId]) // one membership per (user, company)
+  @@index([companyId])
+}
+
+/// Append-only-ish record of business actions. Records who, which company, what, when.
+/// userId/companyId are nullable + SetNull so deleting an actor never deletes history.
+model AuditLog {
+  id        String  @id @default(cuid())
+  userId    String?
+  companyId String?
+  action    String // e.g. "company.created", "member.role_updated"
+  metadata  Json? // structured, non-PII context (target id, old/new role, ...)
+  ipAddress String?
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
