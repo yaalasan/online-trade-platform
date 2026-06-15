@@ -15,6 +15,12 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
       categories: { include: { category: { select: { name: true } } } },
       certifications: { orderBy: { createdAt: "desc" } },
       media: { orderBy: { createdAt: "desc" } },
+      products: {
+        where: { status: "ACTIVE" },
+        orderBy: { updatedAt: "desc" },
+        take: 12,
+        include: { images: { orderBy: { position: "asc" }, take: 1 } },
+      },
     },
   });
   if (!s) notFound();
@@ -67,6 +73,35 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
           />
         </CardContent>
       </Card>
+
+      {s.products.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Products</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {s.products.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/dashboard/catalog/${p.id}`}
+                  className="overflow-hidden rounded-md border border-neutral-200 transition-colors hover:border-brand"
+                >
+                  <div className="flex h-24 items-center justify-center bg-neutral-50">
+                    {p.images[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.images[0].url} alt={p.images[0].alt ?? p.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-neutral-400">No image</span>
+                    )}
+                  </div>
+                  <p className="truncate p-2 text-xs font-medium">{p.name}</p>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {s.certifications.length > 0 && (
         <Card>

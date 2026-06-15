@@ -138,3 +138,54 @@ export const idSchema = z.object({ id: z.string().min(1) });
 
 export type ManufacturerProfileInput = z.infer<typeof manufacturerProfileSchema>;
 export type CertificationInput = z.infer<typeof certificationSchema>;
+
+// ---------------------------------------------------------------------------
+// Product catalog (Phase 3)
+// ---------------------------------------------------------------------------
+
+const optionalCurrency = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() !== "" ? v.trim().toUpperCase() : undefined),
+  z.string().regex(/^[A-Z]{3}$/, "Use a 3-letter currency code, e.g. USD").optional(),
+);
+
+export const productStatusEnum = z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]);
+
+/** A single specification row. */
+export const productSpecSchema = z.object({
+  name: z.string().min(1).max(80),
+  value: z.string().min(1).max(200),
+});
+
+export const createProductSchema = z
+  .object({
+    name: z.string().min(2, "Name is too short").max(200),
+    description: z.string().max(5000).optional().or(z.literal("")),
+    moq: z.coerce
+      .number({ invalid_type_error: "MOQ must be a number" })
+      .int("MOQ must be a whole number")
+      .positive("MOQ must be greater than zero"),
+    unit: z.string().min(1, "Unit is required").max(24),
+    leadTimeDays: z.preprocess(
+      blankToUndefined,
+      z.coerce.number().int().positive("Lead time must be greater than zero").max(3650).optional(),
+    ),
+    priceMin: z.preprocess(
+      blankToUndefined,
+      z.coerce.number().positive("Price must be greater than zero").optional(),
+    ),
+    priceMax: z.preprocess(
+      blankToUndefined,
+      z.coerce.number().positive("Price must be greater than zero").optional(),
+    ),
+    currency: optionalCurrency,
+    status: productStatusEnum.default("DRAFT"),
+  })
+  .refine(
+    (d) => d.priceMin === undefined || d.priceMax === undefined || d.priceMax >= d.priceMin,
+    { message: "Max price must be ≥ min price", path: ["priceMax"] },
+  );
+
+export const updateProductSchema = z.object({ id: z.string().min(1) }).and(createProductSchema);
+
+export type CreateProductInput = z.infer<typeof createProductSchema>;
+export type ProductSpec = z.infer<typeof productSpecSchema>;

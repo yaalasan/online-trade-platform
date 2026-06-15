@@ -107,6 +107,25 @@ export function RfqStatusBadge({ status }: { status: string }) {
   );
 }
 
+const PRODUCT_STATUS_STYLES: Record<string, string> = {
+  DRAFT: "bg-neutral-100 text-neutral-600",
+  ACTIVE: "bg-green-50 text-green-700",
+  ARCHIVED: "bg-amber-50 text-amber-700",
+};
+
+export function ProductStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-xs font-medium",
+        PRODUCT_STATUS_STYLES[status] ?? PRODUCT_STATUS_STYLES.DRAFT,
+      )}
+    >
+      {status}
+    </span>
+  );
+}
+
 const VERIFICATION_STYLES: Record<string, string> = {
   UNVERIFIED: "bg-neutral-100 text-neutral-600",
   PENDING: "bg-amber-50 text-amber-700",
