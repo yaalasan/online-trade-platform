@@ -48,6 +48,13 @@ enum MediaAssetType {
   OTHER
 }
 
+// Catalog visibility of a product. Only ACTIVE products surface in buyer search.
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
 /// A person. Identity is owned by Clerk; this row is a synced mirror so we can
 /// foreign-key memberships/audit to a stable id. `id` IS the Clerk user id.
 model User {
@@ -182,6 +189,7 @@ model Manufacturer {
   categories     ManufacturerCategory[]
   certifications Certification[]
   media          MediaAsset[]
+  products       Product[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -202,6 +210,7 @@ model Category {
   children Category[] @relation("CategoryTree")
 
   manufacturers ManufacturerCategory[]
+  products      ProductCategory[]
 
   createdAt DateTime @default(now())
 
@@ -258,4 +267,64 @@ model MediaAsset {
   createdAt DateTime @default(now())
 
   @@index([manufacturerId, type])
+}
+
+/// A catalog product offered by a manufacturer. Scope = the owning manufacturer's
+/// company. `priceMin`/`priceMax`/`currency` are indicative listing prices (not a
+/// transaction). `specifications` is a JSON array of `{ name, value }` rows.
+model Product {
+  id             String @id @default(cuid())
+  manufacturerId String
+
+  name           String
+  description    String?
+  moq            Int // minimum order quantity
+  unit           String // e.g. "pcs", "set"
+  leadTimeDays   Int?
+  priceMin       Decimal? @db.Decimal(14, 2)
+  priceMax       Decimal? @db.Decimal(14, 2)
+  currency       String? // ISO-4217 alpha-3
+  specifications Json? // [{ name, value }, ...]
+
+  status ProductStatus @default(DRAFT)
+
+  manufacturer Manufacturer      @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  images       ProductImage[]
+  categories   ProductCategory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([manufacturerId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model ProductImage {
+  id          String  @id @default(cuid())
+  productId   String
+  url         String
+  storageKey  String?
+  fileName    String?
+  contentType String?
+  size        Int?
+  alt         String?
+  position    Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, position])
+}
+
+/// Join row: a product is filed under N categories (shared taxonomy with suppliers).
+model ProductCategory {
+  productId  String
+  categoryId String
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([categoryId])
 }

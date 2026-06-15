@@ -8,7 +8,9 @@ import { RoleBadge } from "@/components/ui/primitives";
 const NAV = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/suppliers", label: "Suppliers" },
+  { href: "/dashboard/catalog", label: "Catalog" },
   { href: "/dashboard/rfqs", label: "RFQs" },
+  { href: "/dashboard/products", label: "Products" },
   { href: "/dashboard/profile", label: "Profile" },
   { href: "/dashboard/members", label: "Members" },
   { href: "/dashboard/settings", label: "Settings" },
