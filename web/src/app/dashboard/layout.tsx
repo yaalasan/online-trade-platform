@@ -10,6 +10,7 @@ const NAV = [
   { href: "/dashboard/suppliers", label: "Suppliers" },
   { href: "/dashboard/catalog", label: "Catalog" },
   { href: "/dashboard/rfqs", label: "RFQs" },
+  { href: "/dashboard/inquiries", label: "Inquiries" },
   { href: "/dashboard/products", label: "Products" },
   { href: "/dashboard/profile", label: "Profile" },
   { href: "/dashboard/members", label: "Members" },
@@ -27,6 +28,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
     role: m.role,
   }));
 
+  // SinoSource staff get the broker queue; ordinary users never see it.
+  const nav =
+    ctx.user.platformRole !== "NONE"
+      ? [...NAV, { href: "/dashboard/broker", label: "Broker" }]
+      : NAV;
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white">
@@ -41,7 +48,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <UserButton />
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 px-5">
-          {NAV.map((item) => (
+          {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}

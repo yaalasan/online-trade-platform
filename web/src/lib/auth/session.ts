@@ -4,6 +4,16 @@ import type { Company, Membership, MembershipRole, User } from "@prisma/client";
 import { db } from "@/lib/db";
 
 /**
+ * Bootstrap allowlist for SinoSource staff. Emails here are granted ADMIN
+ * platformRole on first sync, so a fresh deployment has an admin without manual
+ * DB edits. Already-synced users are granted via the staff admin path, not here.
+ */
+const PLATFORM_ADMIN_EMAILS = (process.env.PLATFORM_ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+/**
  * Safety net for the Clerk → DB sync. The webhook is the primary path, but a user
  * can land on the app a beat before it fires. Call this at the top of authenticated
  * entry points (before any getCurrentUser) to lazily upsert the mirror row.
@@ -21,6 +31,8 @@ export async function ensureUserSynced(): Promise<void> {
     cu.primaryEmailAddress?.emailAddress ?? cu.emailAddresses[0]?.emailAddress;
   if (!email) return;
 
+  const platformRole = PLATFORM_ADMIN_EMAILS.includes(email.toLowerCase()) ? "ADMIN" : "NONE";
+
   await db.user.upsert({
     where: { id: userId },
     create: {
@@ -29,6 +41,7 @@ export async function ensureUserSynced(): Promise<void> {
       firstName: cu.firstName,
       lastName: cu.lastName,
       imageUrl: cu.imageUrl,
+      platformRole,
     },
     update: {},
   });

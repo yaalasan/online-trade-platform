@@ -189,3 +189,26 @@ export const updateProductSchema = z.object({ id: z.string().min(1) }).and(creat
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type ProductSpec = z.infer<typeof productSpecSchema>;
+
+// ---------------------------------------------------------------------------
+// Inquiries / brokered introductions
+// ---------------------------------------------------------------------------
+
+export const inquiryKindEnum = z.enum(["SUPPLIER", "PRODUCT", "RFQ", "GENERAL"]);
+export const inquiryStatusEnum = z.enum(["NEW", "IN_REVIEW", "INTRODUCED", "CLOSED"]);
+
+export const createInquirySchema = z.object({
+  kind: inquiryKindEnum.default("GENERAL"),
+  message: z.string().min(10, "Tell us a bit more about what you need").max(3000),
+  targetManufacturerId: z.string().optional().or(z.literal("")),
+  targetProductId: z.string().optional().or(z.literal("")),
+  rfqId: z.string().optional().or(z.literal("")),
+});
+
+export const updateInquirySchema = z.object({
+  id: z.string().min(1),
+  status: inquiryStatusEnum,
+  brokerNotes: z.string().max(5000).optional().or(z.literal("")),
+});
+
+export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
