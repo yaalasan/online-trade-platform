@@ -13,6 +13,7 @@ const NAV = [
   { href: "/dashboard/inquiries", label: "Inquiries" },
   { href: "/dashboard/products", label: "Products" },
   { href: "/dashboard/profile", label: "Profile" },
+  { href: "/dashboard/verification", label: "Verification" },
   { href: "/dashboard/members", label: "Members" },
   { href: "/dashboard/settings", label: "Settings" },
 ];
@@ -28,11 +29,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     role: m.role,
   }));
 
-  // SinoSource staff get the broker queue; ordinary users never see it.
-  const nav =
-    ctx.user.platformRole !== "NONE"
-      ? [...NAV, { href: "/dashboard/broker", label: "Broker" }]
-      : NAV;
+  // SinoSource staff get the broker queue; ADMINs additionally get the KYB review
+  // queue. Ordinary users never see either.
+  const staffNav = [
+    ...(ctx.user.platformRole !== "NONE" ? [{ href: "/dashboard/broker", label: "Broker" }] : []),
+    ...(ctx.user.platformRole === "ADMIN" ? [{ href: "/dashboard/kyb", label: "KYB" }] : []),
+  ];
+  const nav = [...NAV, ...staffNav];
 
   return (
     <div className="min-h-screen">

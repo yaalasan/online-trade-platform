@@ -212,3 +212,38 @@ export const updateInquirySchema = z.object({
 });
 
 export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
+
+// ---------------------------------------------------------------------------
+// KYB verification
+// ---------------------------------------------------------------------------
+
+export const verificationDocTypeEnum = z.enum([
+  "BUSINESS_LICENSE",
+  "TAX_CERTIFICATE",
+  "ISO_CERTIFICATE",
+  "ID_DOCUMENT",
+  "OTHER",
+]);
+
+export const verificationCaseSchema = z.object({
+  legalName: z.string().max(200).optional().or(z.literal("")),
+  registrationNumber: z.string().max(120).optional().or(z.literal("")),
+  registeredCountry: z.string().length(2).optional().or(z.literal("")),
+  registeredAddress: z.string().max(300).optional().or(z.literal("")),
+});
+
+/** Admin review decision. UNDER_REVIEW just claims the case; the others are terminal. */
+export const reviewDecisionEnum = z.enum(["UNDER_REVIEW", "APPROVED", "REJECTED"]);
+
+export const reviewCaseSchema = z
+  .object({
+    id: z.string().min(1),
+    decision: reviewDecisionEnum,
+    reviewNotes: z.string().max(5000).optional().or(z.literal("")),
+  })
+  .refine((d) => d.decision !== "REJECTED" || (d.reviewNotes && d.reviewNotes.trim().length > 0), {
+    message: "A rejection reason is required",
+    path: ["reviewNotes"],
+  });
+
+export type VerificationCaseInput = z.infer<typeof verificationCaseSchema>;

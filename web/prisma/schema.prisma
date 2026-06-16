@@ -79,6 +79,23 @@ enum InquiryStatus {
   CLOSED
 }
 
+// KYB (Know-Your-Business) case workflow. Terminal: APPROVED / REJECTED.
+enum VerificationCaseStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum VerificationDocType {
+  BUSINESS_LICENSE
+  TAX_CERTIFICATE
+  ISO_CERTIFICATE
+  ID_DOCUMENT
+  OTHER
+}
+
 /// A person. Identity is owned by Clerk; this row is a synced mirror so we can
 /// foreign-key memberships/audit to a stable id. `id` IS the Clerk user id.
 model User {
@@ -98,8 +115,10 @@ model User {
   memberships       Membership[]
   auditLogs         AuditLog[]
   createdRfqs       Rfq[]
-  createdInquiries  Inquiry[]    @relation("InquiryCreatedBy")
-  assignedInquiries Inquiry[]    @relation("InquiryAssignedTo")
+  createdInquiries  Inquiry[]          @relation("InquiryCreatedBy")
+  assignedInquiries Inquiry[]          @relation("InquiryAssignedTo")
+  kybSubmitted      VerificationCase[] @relation("KybSubmittedBy")
+  kybReviewed       VerificationCase[] @relation("KybReviewedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -216,12 +235,13 @@ model Manufacturer {
 
   verification VerificationStatus @default(UNVERIFIED)
 
-  company        Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  categories     ManufacturerCategory[]
-  certifications Certification[]
-  media          MediaAsset[]
-  products       Product[]
-  inquiries      Inquiry[]
+  company           Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  categories        ManufacturerCategory[]
+  certifications    Certification[]
+  media             MediaAsset[]
+  products          Product[]
+  inquiries         Inquiry[]
+  verificationCases VerificationCase[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -395,4 +415,52 @@ model Inquiry {
   @@index([status, createdAt])
   @@index([companyId, createdAt])
   @@index([assignedToUserId, status])
+}
+
+/// A KYB verification application for a manufacturer. The company drafts it,
+/// attaches documents, and submits; a SinoSource ADMIN approves/rejects, which
+/// drives the denormalized `Manufacturer.verification` badge.
+model VerificationCase {
+  id             String                 @id @default(cuid())
+  manufacturerId String
+  status         VerificationCaseStatus @default(DRAFT)
+
+  legalName          String?
+  registrationNumber String?
+  registeredCountry  String? // ISO-3166 alpha-2
+  registeredAddress  String?
+
+  submittedByUserId String?
+  reviewedByUserId  String?
+  reviewNotes       String? // rejection reason / reviewer note
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+
+  manufacturer Manufacturer           @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  submittedBy  User?                  @relation("KybSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy   User?                  @relation("KybReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  documents    VerificationDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([manufacturerId, createdAt])
+}
+
+model VerificationDocument {
+  id          String              @id @default(cuid())
+  caseId      String
+  type        VerificationDocType @default(BUSINESS_LICENSE)
+  url         String
+  storageKey  String?
+  fileName    String?
+  contentType String?
+  size        Int?
+
+  case VerificationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
 }
