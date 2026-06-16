@@ -160,6 +160,27 @@ const VERIFICATION_LABELS: Record<string, string> = {
   REJECTED: "Rejected",
 };
 
+const CASE_STATUS_STYLES: Record<string, string> = {
+  DRAFT: "bg-neutral-100 text-neutral-600",
+  SUBMITTED: "bg-blue-50 text-blue-700",
+  UNDER_REVIEW: "bg-amber-50 text-amber-700",
+  APPROVED: "bg-green-50 text-green-700",
+  REJECTED: "bg-red-50 text-red-700",
+};
+
+export function CaseStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-xs font-medium",
+        CASE_STATUS_STYLES[status] ?? CASE_STATUS_STYLES.DRAFT,
+      )}
+    >
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
 export function VerificationBadge({ status }: { status: string }) {
   return (
     <span
