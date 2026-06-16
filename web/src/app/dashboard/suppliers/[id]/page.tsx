@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getActiveContext } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, VerificationBadge } from "@/components/ui/primitives";
+import { InquiryForm } from "@/components/inquiry-form";
 
 export default async function SupplierDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await getActiveContext(); // gated by layout; keeps the route authenticated
@@ -44,6 +45,9 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
           {s.city ? ` · ${s.city}` : ""}
           {s.province ? `, ${s.province}` : ""}
         </p>
+        <div className="mt-3">
+          <InquiryForm kind="SUPPLIER" targetManufacturerId={s.id} />
+        </div>
       </div>
 
       {s.description && (

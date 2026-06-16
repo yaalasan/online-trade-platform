@@ -126,6 +126,26 @@ export function ProductStatusBadge({ status }: { status: string }) {
   );
 }
 
+const INQUIRY_STATUS_STYLES: Record<string, string> = {
+  NEW: "bg-brand-light text-brand-dark",
+  IN_REVIEW: "bg-amber-50 text-amber-700",
+  INTRODUCED: "bg-green-50 text-green-700",
+  CLOSED: "bg-neutral-100 text-neutral-600",
+};
+
+export function InquiryStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-xs font-medium",
+        INQUIRY_STATUS_STYLES[status] ?? INQUIRY_STATUS_STYLES.NEW,
+      )}
+    >
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
 const VERIFICATION_STYLES: Record<string, string> = {
   UNVERIFIED: "bg-neutral-100 text-neutral-600",
   PENDING: "bg-amber-50 text-amber-700",

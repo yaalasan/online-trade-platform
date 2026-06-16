@@ -55,6 +55,30 @@ enum ProductStatus {
   ARCHIVED
 }
 
+// Cross-tenant SinoSource staff role, independent of company memberships. STAFF
+// can work the broker queue; ADMIN can additionally approve KYB. NONE = ordinary
+// external user. Granted out-of-band (env allowlist / DB), never self-assigned.
+enum PlatformRole {
+  NONE
+  STAFF
+  ADMIN
+}
+
+// A request, raised by a company, for SinoSource to broker an introduction.
+enum InquiryKind {
+  SUPPLIER // interested in a manufacturer/supplier profile
+  PRODUCT // interested in a specific product
+  RFQ // wants sourcing help for a posted requirement
+  GENERAL
+}
+
+enum InquiryStatus {
+  NEW
+  IN_REVIEW
+  INTRODUCED
+  CLOSED
+}
+
 /// A person. Identity is owned by Clerk; this row is a synced mirror so we can
 /// foreign-key memberships/audit to a stable id. `id` IS the Clerk user id.
 model User {
@@ -68,9 +92,14 @@ model User {
   /// on every read — never trusted from the client. Null => fall back to first membership.
   activeCompanyId String?
 
-  memberships Membership[]
-  auditLogs   AuditLog[]
-  createdRfqs Rfq[]
+  /// SinoSource staff capability, orthogonal to company memberships.
+  platformRole PlatformRole @default(NONE)
+
+  memberships       Membership[]
+  auditLogs         AuditLog[]
+  createdRfqs       Rfq[]
+  createdInquiries  Inquiry[]    @relation("InquiryCreatedBy")
+  assignedInquiries Inquiry[]    @relation("InquiryAssignedTo")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -90,6 +119,7 @@ model Company {
   auditLogs    AuditLog[]
   rfqs         Rfq[]
   manufacturer Manufacturer? // 1:1 extended supplier profile, present for suppliers
+  inquiries    Inquiry[]     @relation("InquiryCompany")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -156,8 +186,9 @@ model Rfq {
 
   status RfqStatus @default(OPEN)
 
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy User?   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  inquiries Inquiry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -190,6 +221,7 @@ model Manufacturer {
   certifications Certification[]
   media          MediaAsset[]
   products       Product[]
+  inquiries      Inquiry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -291,6 +323,7 @@ model Product {
   manufacturer Manufacturer      @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
   images       ProductImage[]
   categories   ProductCategory[]
+  inquiries    Inquiry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -327,4 +360,39 @@ model ProductCategory {
 
   @@id([productId, categoryId])
   @@index([categoryId])
+}
+
+/// A request, raised by a company, for SinoSource to broker an introduction to a
+/// supplier / product / requirement. Lands in the staff broker queue. `brokerNotes`
+/// is internal to SinoSource and never exposed to the requesting company.
+model Inquiry {
+  id              String        @id @default(cuid())
+  companyId       String // requesting company
+  createdByUserId String?
+  kind            InquiryKind   @default(GENERAL)
+  message         String
+  status          InquiryStatus @default(NEW)
+
+  // Optional connection targets (any combination).
+  targetManufacturerId String?
+  targetProductId      String?
+  rfqId                String?
+
+  // Brokerage (staff-only fields).
+  assignedToUserId String?
+  brokerNotes      String?
+
+  company            Company       @relation("InquiryCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy          User?         @relation("InquiryCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  targetManufacturer Manufacturer? @relation(fields: [targetManufacturerId], references: [id], onDelete: SetNull)
+  targetProduct      Product?      @relation(fields: [targetProductId], references: [id], onDelete: SetNull)
+  rfq                Rfq?          @relation(fields: [rfqId], references: [id], onDelete: SetNull)
+  assignedTo         User?         @relation("InquiryAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([companyId, createdAt])
+  @@index([assignedToUserId, status])
 }

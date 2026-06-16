@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { formatPriceRange } from "@/lib/utils";
 import type { ProductSpec } from "@/lib/validation";
 import { Card, CardContent, CardHeader, CardTitle, VerificationBadge } from "@/components/ui/primitives";
+import { InquiryForm } from "@/components/inquiry-form";
 
 export default async function CatalogProductPage({ params }: { params: Promise<{ id: string }> }) {
   await getActiveContext(); // gated by layout
@@ -42,6 +43,9 @@ export default async function CatalogProductPage({ params }: { params: Promise<{
           {product.manufacturer.country ? `· ${product.manufacturer.country}` : ""}
           <VerificationBadge status={product.manufacturer.verification} />
         </p>
+        <div className="mt-3">
+          <InquiryForm kind="PRODUCT" targetProductId={product.id} label="Request introduction / quote" />
+        </div>
       </div>
 
       {product.images.length > 0 && (

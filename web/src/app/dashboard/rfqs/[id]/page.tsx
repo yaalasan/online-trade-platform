@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, RfqStatusBadge } from "@/components/ui/primitives";
 import { RfqForm, type RfqFormValues } from "@/components/rfq-form";
 import { DeleteRfqButton } from "@/components/delete-rfq-button";
+import { InquiryForm } from "@/components/inquiry-form";
 
 export default async function RfqDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -50,6 +51,9 @@ export default async function RfqDetailPage({ params }: { params: Promise<{ id: 
             {rfq.createdBy ? rfq.createdBy.firstName ?? rfq.createdBy.email : "former member"} ·{" "}
             {rfq.createdAt.toLocaleString()}
           </p>
+          <div className="mt-3">
+            <InquiryForm kind="RFQ" rfqId={rfq.id} label="Ask SinoSource to source this" />
+          </div>
         </div>
         {canManage && <DeleteRfqButton rfqId={rfq.id} />}
       </div>
