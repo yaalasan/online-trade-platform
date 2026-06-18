@@ -7,7 +7,7 @@ from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from flask import Flask, g, jsonify, request, send_file, session
+from flask import Flask, Response, g, jsonify, request, send_file, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
 IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
@@ -30,6 +30,126 @@ app.config.update(
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data.db"
+
+
+# --- Supplier portal integration ---------------------------------------------
+# The buyer-facing Flask site reads the Next.js portal's published catalog over a
+# small read-only JSON bridge, so a manufacturer who registers in the portal and
+# publishes ACTIVE products shows up here automatically. Buyer sourcing requests
+# flow the other way (into the portal's broker queue). All calls are best-effort:
+# if the portal is unreachable, the site falls back to local SQLite data.
+import json  # noqa: E402
+import urllib.error  # noqa: E402
+import urllib.parse  # noqa: E402
+import urllib.request  # noqa: E402
+
+PORTAL_API_URL = os.environ.get("PORTAL_API_URL", "http://localhost:3000").rstrip("/")
+PORTAL_URL = os.environ.get("PORTAL_URL", PORTAL_API_URL)
+PORTAL_TIMEOUT = float(os.environ.get("PORTAL_TIMEOUT", "2.5"))
+
+
+def _portal_get(path):
+    try:
+        req = urllib.request.Request(f"{PORTAL_API_URL}{path}", headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=PORTAL_TIMEOUT) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+        return None
+
+
+def _portal_post(path, payload):
+    try:
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            f"{PORTAL_API_URL}{path}",
+            data=body,
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=PORTAL_TIMEOUT) as resp:
+            return resp.status, json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        try:
+            return exc.code, json.loads(exc.read().decode("utf-8"))
+        except Exception:
+            return exc.code, {}
+    except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+        return None, None
+
+
+def _portal_price(pmin, pmax, currency):
+    cur = f" {currency}" if currency else ""
+    if pmin and pmax and pmin != pmax:
+        return f"{pmin} - {pmax}{cur}"
+    if pmin or pmax:
+        return f"{pmin or pmax}{cur}"
+    return "On request"
+
+
+def portal_product_row(p):
+    """Map a portal product (card or detail JSON) to the Flask product dict shape."""
+    moq = p.get("moq")
+    unit = p.get("unit") or ""
+    lead = p.get("leadTimeDays")
+    certs = p.get("certifications")
+    return {
+        "id": f"portal-{p['id']}",
+        "category": p.get("category") or "Marketplace",
+        "name": p.get("name") or "",
+        "supplier": p.get("supplier") or "",
+        "location": p.get("country") or "",
+        "description": p.get("description") or "",
+        "price": _portal_price(p.get("priceMin"), p.get("priceMax"), p.get("currency")),
+        "moq": (f"{moq} {unit}".strip() if moq is not None else ""),
+        "lead_time": (f"{lead} days" if lead else ""),
+        "capacity": "",
+        "certifications": (
+            ", ".join(c["name"] for c in certs if c.get("name")) if isinstance(certs, list) else ""
+        ),
+        "image_url": p.get("image") or "",
+        "verified": 1 if p.get("verified") else 0,
+        "source": "portal",
+    }
+
+
+def fetch_portal_products(query=""):
+    """All ACTIVE portal products (following the paginated bridge), as Flask rows."""
+    rows = []
+    page = 1
+    while page <= 20:  # safety cap
+        params = [f"page={page}"]
+        if query:
+            params.append("q=" + urllib.parse.quote(query))
+        data = _portal_get("/api/public/products?" + "&".join(params))
+        if not data or not data.get("products"):
+            break
+        rows.extend(portal_product_row(p) for p in data["products"])
+        if page >= (data.get("totalPages") or 1):
+            break
+        page += 1
+    return rows
+
+
+def fetch_portal_suppliers(query=""):
+    data = _portal_get("/api/public/suppliers")
+    if not data:
+        return []
+    out = []
+    for s in data.get("suppliers", []):
+        name = s.get("name") or ""
+        if query and query.lower() not in name.lower():
+            continue
+        out.append({
+            "company": name,
+            "location": s.get("country") or s.get("city") or "",
+            "product_count": s.get("productCount") or 0,
+            "verified": 1 if s.get("verified") else 0,
+            "categories": "",
+            "certifications": "",
+            "verification_status": "verified" if s.get("verified") else "listed",
+            "source": "portal",
+        })
+    return out
 
 
 def clean_str(data, key, default=""):
@@ -531,7 +651,9 @@ def handle_unexpected_error(error):
 
 @app.route("/")
 def home():
-    return send_file(BASE_DIR / "index.html")
+    # Inject the portal URL so the "Supplier Portal" links point at the right host.
+    html = (BASE_DIR / "index.html").read_text(encoding="utf-8")
+    return Response(html.replace("{{PORTAL_URL}}", PORTAL_URL), mimetype="text/html")
 
 
 @app.route("/api/auth/register", methods=["POST"])
@@ -672,6 +794,12 @@ def marketplace():
         product = row_to_dict(row)
         categories.setdefault(product["category"], []).append(product)
 
+    # Merge in live products published from the supplier portal (best-effort).
+    for prow in fetch_portal_products(query=query):
+        if category and prow["category"] != category:
+            continue
+        categories.setdefault(prow["category"], []).append(prow)
+
     return jsonify({"categories": [{"name": name, "items": items} for name, items in categories.items()]})
 
 
@@ -686,7 +814,21 @@ def categories():
         ORDER BY product_count DESC, category ASC
         """
     ).fetchall()
-    return jsonify({"categories": [row_to_dict(row) for row in rows]})
+    cats = [row_to_dict(row) for row in rows]
+
+    # Fold in portal product counts so portal-only categories show in the rail.
+    by_name = {c["name"]: c for c in cats}
+    for prow in fetch_portal_products():
+        bucket = by_name.get(prow["category"])
+        if bucket is None:
+            bucket = {"name": prow["category"], "product_count": 0, "verified_count": 0}
+            by_name[prow["category"]] = bucket
+            cats.append(bucket)
+        bucket["product_count"] = (bucket.get("product_count") or 0) + 1
+        bucket["verified_count"] = (bucket.get("verified_count") or 0) + (1 if prow["verified"] else 0)
+
+    cats.sort(key=lambda c: (-(c.get("product_count") or 0), c["name"]))
+    return jsonify({"categories": cats})
 
 
 @app.route("/api/products/<int:product_id>")
@@ -695,6 +837,18 @@ def product_detail(product_id):
     if not row:
         return jsonify({"error": "Product not found."}), 404
     return jsonify({"product": row_to_dict(row)})
+
+
+@app.route("/api/products/<product_id>")
+def product_detail_portal(product_id):
+    # Non-numeric ids (the <int:> route handles numeric SQLite ids) come from the
+    # portal bridge, e.g. "portal-<cuid>".
+    if not product_id.startswith("portal-"):
+        return jsonify({"error": "Product not found."}), 404
+    data = _portal_get(f"/api/public/products/{urllib.parse.quote(product_id[len('portal-'):])}")
+    if not data or not data.get("product"):
+        return jsonify({"error": "Product not found."}), 404
+    return jsonify({"product": portal_product_row(data["product"])})
 
 
 @app.route("/api/suppliers")
@@ -723,7 +877,9 @@ def suppliers():
         """,
         params,
     ).fetchall()
-    return jsonify({"suppliers": [row_to_dict(row) for row in rows]})
+    suppliers = [row_to_dict(row) for row in rows]
+    suppliers.extend(fetch_portal_suppliers(query=query))  # live portal suppliers
+    return jsonify({"suppliers": suppliers})
 
 
 @app.route("/api/products", methods=["POST"])
@@ -1057,6 +1213,16 @@ def contact():
 
     log_audit("created", "contact_request", None, f"{fields['company']} - {fields['email']}")
     get_db().commit()
+
+    # Forward the buyer's sourcing request to the portal broker queue (best-effort).
+    _portal_post("/api/public/inquiries", {
+        "kind": "GENERAL",
+        "contactName": fields["name"],
+        "contactEmail": fields["email"],
+        "contactCompany": fields["company"],
+        "message": fields["message"],
+    })
+
     return jsonify({"status": "success", "message": "Request received and logged for sourcing review."})
 
 

@@ -1,50 +1,24 @@
 import Link from "next/link";
-import type { Prisma } from "@prisma/client";
 import { getActiveContext } from "@/lib/auth/session";
-import { db } from "@/lib/db";
+import { searchProducts, listCategories, parseCatalogFilters } from "@/lib/catalog";
 import { formatPriceRange } from "@/lib/utils";
 import { Card, CardContent, Input, Label, Select } from "@/components/ui/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 
-const PAGE_SIZE = 12;
-
 type SearchParams = Promise<{ q?: string; category?: string; country?: string; page?: string }>;
 
 export default async function CatalogPage({ searchParams }: { searchParams: SearchParams }) {
   await getActiveContext(); // gated by layout
-  const sp = await searchParams;
 
-  const q = (sp.q ?? "").trim();
-  const category = (sp.category ?? "").trim();
-  const country = (sp.country ?? "").trim().toUpperCase().slice(0, 2);
-  const page = Math.max(1, Number(sp.page) || 1);
-
-  // Only ACTIVE products are visible to buyers.
-  const where: Prisma.ProductWhereInput = { status: "ACTIVE" };
-  if (category) where.categories = { some: { categoryId: category } };
-  if (country) where.manufacturer = { country };
-  if (q) where.OR = [
-    { name: { contains: q, mode: "insensitive" } },
-    { description: { contains: q, mode: "insensitive" } },
-  ];
-
-  const [total, products, categories] = await Promise.all([
-    db.product.count({ where }),
-    db.product.findMany({
-      where,
-      include: {
-        images: { orderBy: { position: "asc" }, take: 1 },
-        manufacturer: { select: { id: true, country: true, company: { select: { name: true } } } },
-      },
-      orderBy: { updatedAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
-    db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  // Shared catalog read model — identical ACTIVE-only behavior as the public store.
+  const f = parseCatalogFilters(await searchParams);
+  const { q, category, country } = f;
+  const [{ products, page, totalPages }, categories] = await Promise.all([
+    searchProducts(f),
+    listCategories(),
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const makeHref = (p: number) => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);

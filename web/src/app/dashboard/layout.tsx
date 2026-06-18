@@ -46,6 +46,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
               Sino<span className="text-brand">Source</span>
             </Link>
             <CompanySwitcher options={options} activeCompanyId={ctx.company.id} />
+            <Link
+              href="/dashboard/companies/new"
+              className="whitespace-nowrap rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 hover:border-brand hover:text-brand"
+            >
+              + New company
+            </Link>
             <RoleBadge role={ctx.role} />
           </div>
           <UserButton />

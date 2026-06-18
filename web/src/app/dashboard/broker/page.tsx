@@ -26,6 +26,17 @@ function personName(u: { firstName: string | null; lastName: string | null; emai
   return name || u.email;
 }
 
+/** One label/value row in a public lead's contact block; hidden when empty. */
+function ContactRow({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="flex gap-1.5">
+      <dt className="text-neutral-400">{label}:</dt>
+      <dd className="font-medium text-neutral-800">{value}</dd>
+    </div>
+  );
+}
+
 export default async function BrokerPage({ searchParams }: { searchParams: SearchParams }) {
   // SinoSource staff only. (Dashboard layout already requires an active company.)
   const staff = await getPlatformUser();
@@ -108,20 +119,40 @@ export default async function BrokerPage({ searchParams }: { searchParams: Searc
                   : i.rfq
                     ? `RFQ: ${i.rfq.title}`
                     : "General inquiry";
+              // Public leads have no requesting company; the buyer self-reports.
+              const isPublic = !i.company;
+              const heading = i.company?.name ?? i.contactCompany ?? i.contactName ?? "Public lead";
+              const by = personName(i.createdBy) ?? i.contactEmail ?? "unknown";
               return (
                 <Card key={i.id}>
                   <CardHeader className="flex flex-row items-start justify-between gap-3">
                     <div>
-                      <CardTitle>{i.company.name}</CardTitle>
+                      <CardTitle className="flex items-center gap-2">
+                        {heading}
+                        {isPublic && (
+                          <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
+                            Public lead
+                          </span>
+                        )}
+                      </CardTitle>
                       <p className="mt-0.5 text-xs text-neutral-500">
-                        {i.kind} · {target} · by {personName(i.createdBy) ?? "unknown"} ·{" "}
-                        {i.createdAt.toLocaleString()}
+                        {i.kind} · {target} · by {by} · {i.createdAt.toLocaleString()}
                       </p>
                     </div>
                     <InquiryStatusBadge status={i.status} />
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <p className="whitespace-pre-wrap text-sm text-neutral-800">{i.message}</p>
+                    {isPublic && (
+                      <dl className="grid gap-x-6 gap-y-1 rounded-md bg-neutral-50 p-3 text-xs text-neutral-700 sm:grid-cols-2">
+                        <ContactRow label="Name" value={i.contactName} />
+                        <ContactRow label="Email" value={i.contactEmail} />
+                        <ContactRow label="Phone" value={i.contactPhone} />
+                        <ContactRow label="Company" value={i.contactCompany} />
+                        <ContactRow label="Country" value={i.contactCountry} />
+                        <ContactRow label="Quantity" value={i.quantity} />
+                      </dl>
+                    )}
                     <InquiryBrokerControls
                       id={i.id}
                       status={i.status}
