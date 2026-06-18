@@ -6,6 +6,9 @@ data.db
 
 .env
 .env.*
+# …but keep example/template env files (no secrets) tracked.
+!.env.example
+!**/.env.example
 
 .agents/
 .codex/

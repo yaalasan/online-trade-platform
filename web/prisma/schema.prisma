@@ -1,0 +1,476 @@
+// SinoSource — Foundation schema (auth, orgs, membership, RBAC, audit).
+// Scope: foundation only. No products/RFQs/orders/payments here by design.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Role rank (for hierarchy checks in app code): OWNER > ADMIN > MANAGER > MEMBER
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum CompanyType {
+  MANUFACTURER
+  BUYER
+  BOTH
+}
+
+// Lifecycle of a buyer's request for quotation.
+enum RfqStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+// KYB/trust state shown on a supplier profile. Set by platform admins (the
+// approval workflow itself is a later phase); companies cannot self-verify.
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum MediaAssetType {
+  FACTORY_PHOTO
+  LOGO
+  CERTIFICATE
+  OTHER
+}
+
+// Catalog visibility of a product. Only ACTIVE products surface in buyer search.
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+// Cross-tenant SinoSource staff role, independent of company memberships. STAFF
+// can work the broker queue; ADMIN can additionally approve KYB. NONE = ordinary
+// external user. Granted out-of-band (env allowlist / DB), never self-assigned.
+enum PlatformRole {
+  NONE
+  STAFF
+  ADMIN
+}
+
+// A request, raised by a company, for SinoSource to broker an introduction.
+enum InquiryKind {
+  SUPPLIER // interested in a manufacturer/supplier profile
+  PRODUCT // interested in a specific product
+  RFQ // wants sourcing help for a posted requirement
+  GENERAL
+}
+
+enum InquiryStatus {
+  NEW
+  IN_REVIEW
+  INTRODUCED
+  CLOSED
+}
+
+// KYB (Know-Your-Business) case workflow. Terminal: APPROVED / REJECTED.
+enum VerificationCaseStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum VerificationDocType {
+  BUSINESS_LICENSE
+  TAX_CERTIFICATE
+  ISO_CERTIFICATE
+  ID_DOCUMENT
+  OTHER
+}
+
+/// A person. Identity is owned by Clerk; this row is a synced mirror so we can
+/// foreign-key memberships/audit to a stable id. `id` IS the Clerk user id.
+model User {
+  id        String   @id // Clerk user id (e.g. "user_2abc...")
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+
+  /// Server-authoritative active company selection. Validated against memberships
+  /// on every read — never trusted from the client. Null => fall back to first membership.
+  activeCompanyId String?
+
+  /// SinoSource staff capability, orthogonal to company memberships.
+  platformRole PlatformRole @default(NONE)
+
+  memberships       Membership[]
+  auditLogs         AuditLog[]
+  createdRfqs       Rfq[]
+  createdInquiries  Inquiry[]          @relation("InquiryCreatedBy")
+  assignedInquiries Inquiry[]          @relation("InquiryAssignedTo")
+  kybSubmitted      VerificationCase[] @relation("KybSubmittedBy")
+  kybReviewed       VerificationCase[] @relation("KybReviewedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// An organization (manufacturer or buyer company).
+model Company {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  type        CompanyType @default(MANUFACTURER)
+  country     String? // ISO-3166 alpha-2
+  website     String?
+  description String?
+
+  memberships  Membership[]
+  auditLogs    AuditLog[]
+  rfqs         Rfq[]
+  manufacturer Manufacturer? // 1:1 extended supplier profile, present for suppliers
+  inquiries    Inquiry[]     @relation("InquiryCompany")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+}
+
+/// Join row: a user belongs to a company with a role. A user may have many memberships.
+model Membership {
+  id        String         @id @default(cuid())
+  userId    String
+  companyId String
+  role      MembershipRole @default(MEMBER)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, companyId]) // one membership per (user, company)
+  @@index([companyId])
+}
+
+/// Append-only-ish record of business actions. Records who, which company, what, when.
+/// userId/companyId are nullable + SetNull so deleting an actor never deletes history.
+model AuditLog {
+  id        String  @id @default(cuid())
+  userId    String?
+  companyId String?
+  action    String // e.g. "company.created", "member.role_updated"
+  metadata  Json? // structured, non-PII context (target id, old/new role, ...)
+  ipAddress String?
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// A Request For Quotation owned by a single company. Scope is the owning
+/// `companyId`; every read/write is constrained to the caller's active company.
+/// `targetPrice`/`currency` are an indicative budget the buyer publishes — pure
+/// sourcing metadata, NOT a transaction (no escrow/ledger/payment lives here).
+model Rfq {
+  id              String  @id @default(cuid())
+  companyId       String
+  createdByUserId String? // who raised it; SetNull so deleting a user keeps the RFQ
+
+  title              String
+  description        String
+  category           String?
+  quantity           Int
+  unit               String // e.g. "pcs", "kg", "m"
+  targetPrice        Decimal? @db.Decimal(14, 2) // indicative budget per unit
+  currency           String? // ISO-4217 alpha-3, e.g. "USD"
+  incoterm           String? // e.g. "FOB", "CIF"
+  destinationCountry String? // ISO-3166 alpha-2
+  needBy             DateTime? // requested delivery date
+
+  status RfqStatus @default(OPEN)
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  inquiries Inquiry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, status, createdAt])
+  @@index([createdByUserId])
+}
+
+/// Extended supplier profile, 1:1 with a Company. Holds factory information that
+/// only matters for companies acting as manufacturers. Scope = companyId.
+model Manufacturer {
+  id        String @id @default(cuid())
+  companyId String @unique
+
+  factoryName        String?
+  description        String?
+  yearEstablished    Int?
+  employeeCount      Int?
+  annualOutput       String? // free-text, e.g. "5M units / year"
+  productionCapacity String?
+  city               String?
+  province           String?
+  country            String? // ISO-3166 alpha-2
+  address            String?
+
+  verification VerificationStatus @default(UNVERIFIED)
+
+  company           Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  categories        ManufacturerCategory[]
+  certifications    Certification[]
+  media             MediaAsset[]
+  products          Product[]
+  inquiries         Inquiry[]
+  verificationCases VerificationCase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([verification])
+  @@index([country])
+}
+
+/// Platform-curated taxonomy, shared by manufacturers now and products later.
+/// Optional self-reference gives a simple parent → child hierarchy.
+model Category {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  parentId String?
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
+  manufacturers ManufacturerCategory[]
+  products      ProductCategory[]
+
+  createdAt DateTime @default(now())
+
+  @@index([parentId])
+}
+
+/// Join row: a manufacturer is tagged with N categories.
+model ManufacturerCategory {
+  manufacturerId String
+  categoryId     String
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([manufacturerId, categoryId])
+  @@index([categoryId])
+}
+
+/// A certification claimed by a manufacturer (e.g. ISO 9001). Trust is conveyed
+/// by the platform verification status, not by self-declared certs alone.
+model Certification {
+  id             String    @id @default(cuid())
+  manufacturerId String
+  name           String
+  issuer         String?
+  certificateNo  String?
+  issuedAt       DateTime?
+  expiresAt      DateTime?
+  documentUrl    String?
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([manufacturerId])
+}
+
+/// Uploaded media (factory photos, logo, scanned certificates). `storageKey` is
+/// the adapter-specific handle used to delete the underlying object.
+model MediaAsset {
+  id             String         @id @default(cuid())
+  manufacturerId String
+  type           MediaAssetType @default(FACTORY_PHOTO)
+  url            String
+  storageKey     String?
+  fileName       String?
+  contentType    String?
+  size           Int?
+  caption        String?
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([manufacturerId, type])
+}
+
+/// A catalog product offered by a manufacturer. Scope = the owning manufacturer's
+/// company. `priceMin`/`priceMax`/`currency` are indicative listing prices (not a
+/// transaction). `specifications` is a JSON array of `{ name, value }` rows.
+model Product {
+  id             String @id @default(cuid())
+  manufacturerId String
+
+  name           String
+  description    String?
+  moq            Int // minimum order quantity
+  unit           String // e.g. "pcs", "set"
+  leadTimeDays   Int?
+  priceMin       Decimal? @db.Decimal(14, 2)
+  priceMax       Decimal? @db.Decimal(14, 2)
+  currency       String? // ISO-4217 alpha-3
+  specifications Json? // [{ name, value }, ...]
+
+  status ProductStatus @default(DRAFT)
+
+  manufacturer Manufacturer      @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  images       ProductImage[]
+  categories   ProductCategory[]
+  inquiries    Inquiry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([manufacturerId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model ProductImage {
+  id          String  @id @default(cuid())
+  productId   String
+  url         String
+  storageKey  String?
+  fileName    String?
+  contentType String?
+  size        Int?
+  alt         String?
+  position    Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, position])
+}
+
+/// Join row: a product is filed under N categories (shared taxonomy with suppliers).
+model ProductCategory {
+  productId  String
+  categoryId String
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([categoryId])
+}
+
+/// A request, raised by a company, for SinoSource to broker an introduction to a
+/// supplier / product / requirement. Lands in the staff broker queue. `brokerNotes`
+/// is internal to SinoSource and never exposed to the requesting company.
+model Inquiry {
+  id              String        @id @default(cuid())
+  companyId       String? // requesting company; null for public (anonymous) sourcing leads
+  createdByUserId String?
+  kind            InquiryKind   @default(GENERAL)
+  message         String
+  status          InquiryStatus @default(NEW)
+
+  // Public sourcing lead: when a storefront visitor (not a signed-in member)
+  // submits the contact form. companyId/createdByUserId are null; the buyer's
+  // self-reported details live here so a broker can follow up.
+  quantity       String? // free-text desired amount, e.g. "5000 pcs/month"
+  contactName    String?
+  contactEmail   String?
+  contactPhone   String?
+  contactCompany String?
+  contactCountry String? // ISO-2
+
+  // Optional connection targets (any combination).
+  targetManufacturerId String?
+  targetProductId      String?
+  rfqId                String?
+
+  // Brokerage (staff-only fields).
+  assignedToUserId String?
+  brokerNotes      String?
+
+  company            Company?      @relation("InquiryCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy          User?         @relation("InquiryCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  targetManufacturer Manufacturer? @relation(fields: [targetManufacturerId], references: [id], onDelete: SetNull)
+  targetProduct      Product?      @relation(fields: [targetProductId], references: [id], onDelete: SetNull)
+  rfq                Rfq?          @relation(fields: [rfqId], references: [id], onDelete: SetNull)
+  assignedTo         User?         @relation("InquiryAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([companyId, createdAt])
+  @@index([assignedToUserId, status])
+}
+
+/// A KYB verification application for a manufacturer. The company drafts it,
+/// attaches documents, and submits; a SinoSource ADMIN approves/rejects, which
+/// drives the denormalized `Manufacturer.verification` badge.
+model VerificationCase {
+  id             String                 @id @default(cuid())
+  manufacturerId String
+  status         VerificationCaseStatus @default(DRAFT)
+
+  legalName          String?
+  registrationNumber String?
+  registeredCountry  String? // ISO-3166 alpha-2
+  registeredAddress  String?
+
+  submittedByUserId String?
+  reviewedByUserId  String?
+  reviewNotes       String? // rejection reason / reviewer note
+  submittedAt       DateTime?
+  reviewedAt        DateTime?
+
+  manufacturer Manufacturer           @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  submittedBy  User?                  @relation("KybSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy   User?                  @relation("KybReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  documents    VerificationDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([manufacturerId, createdAt])
+}
+
+model VerificationDocument {
+  id          String              @id @default(cuid())
+  caseId      String
+  type        VerificationDocType @default(BUSINESS_LICENSE)
+  url         String
+  storageKey  String?
+  fileName    String?
+  contentType String?
+  size        Int?
+
+  case VerificationCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+}
