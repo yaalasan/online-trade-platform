@@ -12,3 +12,6 @@ data.db
 
 .agents/
 .codex/
+
+# Binary design docs (kept locally, not in the repo)
+*.odt
