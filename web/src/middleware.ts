@@ -1,11 +1,14 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Public routes: marketing, auth screens, and the Clerk webhook.
+// Public routes: portal landing, auth screens, the Clerk webhook, and the public
+// read/lead API bridge consumed by the Flask buyer site. Everything else (the
+// dashboard + server actions) requires auth.
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks(.*)",
+  "/api/public(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

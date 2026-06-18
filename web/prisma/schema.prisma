@@ -387,11 +387,21 @@ model ProductCategory {
 /// is internal to SinoSource and never exposed to the requesting company.
 model Inquiry {
   id              String        @id @default(cuid())
-  companyId       String // requesting company
+  companyId       String? // requesting company; null for public (anonymous) sourcing leads
   createdByUserId String?
   kind            InquiryKind   @default(GENERAL)
   message         String
   status          InquiryStatus @default(NEW)
+
+  // Public sourcing lead: when a storefront visitor (not a signed-in member)
+  // submits the contact form. companyId/createdByUserId are null; the buyer's
+  // self-reported details live here so a broker can follow up.
+  quantity       String? // free-text desired amount, e.g. "5000 pcs/month"
+  contactName    String?
+  contactEmail   String?
+  contactPhone   String?
+  contactCompany String?
+  contactCountry String? // ISO-2
 
   // Optional connection targets (any combination).
   targetManufacturerId String?
@@ -402,7 +412,7 @@ model Inquiry {
   assignedToUserId String?
   brokerNotes      String?
 
-  company            Company       @relation("InquiryCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  company            Company?      @relation("InquiryCompany", fields: [companyId], references: [id], onDelete: Cascade)
   createdBy          User?         @relation("InquiryCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   targetManufacturer Manufacturer? @relation(fields: [targetManufacturerId], references: [id], onDelete: SetNull)
   targetProduct      Product?      @relation(fields: [targetProductId], references: [id], onDelete: SetNull)

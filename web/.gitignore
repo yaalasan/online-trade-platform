@@ -9,3 +9,6 @@ next-env.d.ts
 
 # Runtime-written local media uploads (local storage adapter)
 /public/uploads
+
+# clerk configuration (can include secrets)
+/.clerk/

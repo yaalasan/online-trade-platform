@@ -213,6 +213,31 @@ export const updateInquirySchema = z.object({
 
 export type CreateInquiryInput = z.infer<typeof createInquirySchema>;
 
+/**
+ * Public storefront sourcing lead, submitted by an anonymous visitor. No company
+ * context — the buyer self-reports who they are. Name + email are required so a
+ * broker can follow up; the rest is optional context.
+ */
+export const createPublicInquirySchema = z.object({
+  kind: inquiryKindEnum.default("GENERAL"),
+  productNeeded: z.string().max(200).optional().or(z.literal("")),
+  quantity: z.string().max(120).optional().or(z.literal("")),
+  message: z.string().min(10, "Tell us a bit more about what you need").max(3000),
+  contactName: z.string().min(2, "Your name is required").max(120),
+  contactEmail: z.string().email("Enter a valid email"),
+  contactPhone: z.string().max(40).optional().or(z.literal("")),
+  contactCompany: z.string().max(160).optional().or(z.literal("")),
+  contactCountry: z
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim() !== "" ? v.trim().toUpperCase() : undefined),
+      z.string().length(2, "Use a 2-letter country code").optional(),
+    ),
+  targetManufacturerId: z.string().optional().or(z.literal("")),
+  targetProductId: z.string().optional().or(z.literal("")),
+});
+
+export type CreatePublicInquiryInput = z.infer<typeof createPublicInquirySchema>;
+
 // ---------------------------------------------------------------------------
 // KYB verification
 // ---------------------------------------------------------------------------
