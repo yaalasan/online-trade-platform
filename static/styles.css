@@ -324,14 +324,25 @@ main {
 /* ---------- Hero ---------- */
 .hero-section {
   display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 1.25rem;
+  grid-template-columns: 1fr 380px;
+  gap: 1.5rem;
   margin-bottom: 1.5rem;
-  background: linear-gradient(135deg, #fff8f5 0%, var(--white) 100%);
+  background: linear-gradient(135deg, #fff8f5 0%, var(--white) 50%, #f5f7ff 100%);
   border: 1px solid #f0d8d0;
   border-radius: var(--radius-lg);
   padding: 2.5rem;
   overflow: hidden;
+  position: relative;
+}
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: 360px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(232,64,12,.06) 0%, transparent 65%);
+  pointer-events: none;
 }
 
 .hero-copy { display: flex; flex-direction: column; gap: 1rem; }
@@ -404,11 +415,55 @@ main {
 .hero-actions .secondary { padding: .6rem 1.3rem; font-size: .9rem; }
 .hero-consult { font-size: .85rem; color: var(--brand); font-weight: 600; }
 
+/* Hero right column */
+.hero-right {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.hero-showcase {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  height: 200px;
+  flex: none;
+}
+
+.hero-showcase img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .6s ease;
+}
+
+.hero-showcase:hover img { transform: scale(1.04); }
+
+.hero-showcase-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(26,31,46,.65) 0%, transparent 55%);
+  display: flex;
+  align-items: flex-end;
+  padding: .85rem 1rem;
+}
+
+.hero-showcase-badge {
+  background: var(--white);
+  border-radius: 999px;
+  padding: .3rem .9rem;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
 /* Hero stats panel */
 .hero-stats {
   display: grid;
-  grid-template-rows: repeat(4, 1fr);
-  gap: .75rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .65rem;
 }
 
 .hero-stat {
@@ -1076,6 +1131,128 @@ footer {
 }
 .footer-links button:hover { color: var(--brand); box-shadow: none; }
 
+/* ---------- How It Works ---------- */
+.how-steps {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.how-step {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s, transform .2s;
+}
+.how-step:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+
+.how-step-img {
+  height: 175px;
+  overflow: hidden;
+}
+.how-step-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .4s ease;
+}
+.how-step:hover .how-step-img img { transform: scale(1.05); }
+
+.step-content { padding: 1.25rem 1.35rem 1.5rem; }
+
+.step-num {
+  display: block;
+  font-size: 2.8rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--brand);
+  margin-bottom: .5rem;
+  opacity: .85;
+}
+
+.step-content h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: .45rem;
+}
+
+.step-content p { font-size: .86rem; color: var(--ink-3); line-height: 1.55; }
+
+.how-connector {
+  width: 32px;
+  height: 2px;
+  background: linear-gradient(to right, var(--border), var(--brand), var(--border));
+  border-radius: 2px;
+  flex: none;
+}
+
+/* ---------- Testimonials ---------- */
+.testimonials-section {
+  background: linear-gradient(135deg, #fff8f5 0%, var(--white) 100%);
+  border-radius: var(--radius-lg);
+  border: 1px solid #f0d8d0;
+  padding: 2rem 2rem 2.25rem;
+  margin-bottom: 2.5rem;
+}
+.testimonials-section .section-heading { margin-bottom: 1.5rem; }
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.testimonial-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  border-top: 3px solid var(--brand);
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  margin: 0;
+  transition: box-shadow .2s, transform .2s;
+}
+.testimonial-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.testimonial-quote-icon {
+  font-size: 3rem;
+  line-height: .8;
+  color: var(--brand);
+  font-family: Georgia, serif;
+  font-weight: 900;
+  opacity: .6;
+}
+
+.testimonial-card p {
+  font-size: .9rem;
+  color: var(--ink-2);
+  font-style: italic;
+  line-height: 1.65;
+  flex: 1;
+}
+
+.testimonial-card footer {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--border);
+}
+.testimonial-card footer strong {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.testimonial-card footer span { font-size: .78rem; color: var(--ink-3); }
+
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 1180px) {
   .feature-cards { grid-template-columns: repeat(2, 1fr); }
@@ -1090,7 +1267,9 @@ footer {
   .nav-search { grid-column: 1 / -1; order: 3; }
   .nav-links { display: none; }
   .hero-section { grid-template-columns: 1fr; }
-  .hero-stats { grid-template-columns: repeat(2, 1fr); grid-template-rows: auto; }
+  .hero-right { flex-direction: row; flex-wrap: wrap; }
+  .hero-showcase { flex: 1 1 220px; height: 160px; }
+  .hero-stats { flex: 1 1 220px; grid-template-columns: repeat(2, 1fr); }
   .stats-strip { grid-template-columns: repeat(2, 1fr); }
   .contact-layout { grid-template-columns: 1fr; }
   .about-grid { grid-template-columns: 1fr; }
@@ -1098,6 +1277,9 @@ footer {
   .supplier-grid { grid-template-columns: repeat(2, 1fr); }
   .product-grid { grid-template-columns: repeat(2, 1fr); }
   .service-cards { grid-template-columns: repeat(3, 1fr); }
+  .how-steps { grid-template-columns: 1fr; }
+  .how-connector { display: none; }
+  .testimonials-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -1106,6 +1288,8 @@ footer {
   .category-rail { padding: 0 1rem; }
   main { padding: 1rem 1rem 3rem; }
   .hero-section { padding: 1.5rem; }
+  .hero-right { flex-direction: column; }
+  .hero-showcase { height: 180px; }
   .stats-strip { grid-template-columns: repeat(2, 1fr); }
   .feature-cards { grid-template-columns: 1fr; }
   .feature-list { grid-template-columns: 1fr; }
@@ -1123,4 +1307,6 @@ footer {
   .supplier-meta { grid-template-columns: repeat(2, 1fr); }
   footer { flex-direction: column; align-items: flex-start; }
   .data-form.two-column { grid-template-columns: 1fr; }
+  .testimonials-section { padding: 1.25rem; }
+  .step-num { font-size: 2rem; }
 }
