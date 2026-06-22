@@ -14,6 +14,7 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { InquiryBrokerControls } from "@/components/inquiry-broker-controls";
+import { getT } from "@/lib/i18n/server";
 
 const PAGE_SIZE = 20;
 const STATUS_VALUES: InquiryStatus[] = ["NEW", "IN_REVIEW", "INTRODUCED", "CLOSED"];
@@ -38,9 +39,10 @@ function ContactRow({ label, value }: { label: string; value: string | null }) {
 }
 
 export default async function BrokerPage({ searchParams }: { searchParams: SearchParams }) {
-  // SinoSource staff only. (Dashboard layout already requires an active company.)
+  // Fastflow staff only. (Dashboard layout already requires an active company.)
   const staff = await getPlatformUser();
   if (!staff) redirect("/dashboard");
+  const t = await getT();
   const sp = await searchParams;
 
   const status = STATUS_VALUES.includes(sp.status as InquiryStatus) ? (sp.status as InquiryStatus) : "";
@@ -77,26 +79,26 @@ export default async function BrokerPage({ searchParams }: { searchParams: Searc
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Broker queue</h1>
-        <span className="text-sm text-neutral-500">{total} total</span>
+        <h1 className="text-2xl font-semibold">{t("broker.title")}</h1>
+        <span className="text-sm text-neutral-500">{t("broker.total", { count: total })}</span>
       </div>
 
       <Card>
         <CardContent>
           <form method="get" className="flex items-end gap-3">
             <div>
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t("common.status")}</Label>
               <Select id="status" name="status" defaultValue={status} className="w-44">
-                <option value="">All</option>
+                <option value="">{t("common.all")}</option>
                 {STATUS_VALUES.map((s) => (
                   <option key={s} value={s}>
-                    {s.replace("_", " ")}
+                    {t(`status.inquiry.${s}`)}
                   </option>
                 ))}
               </Select>
             </div>
             <button type="submit" className={buttonVariants({ size: "sm" })}>
-              Filter
+              {t("broker.filter")}
             </button>
           </form>
         </CardContent>
@@ -105,7 +107,7 @@ export default async function BrokerPage({ searchParams }: { searchParams: Searc
       {inquiries.length === 0 ? (
         <Card>
           <CardContent>
-            <p className="text-sm text-neutral-500">No inquiries in this view.</p>
+            <p className="text-sm text-neutral-500">{t("broker.noneInView")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -113,16 +115,16 @@ export default async function BrokerPage({ searchParams }: { searchParams: Searc
           <div className="space-y-4">
             {inquiries.map((i) => {
               const target = i.targetManufacturer
-                ? `Supplier: ${i.targetManufacturer.company.name}`
+                ? t("inquiries.supplierPrefix", { name: i.targetManufacturer.company.name })
                 : i.targetProduct
-                  ? `Product: ${i.targetProduct.name}`
+                  ? t("inquiries.productPrefix", { name: i.targetProduct.name })
                   : i.rfq
-                    ? `RFQ: ${i.rfq.title}`
-                    : "General inquiry";
+                    ? t("inquiries.rfqPrefix", { title: i.rfq.title })
+                    : t("inquiries.general");
               // Public leads have no requesting company; the buyer self-reports.
               const isPublic = !i.company;
-              const heading = i.company?.name ?? i.contactCompany ?? i.contactName ?? "Public lead";
-              const by = personName(i.createdBy) ?? i.contactEmail ?? "unknown";
+              const heading = i.company?.name ?? i.contactCompany ?? i.contactName ?? t("broker.publicLead");
+              const by = personName(i.createdBy) ?? i.contactEmail ?? t("broker.unknown");
               return (
                 <Card key={i.id}>
                   <CardHeader className="flex flex-row items-start justify-between gap-3">
@@ -131,12 +133,13 @@ export default async function BrokerPage({ searchParams }: { searchParams: Searc
                         {heading}
                         {isPublic && (
                           <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
-                            Public lead
+                            {t("broker.publicLead")}
                           </span>
                         )}
                       </CardTitle>
                       <p className="mt-0.5 text-xs text-neutral-500">
-                        {i.kind} · {target} · by {by} · {i.createdAt.toLocaleString()}
+                        {i.kind} · {target} · {t("broker.by", { name: by })} ·{" "}
+                        {i.createdAt.toLocaleString()}
                       </p>
                     </div>
                     <InquiryStatusBadge status={i.status} />
@@ -145,12 +148,12 @@ export default async function BrokerPage({ searchParams }: { searchParams: Searc
                     <p className="whitespace-pre-wrap text-sm text-neutral-800">{i.message}</p>
                     {isPublic && (
                       <dl className="grid gap-x-6 gap-y-1 rounded-md bg-neutral-50 p-3 text-xs text-neutral-700 sm:grid-cols-2">
-                        <ContactRow label="Name" value={i.contactName} />
-                        <ContactRow label="Email" value={i.contactEmail} />
-                        <ContactRow label="Phone" value={i.contactPhone} />
-                        <ContactRow label="Company" value={i.contactCompany} />
-                        <ContactRow label="Country" value={i.contactCountry} />
-                        <ContactRow label="Quantity" value={i.quantity} />
+                        <ContactRow label={t("common.name")} value={i.contactName} />
+                        <ContactRow label={t("common.email")} value={i.contactEmail} />
+                        <ContactRow label={t("broker.phone")} value={i.contactPhone} />
+                        <ContactRow label={t("broker.company")} value={i.contactCompany} />
+                        <ContactRow label={t("broker.country")} value={i.contactCountry} />
+                        <ContactRow label={t("broker.quantity")} value={i.quantity} />
                       </dl>
                     )}
                     <InquiryBrokerControls

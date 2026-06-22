@@ -6,10 +6,12 @@ import { formatPriceRange } from "@/lib/utils";
 import type { ProductSpec } from "@/lib/validation";
 import { Card, CardContent, CardHeader, CardTitle, VerificationBadge } from "@/components/ui/primitives";
 import { InquiryForm } from "@/components/inquiry-form";
+import { getT } from "@/lib/i18n/server";
 
 export default async function CatalogProductPage({ params }: { params: Promise<{ id: string }> }) {
   await getActiveContext(); // gated by layout
   const { id } = await params;
+  const t = await getT();
 
   // Buyers only see ACTIVE products.
   const product = await db.product.findFirst({
@@ -33,7 +35,7 @@ export default async function CatalogProductPage({ params }: { params: Promise<{
     <div className="space-y-6">
       <div>
         <Link href="/dashboard/catalog" className="text-sm text-neutral-500 hover:text-brand">
-          ← Back to catalog
+          {t("catalog.backToCatalog")}
         </Link>
         <h1 className="mt-1 text-2xl font-semibold">{product.name}</h1>
         <p className="flex items-center gap-2 text-sm text-neutral-500">
@@ -44,7 +46,7 @@ export default async function CatalogProductPage({ params }: { params: Promise<{
           <VerificationBadge status={product.manufacturer.verification} />
         </p>
         <div className="mt-3">
-          <InquiryForm kind="PRODUCT" targetProductId={product.id} label="Request introduction / quote" />
+          <InquiryForm kind="PRODUCT" targetProductId={product.id} label={t("catalog.requestQuote")} />
         </div>
       </div>
 
@@ -61,19 +63,22 @@ export default async function CatalogProductPage({ params }: { params: Promise<{
 
       <Card>
         <CardHeader>
-          <CardTitle>Overview</CardTitle>
+          <CardTitle>{t("catalog.overview")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
-          <Detail label="Price" value={price} />
-          <Detail label="MOQ" value={`${product.moq.toLocaleString()} ${product.unit}`} />
-          <Detail label="Lead time" value={product.leadTimeDays ? `${product.leadTimeDays} days` : "—"} />
+          <Detail label={t("catalog.price")} value={price} />
+          <Detail label={t("products.moq")} value={`${product.moq.toLocaleString()} ${product.unit}`} />
           <Detail
-            label="Categories"
+            label={t("catalog.leadTime")}
+            value={product.leadTimeDays ? t("catalog.leadTimeDays", { days: product.leadTimeDays }) : "—"}
+          />
+          <Detail
+            label={t("suppliers.categoriesLabel")}
             value={product.categories.map((c) => c.category.name).join(", ") || "—"}
           />
           {product.description && (
             <div className="sm:col-span-2">
-              <Detail label="Description" value={product.description} />
+              <Detail label={t("common.description")} value={product.description} />
             </div>
           )}
         </CardContent>
@@ -82,7 +87,7 @@ export default async function CatalogProductPage({ params }: { params: Promise<{
       {specs.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Specifications</CardTitle>
+            <CardTitle>{t("catalog.specifications")}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="divide-y divide-neutral-100 text-sm">

@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { Card, CardContent, Input, Label, Select, ProductStatusBadge } from "@/components/ui/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import { getT } from "@/lib/i18n/server";
 
 const PAGE_SIZE = 12;
 const STATUS_VALUES: ProductStatus[] = ["DRAFT", "ACTIVE", "ARCHIVED"];
@@ -16,6 +17,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   const ctx = (await getActiveContext())!;
   const { company, role } = ctx;
   const canManage = ROLE_RANK[role] >= ROLE_RANK.MANAGER;
+  const t = await getT();
   const sp = await searchParams;
 
   const q = (sp.q ?? "").trim();
@@ -60,10 +62,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Products</h1>
+        <h1 className="text-2xl font-semibold">{t("products.title")}</h1>
         {canManage && (
           <Link href="/dashboard/products/new" className={buttonVariants()}>
-            New product
+            {t("products.newProduct")}
           </Link>
         )}
       </div>
@@ -72,13 +74,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         <CardContent>
           <form method="get" className="grid items-end gap-3 sm:grid-cols-4">
             <div className="sm:col-span-2">
-              <Label htmlFor="q">Search</Label>
-              <Input id="q" name="q" defaultValue={q} placeholder="Product name or keyword" />
+              <Label htmlFor="q">{t("common.search")}</Label>
+              <Input id="q" name="q" defaultValue={q} placeholder={t("products.searchPlaceholder")} />
             </div>
             <div>
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t("products.category")}</Label>
               <Select id="category" name="category" defaultValue={category}>
-                <option value="">All</option>
+                <option value="">{t("common.all")}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -87,19 +89,19 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
               </Select>
             </div>
             <div>
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t("common.status")}</Label>
               <Select id="status" name="status" defaultValue={status}>
-                <option value="">Any</option>
+                <option value="">{t("products.statusAny")}</option>
                 {STATUS_VALUES.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {t(`status.product.${s}`)}
                   </option>
                 ))}
               </Select>
             </div>
             <div className="sm:col-span-4">
               <button type="submit" className={buttonVariants({ size: "sm" })}>
-                Apply filters
+                {t("products.applyFilters")}
               </button>
             </div>
           </form>
@@ -110,8 +112,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
         <Card>
           <CardContent>
             <p className="text-sm text-neutral-500">
-              No products match.{" "}
-              {canManage ? "Create your first product." : "Ask a manager to add products."}
+              {t("products.noneMatch")}{" "}
+              {canManage ? t("products.createFirst") : t("products.askManager")}
             </p>
           </CardContent>
         </Card>
@@ -126,7 +128,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.images[0].url} alt={p.images[0].alt ?? p.name} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-xs text-neutral-400">No image</span>
+                      <span className="text-xs text-neutral-400">{t("products.noImage")}</span>
                     )}
                   </div>
                   <CardContent className="space-y-1">
@@ -135,7 +137,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Sea
                       <ProductStatusBadge status={p.status} />
                     </div>
                     <p className="text-xs text-neutral-500">
-                      MOQ {p.moq.toLocaleString()} {p.unit}
+                      {t("products.moq")} {p.moq.toLocaleString()} {p.unit}
                       {p.categories[0] ? ` · ${p.categories[0].category.name}` : ""}
                     </p>
                   </CardContent>

@@ -1,0 +1,20 @@
+# Fastflow public marketplace (Flask + gunicorn).
+# Install: sudo cp deploy/systemd/fastflow-web.service /etc/systemd/system/
+#          sudo systemctl daemon-reload && sudo systemctl enable --now fastflow-web
+[Unit]
+Description=Fastflow Flask marketplace (gunicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=fastflow
+Group=fastflow
+WorkingDirectory=/opt/fastflow
+# Reads PRODUCTION=1, SECRET_KEY=..., PORTAL_API_URL, PORTAL_URL (KEY=value lines).
+EnvironmentFile=/opt/fastflow/.env
+ExecStart=/opt/fastflow/.venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 --timeout 30 main:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

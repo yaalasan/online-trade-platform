@@ -5,10 +5,12 @@ import { ROLE_RANK } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { ProductForm } from "@/components/product-form";
+import { getT } from "@/lib/i18n/server";
 
 export default async function NewProductPage() {
   const ctx = (await getActiveContext())!;
   if (ROLE_RANK[ctx.role] < ROLE_RANK.MANAGER) redirect("/dashboard/products");
+  const t = await getT();
 
   const categories = await db.category.findMany({
     orderBy: { name: "asc" },
@@ -19,14 +21,14 @@ export default async function NewProductPage() {
     <div className="space-y-6">
       <div>
         <Link href="/dashboard/products" className="text-sm text-neutral-500 hover:text-brand">
-          ← Back to products
+          {t("products.backToProducts")}
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold">New product</h1>
+        <h1 className="mt-1 text-2xl font-semibold">{t("products.newProduct")}</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Product details</CardTitle>
+          <CardTitle>{t("products.productDetails")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ProductForm categories={categories} />

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { uploadProductImage, deleteProductImage } from "@/server/products";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/primitives";
+import { useT } from "@/lib/i18n/client";
 
 export type ProductImageView = {
   id: string;
@@ -21,10 +22,11 @@ export function ProductImageManager({
   images: ProductImageView[];
   canManage: boolean;
 }) {
+  const t = useT();
   return (
     <div className="space-y-4">
       {images.length === 0 ? (
-        <p className="text-sm text-neutral-500">No images yet.</p>
+        <p className="text-sm text-neutral-500">{t("productImages.none")}</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {images.map((img) => (
@@ -48,6 +50,7 @@ export function ProductImageManager({
 
 function UploadImageForm({ productId }: { productId: string }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -67,13 +70,13 @@ function UploadImageForm({ productId }: { productId: string }) {
 
   return (
     <form id="upload-product-image-form" action={onSubmit} className="space-y-3 rounded-md border border-neutral-200 p-4">
-      <p className="text-sm font-medium">Add image</p>
+      <p className="text-sm font-medium">{t("productImages.addImage")}</p>
       <div>
-        <Label htmlFor="img-alt">Alt text</Label>
-        <Input id="img-alt" name="alt" placeholder="Front view" />
+        <Label htmlFor="img-alt">{t("productImages.altText")}</Label>
+        <Input id="img-alt" name="alt" placeholder={t("productImages.altPlaceholder")} />
       </div>
       <div>
-        <Label htmlFor="img-file">Image (JPEG, PNG, WebP, or GIF — max 8 MB)</Label>
+        <Label htmlFor="img-file">{t("productImages.fileLabel")}</Label>
         <Input
           id="img-file"
           name="file"
@@ -85,7 +88,7 @@ function UploadImageForm({ productId }: { productId: string }) {
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={pending}>
-        {pending ? "Uploading…" : "Upload image"}
+        {pending ? t("kybDocs.uploading") : t("productImages.uploadImage")}
       </Button>
     </form>
   );
@@ -93,6 +96,7 @@ function UploadImageForm({ productId }: { productId: string }) {
 
 function DeleteImageButton({ id }: { id: string }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
 
   return (
@@ -101,7 +105,7 @@ function DeleteImageButton({ id }: { id: string }) {
       size="sm"
       disabled={pending}
       onClick={() => {
-        if (!confirm("Delete this image?")) return;
+        if (!confirm(t("productImages.deleteConfirm"))) return;
         const fd = new FormData();
         fd.set("id", id);
         start(async () => {

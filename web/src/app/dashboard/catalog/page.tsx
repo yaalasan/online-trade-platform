@@ -5,11 +5,13 @@ import { formatPriceRange } from "@/lib/utils";
 import { Card, CardContent, Input, Label, Select } from "@/components/ui/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
+import { getT } from "@/lib/i18n/server";
 
 type SearchParams = Promise<{ q?: string; category?: string; country?: string; page?: string }>;
 
 export default async function CatalogPage({ searchParams }: { searchParams: SearchParams }) {
   await getActiveContext(); // gated by layout
+  const t = await getT();
 
   // Shared catalog read model — identical ACTIVE-only behavior as the public store.
   const f = parseCatalogFilters(await searchParams);
@@ -31,19 +33,19 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Catalog</h1>
+      <h1 className="text-2xl font-semibold">{t("catalog.title")}</h1>
 
       <Card>
         <CardContent>
           <form method="get" className="grid items-end gap-3 sm:grid-cols-4">
             <div className="sm:col-span-2">
-              <Label htmlFor="q">Search</Label>
-              <Input id="q" name="q" defaultValue={q} placeholder="Product name or keyword" />
+              <Label htmlFor="q">{t("common.search")}</Label>
+              <Input id="q" name="q" defaultValue={q} placeholder={t("products.searchPlaceholder")} />
             </div>
             <div>
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t("products.category")}</Label>
               <Select id="category" name="category" defaultValue={category}>
-                <option value="">All</option>
+                <option value="">{t("common.all")}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -52,12 +54,12 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
               </Select>
             </div>
             <div>
-              <Label htmlFor="country">Supplier country</Label>
+              <Label htmlFor="country">{t("catalog.supplierCountry")}</Label>
               <Input id="country" name="country" maxLength={2} defaultValue={country} placeholder="CN" />
             </div>
             <div className="sm:col-span-4">
               <button type="submit" className={buttonVariants({ size: "sm" })}>
-                Apply filters
+                {t("products.applyFilters")}
               </button>
             </div>
           </form>
@@ -67,7 +69,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
       {products.length === 0 ? (
         <Card>
           <CardContent>
-            <p className="text-sm text-neutral-500">No products match these filters.</p>
+            <p className="text-sm text-neutral-500">{t("catalog.noneMatch")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -81,7 +83,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.images[0].url} alt={p.images[0].alt ?? p.name} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-xs text-neutral-400">No image</span>
+                      <span className="text-xs text-neutral-400">{t("products.noImage")}</span>
                     )}
                   </div>
                   <CardContent className="space-y-1">
@@ -96,7 +98,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Sear
                         p.priceMax ? p.priceMax.toString() : null,
                         p.currency,
                       )}{" "}
-                      · MOQ {p.moq.toLocaleString()} {p.unit}
+                      · {t("products.moq")} {p.moq.toLocaleString()} {p.unit}
                     </p>
                   </CardContent>
                 </Card>

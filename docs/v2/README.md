@@ -1,4 +1,4 @@
-# SinoSource Design — v2
+# Fastflow Design — v2
 
 v2 reworks the v1 blueprint (`../ARCHITECTURE.md`, `../DATA-MODEL.md`, …) to close the findings from the
 adversarial review (ex-Amazon / ex-Stripe / ex-Alibaba lenses). v1 is kept for diff/history; **v2 is

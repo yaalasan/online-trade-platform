@@ -8,11 +8,17 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from flask import Flask, Response, g, jsonify, request, send_file, session
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
+
+# Behind nginx (TLS terminates there): trust one proxy hop's X-Forwarded-* so
+# request.scheme is "https" and secure cookies/redirects work correctly.
+if IS_PRODUCTION:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 app.secret_key = os.environ.get("SECRET_KEY")
 if not app.secret_key:
@@ -267,7 +273,7 @@ SAMPLE_USERS = [
     {"name": "Global Buyer", "email": "buyer@example.com", "password": "Password123", "company": "ProcureCo", "role": "buyer"},
     {"name": "Aurora Partner", "email": "aurora@example.com", "password": "Password123", "company": "Aurora Alloys", "role": "supplier"},
     {"name": "GreenWrap Partner", "email": "greenwrap@example.com", "password": "Password123", "company": "GreenWrap", "role": "supplier"},
-    {"name": "Trade Desk Admin", "email": "admin@example.com", "password": "Password123", "company": "SinoSource", "role": "admin"},
+    {"name": "Trade Desk Admin", "email": "admin@example.com", "password": "Password123", "company": "Fastflow", "role": "admin"},
 ]
 
 SAMPLE_PRODUCTS = [

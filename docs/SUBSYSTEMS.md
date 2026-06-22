@@ -1,4 +1,4 @@
-# SinoSource — Subsystem Designs
+# Fastflow — Subsystem Designs
 
 Each subsystem follows the required output format:
 **1) Business explanation · 2) System design · 3) Database design · 4) API endpoints ·

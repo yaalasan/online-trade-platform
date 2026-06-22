@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createRfq, updateRfq } from "@/server/rfqs";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/primitives";
+import { useT } from "@/lib/i18n/client";
 
 export type RfqFormValues = {
   title: string;
@@ -42,6 +43,7 @@ const STATUSES = ["DRAFT", "OPEN", "CLOSED", "CANCELLED"] as const;
  */
 export function RfqForm({ rfqId, defaults }: { rfqId?: string; defaults?: RfqFormValues }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const values = defaults ?? EMPTY;
@@ -54,7 +56,7 @@ export function RfqForm({ rfqId, defaults }: { rfqId?: string; defaults?: RfqFor
         formData.set("id", rfqId as string);
         const res = await updateRfq(formData);
         if (res.ok) {
-          setMsg({ kind: "ok", text: "Saved." });
+          setMsg({ kind: "ok", text: t("company.saved") });
           router.refresh();
         } else {
           setMsg({ kind: "err", text: res.error });
@@ -71,33 +73,33 @@ export function RfqForm({ rfqId, defaults }: { rfqId?: string; defaults?: RfqFor
     <form action={onSubmit} className="space-y-4">
       <fieldset disabled={pending} className="space-y-4">
         <div>
-          <Label htmlFor="title">Title</Label>
-          <Input id="title" name="title" required defaultValue={values.title} placeholder="500t cold-rolled steel coil" />
+          <Label htmlFor="title">{t("rfqForm.title")}</Label>
+          <Input id="title" name="title" required defaultValue={values.title} placeholder={t("rfqForm.titlePlaceholder")} />
         </div>
 
         <div>
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description">{t("common.description")}</Label>
           <Textarea
             id="description"
             name="description"
             rows={4}
             required
             defaultValue={values.description}
-            placeholder="Specs, tolerances, certifications, packaging…"
+            placeholder={t("rfqForm.descriptionPlaceholder")}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="category">Category</Label>
-            <Input id="category" name="category" defaultValue={values.category} placeholder="Raw materials" />
+            <Label htmlFor="category">{t("products.category")}</Label>
+            <Input id="category" name="category" defaultValue={values.category} placeholder={t("rfqForm.categoryPlaceholder")} />
           </div>
           <div>
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">{t("common.status")}</Label>
             <Select id="status" name="status" defaultValue={values.status}>
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {t(`status.rfq.${s}`)}
                 </option>
               ))}
             </Select>
@@ -106,7 +108,7 @@ export function RfqForm({ rfqId, defaults }: { rfqId?: string; defaults?: RfqFor
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="quantity">Quantity</Label>
+            <Label htmlFor="quantity">{t("rfqs.quantity")}</Label>
             <Input
               id="quantity"
               name="quantity"
@@ -119,14 +121,14 @@ export function RfqForm({ rfqId, defaults }: { rfqId?: string; defaults?: RfqFor
             />
           </div>
           <div>
-            <Label htmlFor="unit">Unit</Label>
-            <Input id="unit" name="unit" required defaultValue={values.unit} placeholder="pcs / kg / m" />
+            <Label htmlFor="unit">{t("productForm.unit")}</Label>
+            <Input id="unit" name="unit" required defaultValue={values.unit} placeholder={t("rfqForm.unitPlaceholder")} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="targetPrice">Target price / unit</Label>
+            <Label htmlFor="targetPrice">{t("rfqs.targetPrice")}</Label>
             <Input
               id="targetPrice"
               name="targetPrice"
@@ -134,22 +136,22 @@ export function RfqForm({ rfqId, defaults }: { rfqId?: string; defaults?: RfqFor
               min={0}
               step="0.01"
               defaultValue={values.targetPrice}
-              placeholder="Indicative budget (optional)"
+              placeholder={t("rfqForm.targetPlaceholder")}
             />
           </div>
           <div>
-            <Label htmlFor="currency">Currency (ISO-3)</Label>
+            <Label htmlFor="currency">{t("productForm.currency")}</Label>
             <Input id="currency" name="currency" maxLength={3} defaultValue={values.currency} placeholder="USD" />
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <Label htmlFor="incoterm">Incoterm</Label>
+            <Label htmlFor="incoterm">{t("rfqs.incoterm")}</Label>
             <Input id="incoterm" name="incoterm" maxLength={12} defaultValue={values.incoterm} placeholder="FOB" />
           </div>
           <div>
-            <Label htmlFor="destinationCountry">Destination (ISO-2)</Label>
+            <Label htmlFor="destinationCountry">{t("rfqForm.destination")}</Label>
             <Input
               id="destinationCountry"
               name="destinationCountry"
@@ -159,13 +161,13 @@ export function RfqForm({ rfqId, defaults }: { rfqId?: string; defaults?: RfqFor
             />
           </div>
           <div>
-            <Label htmlFor="needBy">Need by</Label>
+            <Label htmlFor="needBy">{t("rfqs.needBy")}</Label>
             <Input id="needBy" name="needBy" type="date" defaultValue={values.needBy} />
           </div>
         </div>
 
         <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : isEdit ? "Save changes" : "Create RFQ"}
+          {pending ? t("common.saving") : isEdit ? t("company.saveChanges") : t("rfqForm.createRfq")}
         </Button>
       </fieldset>
 

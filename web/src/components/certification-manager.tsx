@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addCertification, deleteCertification } from "@/server/manufacturer";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/primitives";
+import { useT } from "@/lib/i18n/client";
 
 export type CertificationView = {
   id: string;
@@ -23,10 +24,11 @@ export function CertificationManager({
   certifications: CertificationView[];
   canManage: boolean;
 }) {
+  const t = useT();
   return (
     <div className="space-y-4">
       {certifications.length === 0 ? (
-        <p className="text-sm text-neutral-500">No certifications added yet.</p>
+        <p className="text-sm text-neutral-500">{t("certManager.none")}</p>
       ) : (
         <ul className="divide-y divide-neutral-100">
           {certifications.map((c) => (
@@ -35,12 +37,12 @@ export function CertificationManager({
                 <p className="text-sm font-medium">{c.name}</p>
                 <p className="truncate text-xs text-neutral-500">
                   {[c.issuer, c.certificateNo].filter(Boolean).join(" · ") || "—"}
-                  {c.expiresAt ? ` · expires ${c.expiresAt}` : ""}
+                  {c.expiresAt ? ` · ${t("suppliers.expires", { date: c.expiresAt })}` : ""}
                   {c.documentUrl ? (
                     <>
                       {" · "}
                       <a href={c.documentUrl} target="_blank" rel="noreferrer" className="text-brand hover:underline">
-                        document
+                        {t("suppliers.documentLink")}
                       </a>
                     </>
                   ) : null}
@@ -59,6 +61,7 @@ export function CertificationManager({
 
 function AddCertificationForm() {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -77,36 +80,36 @@ function AddCertificationForm() {
 
   return (
     <form id="add-certification-form" action={onSubmit} className="space-y-3 rounded-md border border-neutral-200 p-4">
-      <p className="text-sm font-medium">Add a certification</p>
+      <p className="text-sm font-medium">{t("certManager.addTitle")}</p>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="cert-name">Name</Label>
+          <Label htmlFor="cert-name">{t("common.name")}</Label>
           <Input id="cert-name" name="name" required placeholder="ISO 9001" />
         </div>
         <div>
-          <Label htmlFor="cert-issuer">Issuer</Label>
+          <Label htmlFor="cert-issuer">{t("certManager.issuer")}</Label>
           <Input id="cert-issuer" name="issuer" placeholder="SGS" />
         </div>
         <div>
-          <Label htmlFor="cert-no">Certificate no.</Label>
+          <Label htmlFor="cert-no">{t("certManager.certNo")}</Label>
           <Input id="cert-no" name="certificateNo" placeholder="CN-12345" />
         </div>
         <div>
-          <Label htmlFor="cert-doc">Document URL</Label>
+          <Label htmlFor="cert-doc">{t("certManager.docUrl")}</Label>
           <Input id="cert-doc" name="documentUrl" type="url" placeholder="https://…" />
         </div>
         <div>
-          <Label htmlFor="cert-issued">Issued</Label>
+          <Label htmlFor="cert-issued">{t("certManager.issued")}</Label>
           <Input id="cert-issued" name="issuedAt" type="date" />
         </div>
         <div>
-          <Label htmlFor="cert-expires">Expires</Label>
+          <Label htmlFor="cert-expires">{t("certManager.expiresLabel")}</Label>
           <Input id="cert-expires" name="expiresAt" type="date" />
         </div>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={pending}>
-        {pending ? "Adding…" : "Add certification"}
+        {pending ? t("memberForm.adding") : t("certManager.addCert")}
       </Button>
     </form>
   );
@@ -114,6 +117,7 @@ function AddCertificationForm() {
 
 function DeleteCertificationButton({ id }: { id: string }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
 
   return (
@@ -122,7 +126,7 @@ function DeleteCertificationButton({ id }: { id: string }) {
       size="sm"
       disabled={pending}
       onClick={() => {
-        if (!confirm("Remove this certification?")) return;
+        if (!confirm(t("certManager.removeConfirm"))) return;
         const fd = new FormData();
         fd.set("id", id);
         start(async () => {
@@ -132,7 +136,7 @@ function DeleteCertificationButton({ id }: { id: string }) {
         });
       }}
     >
-      Remove
+      {t("common.remove")}
     </Button>
   );
 }

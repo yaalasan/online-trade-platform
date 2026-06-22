@@ -11,7 +11,7 @@ import { run, type ActionResult } from "@/server/action-result";
 
 /**
  * Raise an introduction request. Any active member may inquire — it is a low-stakes
- * request handled by SinoSource. Scope (requesting company) is server-derived.
+ * request handled by Fastflow. Scope (requesting company) is server-derived.
  * Targets reference public contacts; an `rfqId` must belong to the requester.
  */
 export async function createInquiry(formData: FormData): Promise<ActionResult<{ inquiryId: string }>> {
@@ -85,7 +85,7 @@ export async function createInquiry(formData: FormData): Promise<ActionResult<{ 
   });
 }
 
-/** Broker: update an inquiry's status and internal notes. SinoSource staff only. */
+/** Broker: update an inquiry's status and internal notes. Fastflow staff only. */
 export async function updateInquiry(formData: FormData): Promise<ActionResult> {
   return run(async () => {
     const staff = await requirePlatformStaff();

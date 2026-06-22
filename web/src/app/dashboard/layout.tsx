@@ -4,24 +4,27 @@ import { UserButton } from "@clerk/nextjs";
 import { ensureUserSynced, getActiveContext } from "@/lib/auth/session";
 import { CompanySwitcher } from "@/components/company-switcher";
 import { RoleBadge } from "@/components/ui/primitives";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { getT } from "@/lib/i18n/server";
 
 const NAV = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/suppliers", label: "Suppliers" },
-  { href: "/dashboard/catalog", label: "Catalog" },
-  { href: "/dashboard/rfqs", label: "RFQs" },
-  { href: "/dashboard/inquiries", label: "Inquiries" },
-  { href: "/dashboard/products", label: "Products" },
-  { href: "/dashboard/profile", label: "Profile" },
-  { href: "/dashboard/verification", label: "Verification" },
-  { href: "/dashboard/members", label: "Members" },
-  { href: "/dashboard/settings", label: "Settings" },
+  { href: "/dashboard", key: "nav.overview" },
+  { href: "/dashboard/suppliers", key: "nav.suppliers" },
+  { href: "/dashboard/catalog", key: "nav.catalog" },
+  { href: "/dashboard/rfqs", key: "nav.rfqs" },
+  { href: "/dashboard/inquiries", key: "nav.inquiries" },
+  { href: "/dashboard/products", key: "nav.products" },
+  { href: "/dashboard/profile", key: "nav.profile" },
+  { href: "/dashboard/verification", key: "nav.verification" },
+  { href: "/dashboard/members", key: "nav.members" },
+  { href: "/dashboard/settings", key: "nav.settings" },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   await ensureUserSynced();
   const ctx = await getActiveContext();
   if (!ctx) redirect("/onboarding"); // signed in but no company yet
+  const t = await getT();
 
   const options = ctx.user.memberships.map((m) => ({
     companyId: m.companyId,
@@ -29,11 +32,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     role: m.role,
   }));
 
-  // SinoSource staff get the broker queue; ADMINs additionally get the KYB review
+  // Fastflow staff get the broker queue; ADMINs additionally get the KYB review
   // queue. Ordinary users never see either.
   const staffNav = [
-    ...(ctx.user.platformRole !== "NONE" ? [{ href: "/dashboard/broker", label: "Broker" }] : []),
-    ...(ctx.user.platformRole === "ADMIN" ? [{ href: "/dashboard/kyb", label: "KYB" }] : []),
+    ...(ctx.user.platformRole !== "NONE" ? [{ href: "/dashboard/broker", key: "nav.broker" }] : []),
+    ...(ctx.user.platformRole === "ADMIN" ? [{ href: "/dashboard/kyb", key: "nav.kyb" }] : []),
   ];
   const nav = [...NAV, ...staffNav];
 
@@ -43,18 +46,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5">
           <div className="flex items-center gap-3">
             <Link href="/dashboard" className="font-semibold">
-              Sino<span className="text-brand">Source</span>
+              Fast<span className="text-brand">flow</span>
             </Link>
             <CompanySwitcher options={options} activeCompanyId={ctx.company.id} />
             <Link
               href="/dashboard/companies/new"
               className="whitespace-nowrap rounded-md border border-neutral-200 px-2 py-1 text-sm text-neutral-600 hover:border-brand hover:text-brand"
             >
-              + New company
+              {t("nav.newCompany")}
             </Link>
             <RoleBadge role={ctx.role} />
           </div>
-          <UserButton />
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <UserButton />
+          </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 px-5">
           {nav.map((item) => (
@@ -63,7 +69,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               href={item.href}
               className="border-b-2 border-transparent px-3 py-2 text-sm text-neutral-600 hover:border-brand hover:text-brand"
             >
-              {item.label}
+              {t(item.key)}
             </Link>
           ))}
         </nav>

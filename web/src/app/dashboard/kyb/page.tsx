@@ -14,6 +14,7 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
 import { KybReviewControls } from "@/components/kyb-review-controls";
+import { getT } from "@/lib/i18n/server";
 
 const PAGE_SIZE = 20;
 const STATUS_VALUES: VerificationCaseStatus[] = ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "APPROVED", "REJECTED"];
@@ -21,9 +22,10 @@ const STATUS_VALUES: VerificationCaseStatus[] = ["DRAFT", "SUBMITTED", "UNDER_RE
 type SearchParams = Promise<{ status?: string; page?: string }>;
 
 export default async function KybPage({ searchParams }: { searchParams: SearchParams }) {
-  // SinoSource ADMIN only.
+  // Fastflow ADMIN only.
   const me = await getPlatformUser();
   if (!me || me.platformRole !== "ADMIN") redirect("/dashboard");
+  const t = await getT();
   const sp = await searchParams;
 
   // Default view focuses on what needs action.
@@ -59,26 +61,26 @@ export default async function KybPage({ searchParams }: { searchParams: SearchPa
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">KYB review</h1>
-        <span className="text-sm text-neutral-500">{total} in view</span>
+        <h1 className="text-2xl font-semibold">{t("kyb.title")}</h1>
+        <span className="text-sm text-neutral-500">{t("kyb.inView", { count: total })}</span>
       </div>
 
       <Card>
         <CardContent>
           <form method="get" className="flex items-end gap-3">
             <div>
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t("common.status")}</Label>
               <Select id="status" name="status" defaultValue={status} className="w-48">
-                <option value="">Awaiting action</option>
+                <option value="">{t("kyb.awaitingAction")}</option>
                 {STATUS_VALUES.map((s) => (
                   <option key={s} value={s}>
-                    {s.replace("_", " ")}
+                    {t(`status.case.${s}`)}
                   </option>
                 ))}
               </Select>
             </div>
             <button type="submit" className={buttonVariants({ size: "sm" })}>
-              Filter
+              {t("broker.filter")}
             </button>
           </form>
         </CardContent>
@@ -87,7 +89,7 @@ export default async function KybPage({ searchParams }: { searchParams: SearchPa
       {cases.length === 0 ? (
         <Card>
           <CardContent>
-            <p className="text-sm text-neutral-500">Nothing to review.</p>
+            <p className="text-sm text-neutral-500">{t("kyb.nothingToReview")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -104,7 +106,9 @@ export default async function KybPage({ searchParams }: { searchParams: SearchPa
                       {c.registeredCountry || c.manufacturer.country
                         ? ` · ${c.registeredCountry ?? c.manufacturer.country}`
                         : ""}
-                      {c.submittedAt ? ` · submitted ${c.submittedAt.toLocaleDateString()}` : ""}
+                      {c.submittedAt
+                        ? ` · ${t("kyb.submittedOn", { date: c.submittedAt.toLocaleDateString() })}`
+                        : ""}
                     </p>
                   </div>
                   <CaseStatusBadge status={c.status} />
@@ -114,16 +118,16 @@ export default async function KybPage({ searchParams }: { searchParams: SearchPa
                     <p className="text-sm text-neutral-700">{c.registeredAddress}</p>
                   )}
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-neutral-400">Documents</p>
+                    <p className="text-xs uppercase tracking-wide text-neutral-400">{t("verification.documents")}</p>
                     {c.documents.length === 0 ? (
-                      <p className="text-sm text-neutral-500">None attached.</p>
+                      <p className="text-sm text-neutral-500">{t("kyb.noneAttached")}</p>
                     ) : (
                       <ul className="mt-1 space-y-1 text-sm">
                         {c.documents.map((d) => (
                           <li key={d.id}>
                             <span className="text-neutral-500">{d.type.replace(/_/g, " ")}:</span>{" "}
                             <a href={d.url} target="_blank" rel="noreferrer" className="text-brand hover:underline">
-                              {d.fileName ?? "view"}
+                              {d.fileName ?? t("common.view")}
                             </a>
                           </li>
                         ))}

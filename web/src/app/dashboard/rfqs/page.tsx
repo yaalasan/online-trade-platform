@@ -4,12 +4,14 @@ import { ROLE_RANK } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { Card, CardContent, RfqStatusBadge } from "@/components/ui/primitives";
 import { buttonVariants } from "@/components/ui/button";
+import { getT } from "@/lib/i18n/server";
 
 export default async function RfqsPage() {
   // Layout already guarantees an active context.
   const ctx = (await getActiveContext())!;
   const { company, role } = ctx;
   const canManage = ROLE_RANK[role] >= ROLE_RANK.MANAGER;
+  const t = await getT();
 
   const rfqs = await db.rfq.findMany({
     where: { companyId: company.id },
@@ -20,10 +22,10 @@ export default async function RfqsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">RFQs</h1>
+        <h1 className="text-2xl font-semibold">{t("rfqs.title")}</h1>
         {canManage && (
           <Link href="/dashboard/rfqs/new" className={buttonVariants()}>
-            New RFQ
+            {t("rfqs.newRfq")}
           </Link>
         )}
       </div>
@@ -32,10 +34,8 @@ export default async function RfqsPage() {
         <Card>
           <CardContent>
             <p className="text-sm text-neutral-500">
-              No RFQs yet.{" "}
-              {canManage
-                ? "Create one to start sourcing."
-                : "Ask a manager or owner to create one."}
+              {t("rfqs.noneYet")}{" "}
+              {canManage ? t("rfqs.createToStart") : t("rfqs.askManagerOwner")}
             </p>
           </CardContent>
         </Card>
@@ -52,10 +52,12 @@ export default async function RfqsPage() {
                   <p className="truncate text-sm font-medium">{r.title}</p>
                   <p className="truncate text-xs text-neutral-500">
                     {r.quantity.toLocaleString()} {r.unit}
-                    {r.category ? ` · ${r.category}` : ""} · raised by{" "}
-                    {r.createdBy
-                      ? r.createdBy.firstName ?? r.createdBy.email
-                      : "former member"}{" "}
+                    {r.category ? ` · ${r.category}` : ""} ·{" "}
+                    {t("rfqs.raisedBy", {
+                      name: r.createdBy
+                        ? r.createdBy.firstName ?? r.createdBy.email
+                        : t("rfqs.formerMember"),
+                    })}{" "}
                     · {r.createdAt.toLocaleDateString()}
                   </p>
                 </div>

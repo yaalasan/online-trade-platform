@@ -1,5 +1,5 @@
 {
-  "name": "sinosource-web",
+  "name": "fastflow-web",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -17,6 +17,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@clerk/localizations": "^4.9.2",
     "@clerk/nextjs": "^6.12.0",
     "@prisma/client": "^6.5.0",
     "class-variance-authority": "^0.7.1",

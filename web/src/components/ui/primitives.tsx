@@ -1,5 +1,8 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
 
 // A small set of shadcn-style primitives kept in one file for the foundation.
 
@@ -80,9 +83,10 @@ const ROLE_STYLES: Record<string, string> = {
 };
 
 export function RoleBadge({ role }: { role: string }) {
+  const t = useT();
   return (
     <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", ROLE_STYLES[role] ?? ROLE_STYLES.MEMBER)}>
-      {role}
+      {t(`roles.${role}`)}
     </span>
   );
 }
@@ -95,6 +99,7 @@ const RFQ_STATUS_STYLES: Record<string, string> = {
 };
 
 export function RfqStatusBadge({ status }: { status: string }) {
+  const t = useT();
   return (
     <span
       className={cn(
@@ -102,7 +107,7 @@ export function RfqStatusBadge({ status }: { status: string }) {
         RFQ_STATUS_STYLES[status] ?? RFQ_STATUS_STYLES.DRAFT,
       )}
     >
-      {status}
+      {t(`status.rfq.${status}`)}
     </span>
   );
 }
@@ -114,6 +119,7 @@ const PRODUCT_STATUS_STYLES: Record<string, string> = {
 };
 
 export function ProductStatusBadge({ status }: { status: string }) {
+  const t = useT();
   return (
     <span
       className={cn(
@@ -121,7 +127,7 @@ export function ProductStatusBadge({ status }: { status: string }) {
         PRODUCT_STATUS_STYLES[status] ?? PRODUCT_STATUS_STYLES.DRAFT,
       )}
     >
-      {status}
+      {t(`status.product.${status}`)}
     </span>
   );
 }
@@ -134,6 +140,7 @@ const INQUIRY_STATUS_STYLES: Record<string, string> = {
 };
 
 export function InquiryStatusBadge({ status }: { status: string }) {
+  const t = useT();
   return (
     <span
       className={cn(
@@ -141,7 +148,7 @@ export function InquiryStatusBadge({ status }: { status: string }) {
         INQUIRY_STATUS_STYLES[status] ?? INQUIRY_STATUS_STYLES.NEW,
       )}
     >
-      {status.replace("_", " ")}
+      {t(`status.inquiry.${status}`)}
     </span>
   );
 }
@@ -153,13 +160,6 @@ const VERIFICATION_STYLES: Record<string, string> = {
   REJECTED: "bg-red-50 text-red-700",
 };
 
-const VERIFICATION_LABELS: Record<string, string> = {
-  UNVERIFIED: "Unverified",
-  PENDING: "Pending review",
-  VERIFIED: "Verified",
-  REJECTED: "Rejected",
-};
-
 const CASE_STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-neutral-100 text-neutral-600",
   SUBMITTED: "bg-blue-50 text-blue-700",
@@ -169,6 +169,7 @@ const CASE_STATUS_STYLES: Record<string, string> = {
 };
 
 export function CaseStatusBadge({ status }: { status: string }) {
+  const t = useT();
   return (
     <span
       className={cn(
@@ -176,12 +177,13 @@ export function CaseStatusBadge({ status }: { status: string }) {
         CASE_STATUS_STYLES[status] ?? CASE_STATUS_STYLES.DRAFT,
       )}
     >
-      {status.replace("_", " ")}
+      {t(`status.case.${status}`)}
     </span>
   );
 }
 
 export function VerificationBadge({ status }: { status: string }) {
+  const t = useT();
   return (
     <span
       className={cn(
@@ -189,7 +191,7 @@ export function VerificationBadge({ status }: { status: string }) {
         VERIFICATION_STYLES[status] ?? VERIFICATION_STYLES.UNVERIFIED,
       )}
     >
-      {VERIFICATION_LABELS[status] ?? status}
+      {t(`status.verification.${status}`)}
     </span>
   );
 }

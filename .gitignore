@@ -15,3 +15,6 @@ data.db
 
 # Binary design docs (kept locally, not in the repo)
 *.odt
+
+# local DB backups
+data.db.bak-*

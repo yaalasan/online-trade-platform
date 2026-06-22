@@ -1,6 +1,6 @@
-# SinoSource Supplier Portal
+# Fastflow Supplier Portal
 
-The supplier/manufacturer + staff workspace for SinoSource. Buyers do **not** use
+The supplier/manufacturer + staff workspace for Fastflow. Buyers do **not** use
 this app — they use the Flask buyer site (see the [root README](../README.md)).
 This portal publishes the catalog that the buyer site reads over an API bridge.
 

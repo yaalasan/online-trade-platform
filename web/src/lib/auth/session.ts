@@ -4,7 +4,7 @@ import type { Company, Membership, MembershipRole, User } from "@prisma/client";
 import { db } from "@/lib/db";
 
 /**
- * Bootstrap allowlist for SinoSource staff. Emails here are granted ADMIN
+ * Bootstrap allowlist for Fastflow staff. Emails here are granted ADMIN
  * platformRole on first sync, so a fresh deployment has an admin without manual
  * DB edits. Already-synced users are granted via the staff admin path, not here.
  */

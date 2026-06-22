@@ -1,4 +1,4 @@
-# SinoSource — Production Architecture (Blueprint)
+# Fastflow — Production Architecture (Blueprint)
 
 > Author role: Principal / Security Architect & CTO.
 > Status: **Design blueprint.** The current repo (`main.py` + `index.html` + `app.js`) is a

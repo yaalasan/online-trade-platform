@@ -1,4 +1,4 @@
-# SinoSource — Security Architecture
+# Fastflow — Security Architecture
 
 Threat model: a trust marketplace moving money between cross-border strangers is a **high-value
 fraud target**. Security is a first-class domain, not a checklist. Default posture: **deny by

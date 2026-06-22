@@ -9,11 +9,13 @@ import {
 import { CategorySelector } from "@/components/category-selector";
 import { CertificationManager, type CertificationView } from "@/components/certification-manager";
 import { MediaManager, type MediaView } from "@/components/media-manager";
+import { getT } from "@/lib/i18n/server";
 
 export default async function ProfilePage() {
   const ctx = (await getActiveContext())!;
   const { company, role } = ctx;
   const canManage = ROLE_RANK[role] >= ROLE_RANK.MANAGER;
+  const t = await getT();
 
   const [manufacturer, categories] = await Promise.all([
     db.manufacturer.findUnique({
@@ -64,13 +66,13 @@ export default async function ProfilePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Supplier profile</h1>
+        <h1 className="text-2xl font-semibold">{t("profile.title")}</h1>
         <VerificationBadge status={manufacturer?.verification ?? "UNVERIFIED"} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Factory information</CardTitle>
+          <CardTitle>{t("profile.factoryInfo")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ManufacturerProfileForm values={values} readOnly={!canManage} />
@@ -79,7 +81,7 @@ export default async function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Product categories</CardTitle>
+          <CardTitle>{t("profile.categories")}</CardTitle>
         </CardHeader>
         <CardContent>
           <CategorySelector categories={categories} selectedIds={selectedCategoryIds} readOnly={!canManage} />
@@ -88,7 +90,7 @@ export default async function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Certifications</CardTitle>
+          <CardTitle>{t("profile.certifications")}</CardTitle>
         </CardHeader>
         <CardContent>
           <CertificationManager certifications={certifications} canManage={canManage} />
@@ -97,7 +99,7 @@ export default async function ProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Factory photos & documents</CardTitle>
+          <CardTitle>{t("profile.photosDocs")}</CardTitle>
         </CardHeader>
         <CardContent>
           <MediaManager media={media} canManage={canManage} />

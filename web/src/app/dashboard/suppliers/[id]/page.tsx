@@ -4,10 +4,12 @@ import { getActiveContext } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle, VerificationBadge } from "@/components/ui/primitives";
 import { InquiryForm } from "@/components/inquiry-form";
+import { getT } from "@/lib/i18n/server";
 
 export default async function SupplierDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await getActiveContext(); // gated by layout; keeps the route authenticated
   const { id } = await params;
+  const t = await getT();
 
   const s = await db.manufacturer.findUnique({
     where: { id },
@@ -33,7 +35,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
     <div className="space-y-6">
       <div>
         <Link href="/dashboard/suppliers" className="text-sm text-neutral-500 hover:text-brand">
-          ← Back to suppliers
+          {t("suppliers.backToSuppliers")}
         </Link>
         <div className="mt-1 flex items-center gap-3">
           <h1 className="text-2xl font-semibold">{s.factoryName || s.company.name}</h1>
@@ -53,7 +55,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
       {s.description && (
         <Card>
           <CardHeader>
-            <CardTitle>About</CardTitle>
+            <CardTitle>{t("suppliers.about")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="whitespace-pre-wrap text-sm text-neutral-800">{s.description}</p>
@@ -63,16 +65,16 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
 
       <Card>
         <CardHeader>
-          <CardTitle>Factory information</CardTitle>
+          <CardTitle>{t("profile.factoryInfo")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
-          <Detail label="Year established" value={s.yearEstablished?.toString() ?? "—"} />
-          <Detail label="Employees" value={s.employeeCount?.toLocaleString() ?? "—"} />
-          <Detail label="Annual output" value={s.annualOutput ?? "—"} />
-          <Detail label="Production capacity" value={s.productionCapacity ?? "—"} />
-          <Detail label="Address" value={s.address ?? "—"} />
+          <Detail label={t("suppliers.yearEstablished")} value={s.yearEstablished?.toString() ?? "—"} />
+          <Detail label={t("suppliers.employees")} value={s.employeeCount?.toLocaleString() ?? "—"} />
+          <Detail label={t("suppliers.annualOutput")} value={s.annualOutput ?? "—"} />
+          <Detail label={t("suppliers.productionCapacity")} value={s.productionCapacity ?? "—"} />
+          <Detail label={t("suppliers.address")} value={s.address ?? "—"} />
           <Detail
-            label="Categories"
+            label={t("suppliers.categoriesLabel")}
             value={s.categories.map((c) => c.category.name).join(", ") || "—"}
           />
         </CardContent>
@@ -81,7 +83,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
       {s.products.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Products</CardTitle>
+            <CardTitle>{t("products.title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -96,7 +98,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.images[0].url} alt={p.images[0].alt ?? p.name} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-xs text-neutral-400">No image</span>
+                      <span className="text-xs text-neutral-400">{t("products.noImage")}</span>
                     )}
                   </div>
                   <p className="truncate p-2 text-xs font-medium">{p.name}</p>
@@ -110,7 +112,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
       {s.certifications.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Certifications</CardTitle>
+            <CardTitle>{t("profile.certifications")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="divide-y divide-neutral-100">
@@ -119,13 +121,13 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
                   <span className="font-medium">{c.name}</span>
                   <span className="text-neutral-500">
                     {c.issuer ? ` · ${c.issuer}` : ""}
-                    {c.expiresAt ? ` · expires ${c.expiresAt.toLocaleDateString()}` : ""}
+                    {c.expiresAt ? ` · ${t("suppliers.expires", { date: c.expiresAt.toLocaleDateString() })}` : ""}
                   </span>
                   {c.documentUrl && (
                     <>
                       {" · "}
                       <a href={c.documentUrl} target="_blank" rel="noreferrer" className="text-brand hover:underline">
-                        document
+                        {t("suppliers.documentLink")}
                       </a>
                     </>
                   )}
@@ -139,7 +141,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
       {photos.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Factory photos</CardTitle>
+            <CardTitle>{t("suppliers.factoryPhotos")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -158,12 +160,12 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
       {docs.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Documents</CardTitle>
+            <CardTitle>{t("verification.documents")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
             {docs.map((m) => (
               <a key={m.id} href={m.url} target="_blank" rel="noreferrer" className="block text-sm text-brand hover:underline">
-                {m.caption || m.fileName || "Document"}
+                {m.caption || m.fileName || t("suppliers.documentFallback")}
               </a>
             ))}
           </CardContent>

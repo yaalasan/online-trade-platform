@@ -1,4 +1,4 @@
-// SinoSource — Foundation schema (auth, orgs, membership, RBAC, audit).
+// Fastflow — Foundation schema (auth, orgs, membership, RBAC, audit).
 // Scope: foundation only. No products/RFQs/orders/payments here by design.
 
 generator client {
@@ -55,7 +55,7 @@ enum ProductStatus {
   ARCHIVED
 }
 
-// Cross-tenant SinoSource staff role, independent of company memberships. STAFF
+// Cross-tenant Fastflow staff role, independent of company memberships. STAFF
 // can work the broker queue; ADMIN can additionally approve KYB. NONE = ordinary
 // external user. Granted out-of-band (env allowlist / DB), never self-assigned.
 enum PlatformRole {
@@ -64,7 +64,7 @@ enum PlatformRole {
   ADMIN
 }
 
-// A request, raised by a company, for SinoSource to broker an introduction.
+// A request, raised by a company, for Fastflow to broker an introduction.
 enum InquiryKind {
   SUPPLIER // interested in a manufacturer/supplier profile
   PRODUCT // interested in a specific product
@@ -109,7 +109,7 @@ model User {
   /// on every read — never trusted from the client. Null => fall back to first membership.
   activeCompanyId String?
 
-  /// SinoSource staff capability, orthogonal to company memberships.
+  /// Fastflow staff capability, orthogonal to company memberships.
   platformRole PlatformRole @default(NONE)
 
   memberships       Membership[]
@@ -382,9 +382,9 @@ model ProductCategory {
   @@index([categoryId])
 }
 
-/// A request, raised by a company, for SinoSource to broker an introduction to a
+/// A request, raised by a company, for Fastflow to broker an introduction to a
 /// supplier / product / requirement. Lands in the staff broker queue. `brokerNotes`
-/// is internal to SinoSource and never exposed to the requesting company.
+/// is internal to Fastflow and never exposed to the requesting company.
 model Inquiry {
   id              String        @id @default(cuid())
   companyId       String? // requesting company; null for public (anonymous) sourcing leads
@@ -428,7 +428,7 @@ model Inquiry {
 }
 
 /// A KYB verification application for a manufacturer. The company drafts it,
-/// attaches documents, and submits; a SinoSource ADMIN approves/rejects, which
+/// attaches documents, and submits; a Fastflow ADMIN approves/rejects, which
 /// drives the denormalized `Manufacturer.verification` badge.
 model VerificationCase {
   id             String                 @id @default(cuid())

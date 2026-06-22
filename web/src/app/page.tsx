@@ -2,6 +2,8 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { getT } from "@/lib/i18n/server";
 
 /**
  * Portal landing. This app is the supplier/manufacturer + staff workspace — buyers
@@ -11,27 +13,27 @@ export default async function HomePage() {
   const { userId } = await auth();
   if (userId) redirect("/dashboard");
 
+  const t = await getT();
   const mainSite = process.env.NEXT_PUBLIC_MAIN_SITE_URL || "http://localhost:5000";
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center gap-6 px-6 text-center">
+      <div className="absolute right-6 top-6">
+        <LanguageSwitcher />
+      </div>
       <h1 className="text-4xl font-bold tracking-tight">
-        SinoSource <span className="text-brand">Supplier Portal</span>
+        {t("landing.title")} <span className="text-brand">{t("landing.titleAccent")}</span>
       </h1>
-      <p className="max-w-xl text-neutral-600">
-        For manufacturers and suppliers: create your company, add products, photos and
-        certifications, and get verified. Everything you publish appears on the SinoSource
-        marketplace for buyers automatically.
-      </p>
+      <p className="max-w-xl text-neutral-600">{t("landing.blurb")}</p>
       <div className="flex flex-wrap justify-center gap-3">
         <Link href="/sign-up" className={buttonVariants()}>
-          List your company
+          {t("landing.listCompany")}
         </Link>
         <Link href="/sign-in" className={buttonVariants({ variant: "outline" })}>
-          Sign in
+          {t("landing.signIn")}
         </Link>
         <a href={mainSite} className={buttonVariants({ variant: "outline" })}>
-          ← Back to main site
+          {t("landing.backToMain")}
         </a>
       </div>
     </main>
