@@ -8,12 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle, ProductStatusBadge } from "@/
 import { ProductForm, type ProductFormValues } from "@/components/product-form";
 import { ProductImageManager, type ProductImageView } from "@/components/product-image-manager";
 import { DeleteProductButton } from "@/components/delete-product-button";
+import { getT } from "@/lib/i18n/server";
 
 export default async function ProductEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = (await getActiveContext())!;
   const { company, role } = ctx;
   const canManage = ROLE_RANK[role] >= ROLE_RANK.MANAGER;
+  const t = await getT();
 
   const product = await db.product.findFirst({
     where: { id, manufacturer: { companyId: company.id } },
@@ -51,7 +53,7 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link href="/dashboard/products" className="text-sm text-neutral-500 hover:text-brand">
-            ← Back to products
+            {t("products.backToProducts")}
           </Link>
           <div className="mt-1 flex items-center gap-3">
             <h1 className="text-2xl font-semibold">{product.name}</h1>
@@ -63,7 +65,7 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
 
       <Card>
         <CardHeader>
-          <CardTitle>Images</CardTitle>
+          <CardTitle>{t("products.images")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ProductImageManager productId={product.id} images={images} canManage={canManage} />
@@ -72,7 +74,7 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
 
       <Card>
         <CardHeader>
-          <CardTitle>Details</CardTitle>
+          <CardTitle>{t("products.details")}</CardTitle>
         </CardHeader>
         <CardContent>
           {canManage ? (
@@ -83,7 +85,7 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
               selectedCategoryIds={product.categories.map((c) => c.categoryId)}
             />
           ) : (
-            <p className="text-sm text-neutral-500">Your role can view but not edit products.</p>
+            <p className="text-sm text-neutral-500">{t("products.roleViewOnly")}</p>
           )}
         </CardContent>
       </Card>

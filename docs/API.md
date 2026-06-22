@@ -1,4 +1,4 @@
-# SinoSource — API Specification & RBAC
+# Fastflow — API Specification & RBAC
 
 REST over HTTPS (JSON). A typed BFF (tRPC/GraphQL optional) sits in front for the Next.js app;
 external/partner integrations use the versioned REST API below. Contract is **OpenAPI 3.1**,
@@ -6,7 +6,7 @@ generated from NestJS decorators and published to `/docs`.
 
 ## 1. Conventions
 
-- **Base:** `https://api.sinosource.com/v1` (URL-versioned; breaking changes → `/v2`).
+- **Base:** `https://api.fastflow.global/v1` (URL-versioned; breaking changes → `/v2`).
 - **AuthN:** `Authorization: Bearer <JWT>` from Clerk/Auth0; validated against JWKS. Service-to-service uses short-lived mTLS or signed service tokens.
 - **AuthZ:** every endpoint declares a required permission (`<resource>:<action>`); see §3.
 - **Tenancy/scoping:** the principal's `companyId` is derived from the token, **never** from the request body. Row-level filters are applied server-side (the prototype's critical bug was trusting a client-supplied company string — forbidden here).
@@ -15,7 +15,7 @@ generated from NestJS decorators and published to `/docs`.
 - **Filtering/sort:** explicit allowlisted fields only (no arbitrary query → SQL).
 - **Errors:** RFC 9457 `application/problem+json`:
   ```json
-  { "type":"https://errors.sinosource.com/forbidden","title":"Forbidden",
+  { "type":"https://errors.fastflow.global/forbidden","title":"Forbidden",
     "status":403,"detail":"Missing permission order:release_escrow","traceId":"..." }
   ```
 - **Rate limits:** per-principal + per-IP token buckets (Redis); `429` with `Retry-After`.

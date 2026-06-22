@@ -5,19 +5,20 @@ import { useRouter } from "next/navigation";
 import { createInquiry } from "@/server/inquiries";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/primitives";
+import { useT } from "@/lib/i18n/client";
 
 type InquiryKind = "SUPPLIER" | "PRODUCT" | "RFQ" | "GENERAL";
 
 /**
  * "Request introduction" control. Collapsed to a button until opened; on submit it
- * sends an inquiry to the SinoSource broker queue with the (hidden) target context.
+ * sends an inquiry to the Fastflow broker queue with the (hidden) target context.
  */
 export function InquiryForm({
   kind,
   targetManufacturerId,
   targetProductId,
   rfqId,
-  label = "Request introduction",
+  label,
 }: {
   kind: InquiryKind;
   targetManufacturerId?: string;
@@ -26,6 +27,7 @@ export function InquiryForm({
   label?: string;
 }) {
   const router = useRouter();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [pending, start] = useTransition();
@@ -46,12 +48,12 @@ export function InquiryForm({
   }
 
   if (done) {
-    return <p className="text-sm text-green-600">Request sent — SinoSource will be in touch.</p>;
+    return <p className="text-sm text-green-600">{t("inquiryForm.sent")}</p>;
   }
   if (!open) {
     return (
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        {label}
+        {label ?? t("inquiryForm.requestIntro")}
       </Button>
     );
   }
@@ -66,15 +68,15 @@ export function InquiryForm({
         name="message"
         rows={3}
         required
-        placeholder="What are you looking for? Quantities, timeline, target market…"
+        placeholder={t("inquiryForm.messagePlaceholder")}
       />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={pending}>
-          {pending ? "Sending…" : "Send to SinoSource"}
+          {pending ? t("inquiryForm.sending") : t("inquiryForm.send")}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

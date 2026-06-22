@@ -1,15 +1,15 @@
-# SinoSource — B2B Global Sourcing Platform
+# Fastflow — B2B Global Sourcing Platform
 
-SinoSource connects international buyers with Chinese manufacturers through a
+Fastflow connects international buyers with Chinese manufacturers through a
 **brokered** model: suppliers list their companies and products, buyers discover
-them and submit sourcing requests, and SinoSource staff broker the introductions.
+them and submit sourcing requests, and Fastflow staff broker the introductions.
 
 The project is two applications that share one catalog:
 
 | App | Audience | Stack | Default URL |
 |-----|----------|-------|-------------|
 | **Buyer site** (`/`, `index.html`, `main.py`) | Buyers — the public, Alibaba-style storefront (trilingual EN/中文/РУ) | Flask + SQLite | http://localhost:5000 |
-| **Supplier portal** (`web/`) | Manufacturers/suppliers + SinoSource staff | Next.js 15 + Prisma + Postgres + Clerk | http://localhost:3000 |
+| **Supplier portal** (`web/`) | Manufacturers/suppliers + Fastflow staff | Next.js 15 + Prisma + Postgres + Clerk | http://localhost:3000 |
 
 They are connected by a small read-only JSON **API bridge**: a manufacturer who
 registers in the portal and publishes a product appears on the buyer site

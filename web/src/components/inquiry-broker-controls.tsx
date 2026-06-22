@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateInquiry, assignInquiryToMe } from "@/server/inquiries";
 import { Button } from "@/components/ui/button";
 import { Label, Select, Textarea } from "@/components/ui/primitives";
+import { useT } from "@/lib/i18n/client";
 
 const STATUSES = ["NEW", "IN_REVIEW", "INTRODUCED", "CLOSED"] as const;
 
@@ -20,6 +21,7 @@ export function InquiryBrokerControls({
   assignedToName: string | null;
 }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
 
   function onSave(formData: FormData) {
@@ -45,31 +47,31 @@ export function InquiryBrokerControls({
     <form action={onSave} className="space-y-2 border-t border-neutral-100 pt-3">
       <div className="flex flex-wrap items-end gap-2">
         <div>
-          <Label htmlFor={`status-${id}`}>Status</Label>
+          <Label htmlFor={`status-${id}`}>{t("common.status")}</Label>
           <Select id={`status-${id}`} name="status" defaultValue={status} className="w-40" disabled={pending}>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s.replace("_", " ")}
+                {t(`status.inquiry.${s}`)}
               </option>
             ))}
           </Select>
         </div>
         <Button type="submit" size="sm" disabled={pending}>
-          {pending ? "Saving…" : "Save"}
+          {pending ? t("common.saving") : t("common.save")}
         </Button>
         <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onAssign}>
-          {assignedToName ? `Assigned: ${assignedToName}` : "Assign to me"}
+          {assignedToName ? t("brokerControls.assignedPrefix", { name: assignedToName }) : t("brokerControls.assignToMe")}
         </Button>
       </div>
       <div>
-        <Label htmlFor={`notes-${id}`}>Internal notes (SinoSource only)</Label>
+        <Label htmlFor={`notes-${id}`}>{t("brokerControls.internalNotes")}</Label>
         <Textarea
           id={`notes-${id}`}
           name="brokerNotes"
           rows={2}
           defaultValue={brokerNotes ?? ""}
           disabled={pending}
-          placeholder="Who you introduced, next steps…"
+          placeholder={t("brokerControls.notesPlaceholder")}
         />
       </div>
     </form>

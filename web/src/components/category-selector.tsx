@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setManufacturerCategories } from "@/server/manufacturer";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/client";
 
 type Category = { id: string; name: string };
 
@@ -17,6 +18,7 @@ export function CategorySelector({
   readOnly: boolean;
 }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const selected = new Set(selectedIds);
@@ -26,7 +28,7 @@ export function CategorySelector({
     start(async () => {
       const res = await setManufacturerCategories(formData);
       if (res.ok) {
-        setMsg({ kind: "ok", text: "Categories saved." });
+        setMsg({ kind: "ok", text: t("categorySelector.saved") });
         router.refresh();
       } else {
         setMsg({ kind: "err", text: res.error });
@@ -53,7 +55,7 @@ export function CategorySelector({
 
       {!readOnly && (
         <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Save categories"}
+          {pending ? t("common.saving") : t("categorySelector.saveCategories")}
         </Button>
       )}
       {msg && (

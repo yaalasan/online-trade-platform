@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ensureUserSynced, getActiveContext } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
 import { CreateCompanyForm } from "@/components/create-company-form";
+import { getT } from "@/lib/i18n/server";
 
 /**
  * Add another company from inside the dashboard. Same form/action as onboarding,
@@ -14,20 +15,17 @@ export default async function NewCompanyPage() {
   await ensureUserSynced();
   const ctx = await getActiveContext();
   if (!ctx) redirect("/onboarding"); // no company yet → first-run flow
+  const t = await getT();
 
   return (
     <div className="mx-auto max-w-lg">
       <Link href="/dashboard" className="text-sm text-neutral-500 hover:text-brand">
-        ← Back to dashboard
+        {t("companyNew.backToDashboard")}
       </Link>
       <Card className="mt-3">
         <CardHeader>
-          <CardTitle>Add a company</CardTitle>
-          <p className="mt-1 text-sm text-neutral-500">
-            Create another manufacturer or buyer. You&apos;ll be its owner, and it becomes your
-            active company so you can add its products and details right away. Switch between
-            companies any time from the selector in the header.
-          </p>
+          <CardTitle>{t("companyNew.addCompany")}</CardTitle>
+          <p className="mt-1 text-sm text-neutral-500">{t("companyNew.addCompanyNote")}</p>
         </CardHeader>
         <CardContent>
           <CreateCompanyForm />

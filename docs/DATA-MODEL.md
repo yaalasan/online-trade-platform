@@ -1,4 +1,4 @@
-# SinoSource — Data Model (ERD + Prisma Schema)
+# Fastflow — Data Model (ERD + Prisma Schema)
 
 Covers the 18 required entities plus the supporting tables they require to be production-real
 (sessions, MFA, roles/permissions, escrow ledger, outbox, translations, KYB cases, fraud signals).

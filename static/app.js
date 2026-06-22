@@ -158,10 +158,10 @@ const translations = {
     contactMessagePlaceholder: 'Product specs, quantity, delivery port, certifications',
     contactSubmit: 'Submit sourcing request',
     dashboardEyebrow: 'Account',
-    dashboardTitle: 'My SinoSource',
+    dashboardTitle: 'My Fastflow',
     auditEyebrow: 'Operations',
     auditTitle: 'Recent audit trail',
-    footerCopyright: '©2026 SinoSource',
+    footerCopyright: '©2026 Fastflow',
     footerDescription: 'AI-powered trade mediation, consulting & full-process cross-border service.',
     footerPrivacy: 'Privacy Policy',
     footerAgreement: 'User Agreement',
@@ -210,7 +210,7 @@ const translations = {
     howStep3Copy: 'Communicate, exchange RFQs, negotiate terms, and complete trades with full compliance and logistics support.',
     testimonialsEyebrow: 'Testimonials',
     testimonialsTitle: 'Trusted by global traders',
-    testimonial1Quote: 'SinoSource connected us with 3 verified Chinese factories in 48 hours — the AI matching saved weeks of manual sourcing work.',
+    testimonial1Quote: 'Fastflow connected us with 3 verified Chinese factories in 48 hours — the AI matching saved weeks of manual sourcing work.',
     testimonial1Name: 'James Kowalski',
     testimonial1Company: 'Procurement Manager, MechParts EU · Poland',
     testimonial2Quote: 'As an exporter in Shenzhen, we gained 12 new overseas buyers in our first quarter. The multilingual support and AI translation are excellent.',
@@ -319,7 +319,7 @@ const translations = {
     pfDescription: 'Description',
     pfDescriptionPh: 'Materials, specs, packaging, use cases',
     pfSubmit: 'Add listing',
-    rfqSubmitted: 'RFQ submitted. Check My SinoSource.'
+    rfqSubmitted: 'RFQ submitted. Check My Fastflow.'
   },
   zh: {
     utilitySlogan: 'AI驱动采购、合规和全球供应商撮合',
@@ -450,10 +450,10 @@ const translations = {
     contactMessagePlaceholder: '产品规格、数量、目的港、认证要求',
     contactSubmit: '提交询盘',
     dashboardEyebrow: '账户',
-    dashboardTitle: '我的 SinoSource',
+    dashboardTitle: '我的 Fastflow',
     auditEyebrow: '运营',
     auditTitle: '最新审计记录',
-    footerCopyright: '©2026 SinoSource',
+    footerCopyright: '©2026 Fastflow',
     footerDescription: 'AI赋能外贸撮合、咨询与跨境订单全流程服务。',
     footerPrivacy: '隐私政策',
     footerAgreement: '用户协议',
@@ -502,7 +502,7 @@ const translations = {
     howStep3Copy: '直接沟通、交换询盘、谈判条款，并在全程合规与物流支持下完成交易。',
     testimonialsEyebrow: '客户评价',
     testimonialsTitle: '全球贸易商的信任之选',
-    testimonial1Quote: 'SinoSource在48小时内为我们匹配了3家经过认证的中国工厂——AI匹配节省了数周的人工寻源工作。',
+    testimonial1Quote: 'Fastflow在48小时内为我们匹配了3家经过认证的中国工厂——AI匹配节省了数周的人工寻源工作。',
     testimonial1Name: 'James Kowalski',
     testimonial1Company: '采购经理，MechParts EU · 波兰',
     testimonial2Quote: '作为深圳的出口商，我们在平台第一个季度就获得了12个新的海外买家。多语种支持和AI翻译非常出色。',
@@ -611,7 +611,7 @@ const translations = {
     pfDescription: '描述',
     pfDescriptionPh: '材料、规格、包装、用途',
     pfSubmit: '添加产品',
-    rfqSubmitted: '询盘已提交，请查看“我的 SinoSource”。'
+    rfqSubmitted: '询盘已提交，请查看“我的 Fastflow”。'
   },
   ru: {
     utilitySlogan: 'ИИ-поддержка закупок, комплаенса и глобального поиска поставщиков',
@@ -742,10 +742,10 @@ const translations = {
     contactMessagePlaceholder: 'Требования, количество, порт доставки, сертификаты',
     contactSubmit: 'Отправить запрос',
     dashboardEyebrow: 'Аккаунт',
-    dashboardTitle: 'Мой SinoSource',
+    dashboardTitle: 'Мой Fastflow',
     auditEyebrow: 'Операции',
     auditTitle: 'Последние аудиты',
-    footerCopyright: '©2026 SinoSource',
+    footerCopyright: '©2026 Fastflow',
     footerDescription: 'ИИ-посредничество, консультации и полный цикл кросс-граничных заказов.',
     footerPrivacy: 'Политика конфиденциальности',
     footerAgreement: 'Пользовательское соглашение',
@@ -794,7 +794,7 @@ const translations = {
     howStep3Copy: 'Общайтесь, обменивайтесь запросами, согласовывайте условия и завершайте сделки с полной поддержкой.',
     testimonialsEyebrow: 'Отзывы',
     testimonialsTitle: 'Доверие глобальных трейдеров',
-    testimonial1Quote: 'SinoSource подобрал нам 3 проверенные китайские фабрики за 48 часов — ИИ сэкономил недели поиска.',
+    testimonial1Quote: 'Fastflow подобрал нам 3 проверенные китайские фабрики за 48 часов — ИИ сэкономил недели поиска.',
     testimonial1Name: 'James Kowalski',
     testimonial1Company: 'Менеджер по закупкам, MechParts EU · Польша',
     testimonial2Quote: 'Как экспортёр из Шэньчжэня, мы привлекли 12 новых зарубежных покупателей за первый квартал. Поддержка множества языков отличная.',
@@ -903,7 +903,7 @@ const translations = {
     pfDescription: 'Описание',
     pfDescriptionPh: 'Материалы, характеристики, упаковка, применение',
     pfSubmit: 'Добавить',
-    rfqSubmitted: 'Запрос отправлен. Проверьте «Мой SinoSource».'
+    rfqSubmitted: 'Запрос отправлен. Проверьте «Мой Fastflow».'
   }
 };
 

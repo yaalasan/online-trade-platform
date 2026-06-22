@@ -1,5 +1,5 @@
 /* ============================================================
-   SinoSource — Design System
+   Fastflow — Design System
    Clean, professional B2B marketplace styling.
    Single source of truth: no duplicate rules.
    ============================================================ */
@@ -219,6 +219,7 @@ label {
 .nav-search {
   display: flex;
   align-items: center;
+  min-width: 260px; /* keep the input readable; never collapse to a few chars */
   border: 2px solid var(--border);
   border-radius: 999px;
   overflow: hidden;
@@ -1260,6 +1261,14 @@ footer {
   .product-grid   { grid-template-columns: repeat(3, 1fr); }
   .service-cards  { grid-template-columns: repeat(3, 1fr); }
   .workspace      { grid-template-columns: 1fr; }
+}
+
+/* Below ~1200px the menu + actions crowd the single-row nav and squeeze the
+   search field. Drop the search onto its own full-width row so it stays usable. */
+@media (max-width: 1200px) {
+  .main-nav { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
+  .nav-search { grid-column: 1 / -1; order: 3; }
+  .nav-links { display: none; }
 }
 
 @media (max-width: 960px) {

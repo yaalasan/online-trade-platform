@@ -4,6 +4,7 @@ import { getActiveContext } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { Card, CardContent, Input, Label, Select, VerificationBadge } from "@/components/ui/primitives";
 import { buttonVariants } from "@/components/ui/button";
+import { getT } from "@/lib/i18n/server";
 
 const VERIFICATION_VALUES: VerificationStatus[] = ["UNVERIFIED", "PENDING", "VERIFIED", "REJECTED"];
 
@@ -12,6 +13,7 @@ type SearchParams = Promise<{ q?: string; category?: string; country?: string; v
 export default async function SuppliersPage({ searchParams }: { searchParams: SearchParams }) {
   // Auth is guaranteed by the dashboard layout; reading context keeps this gated.
   await getActiveContext();
+  const t = await getT();
   const sp = await searchParams;
 
   const q = (sp.q ?? "").trim();
@@ -48,19 +50,19 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Se
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Suppliers</h1>
+      <h1 className="text-2xl font-semibold">{t("suppliers.title")}</h1>
 
       <Card>
         <CardContent>
           <form method="get" className="grid items-end gap-3 sm:grid-cols-5">
             <div className="sm:col-span-2">
-              <Label htmlFor="q">Search</Label>
-              <Input id="q" name="q" defaultValue={q} placeholder="Name or keyword" />
+              <Label htmlFor="q">{t("common.search")}</Label>
+              <Input id="q" name="q" defaultValue={q} placeholder={t("suppliers.searchPlaceholder")} />
             </div>
             <div>
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t("products.category")}</Label>
               <Select id="category" name="category" defaultValue={category}>
-                <option value="">All</option>
+                <option value="">{t("common.all")}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -69,23 +71,23 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Se
               </Select>
             </div>
             <div>
-              <Label htmlFor="country">Country (ISO-2)</Label>
+              <Label htmlFor="country">{t("suppliers.country")}</Label>
               <Input id="country" name="country" maxLength={2} defaultValue={country} placeholder="CN" />
             </div>
             <div>
-              <Label htmlFor="verification">Verification</Label>
+              <Label htmlFor="verification">{t("suppliers.verification")}</Label>
               <Select id="verification" name="verification" defaultValue={verification}>
-                <option value="">Any</option>
+                <option value="">{t("suppliers.verificationAny")}</option>
                 {VERIFICATION_VALUES.map((v) => (
                   <option key={v} value={v}>
-                    {v}
+                    {t(`status.verification.${v}`)}
                   </option>
                 ))}
               </Select>
             </div>
             <div className="sm:col-span-5">
               <button type="submit" className={buttonVariants({ size: "sm" })}>
-                Apply filters
+                {t("products.applyFilters")}
               </button>
             </div>
           </form>
@@ -95,7 +97,7 @@ export default async function SuppliersPage({ searchParams }: { searchParams: Se
       {suppliers.length === 0 ? (
         <Card>
           <CardContent>
-            <p className="text-sm text-neutral-500">No suppliers match these filters.</p>
+            <p className="text-sm text-neutral-500">{t("suppliers.noneMatch")}</p>
           </CardContent>
         </Card>
       ) : (

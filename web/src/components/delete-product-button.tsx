@@ -4,9 +4,11 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteProduct } from "@/server/products";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/lib/i18n/client";
 
 export function DeleteProductButton({ productId }: { productId: string }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
 
   return (
@@ -15,7 +17,7 @@ export function DeleteProductButton({ productId }: { productId: string }) {
       size="sm"
       disabled={pending}
       onClick={() => {
-        if (!confirm("Delete this product? This cannot be undone.")) return;
+        if (!confirm(t("products.deleteConfirm"))) return;
         const fd = new FormData();
         fd.set("id", productId);
         start(async () => {
@@ -28,7 +30,7 @@ export function DeleteProductButton({ productId }: { productId: string }) {
         });
       }}
     >
-      {pending ? "Deleting…" : "Delete"}
+      {pending ? t("common.deleting") : t("common.delete")}
     </Button>
   );
 }

@@ -7,10 +7,12 @@ import {
   MemberRoleControl,
   RemoveMemberButton,
 } from "@/components/member-management";
+import { getT } from "@/lib/i18n/server";
 
 export default async function MembersPage() {
   const ctx = (await getActiveContext())!;
   const { company, role: myRole, user } = ctx;
+  const t = await getT();
 
   const canInvite = hasPermission(myRole, "member:invite");
   const canUpdateRole = hasPermission(myRole, "member:update_role");
@@ -24,15 +26,13 @@ export default async function MembersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Members</h1>
+      <h1 className="text-2xl font-semibold">{t("members.title")}</h1>
 
       {canInvite && (
         <Card>
           <CardHeader>
-            <CardTitle>Add a member</CardTitle>
-            <p className="mt-1 text-sm text-neutral-500">
-              The person must already have a SinoSource account.
-            </p>
+            <CardTitle>{t("members.addMember")}</CardTitle>
+            <p className="mt-1 text-sm text-neutral-500">{t("members.addMemberNote")}</p>
           </CardHeader>
           <CardContent>
             <InviteMemberForm />
@@ -53,7 +53,7 @@ export default async function MembersPage() {
                     {m.user.firstName || m.user.lastName
                       ? `${m.user.firstName ?? ""} ${m.user.lastName ?? ""}`.trim()
                       : m.user.email}
-                    {isSelf && <span className="ml-2 text-xs text-neutral-400">(you)</span>}
+                    {isSelf && <span className="ml-2 text-xs text-neutral-400">{t("members.you")}</span>}
                   </p>
                   <p className="text-xs text-neutral-500">{m.user.email}</p>
                 </div>

@@ -7,12 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle, RfqStatusBadge } from "@/comp
 import { RfqForm, type RfqFormValues } from "@/components/rfq-form";
 import { DeleteRfqButton } from "@/components/delete-rfq-button";
 import { InquiryForm } from "@/components/inquiry-form";
+import { getT } from "@/lib/i18n/server";
 
 export default async function RfqDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = (await getActiveContext())!;
   const { company, role } = ctx;
   const canManage = ROLE_RANK[role] >= ROLE_RANK.MANAGER;
+  const t = await getT();
 
   // Scope is enforced in the query: an RFQ from another company is simply not found.
   const rfq = await db.rfq.findFirst({
@@ -40,19 +42,22 @@ export default async function RfqDetailPage({ params }: { params: Promise<{ id: 
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link href="/dashboard/rfqs" className="text-sm text-neutral-500 hover:text-brand">
-            ← Back to RFQs
+            {t("rfqs.backToRfqs")}
           </Link>
           <div className="mt-1 flex items-center gap-3">
             <h1 className="text-2xl font-semibold">{rfq.title}</h1>
             <RfqStatusBadge status={rfq.status} />
           </div>
           <p className="text-sm text-neutral-500">
-            Raised by{" "}
-            {rfq.createdBy ? rfq.createdBy.firstName ?? rfq.createdBy.email : "former member"} ·{" "}
-            {rfq.createdAt.toLocaleString()}
+            {t("rfqs.raisedByCap", {
+              name: rfq.createdBy
+                ? rfq.createdBy.firstName ?? rfq.createdBy.email
+                : t("rfqs.formerMember"),
+            })}{" "}
+            · {rfq.createdAt.toLocaleString()}
           </p>
           <div className="mt-3">
-            <InquiryForm kind="RFQ" rfqId={rfq.id} label="Ask SinoSource to source this" />
+            <InquiryForm kind="RFQ" rfqId={rfq.id} label={t("rfqs.askSource")} />
           </div>
         </div>
         {canManage && <DeleteRfqButton rfqId={rfq.id} />}
@@ -60,27 +65,27 @@ export default async function RfqDetailPage({ params }: { params: Promise<{ id: 
 
       <Card>
         <CardHeader>
-          <CardTitle>Summary</CardTitle>
+          <CardTitle>{t("rfqs.summary")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
-          <Detail label="Quantity" value={`${rfq.quantity.toLocaleString()} ${rfq.unit}`} />
-          <Detail label="Category" value={rfq.category ?? "—"} />
+          <Detail label={t("rfqs.quantity")} value={`${rfq.quantity.toLocaleString()} ${rfq.unit}`} />
+          <Detail label={t("products.category")} value={rfq.category ?? "—"} />
           <Detail
-            label="Target price / unit"
+            label={t("rfqs.targetPrice")}
             value={
               rfq.targetPrice
                 ? `${rfq.targetPrice.toString()}${rfq.currency ? ` ${rfq.currency}` : ""}`
                 : "—"
             }
           />
-          <Detail label="Incoterm" value={rfq.incoterm ?? "—"} />
-          <Detail label="Destination" value={rfq.destinationCountry ?? "—"} />
+          <Detail label={t("rfqs.incoterm")} value={rfq.incoterm ?? "—"} />
+          <Detail label={t("rfqs.destination")} value={rfq.destinationCountry ?? "—"} />
           <Detail
-            label="Need by"
+            label={t("rfqs.needBy")}
             value={rfq.needBy ? rfq.needBy.toLocaleDateString() : "—"}
           />
           <div className="sm:col-span-2">
-            <Detail label="Description" value={rfq.description} />
+            <Detail label={t("common.description")} value={rfq.description} />
           </div>
         </CardContent>
       </Card>
@@ -88,7 +93,7 @@ export default async function RfqDetailPage({ params }: { params: Promise<{ id: 
       {canManage && (
         <Card>
           <CardHeader>
-            <CardTitle>Edit RFQ</CardTitle>
+            <CardTitle>{t("rfqs.editRfq")}</CardTitle>
           </CardHeader>
           <CardContent>
             <RfqForm rfqId={rfq.id} defaults={defaults} />

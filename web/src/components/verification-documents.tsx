@@ -9,6 +9,7 @@ import {
 } from "@/server/verification";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/primitives";
+import { useT } from "@/lib/i18n/client";
 
 export type VerificationDocView = {
   id: string;
@@ -26,18 +27,19 @@ export function VerificationDocuments({
   documents: VerificationDocView[];
   editable: boolean;
 }) {
+  const t = useT();
   return (
     <div className="space-y-4">
       {documents.length === 0 ? (
-        <p className="text-sm text-neutral-500">No documents attached yet.</p>
+        <p className="text-sm text-neutral-500">{t("kybDocs.none")}</p>
       ) : (
         <ul className="divide-y divide-neutral-100">
           {documents.map((d) => (
             <li key={d.id} className="flex items-center justify-between gap-4 py-2 text-sm">
               <div className="min-w-0">
-                <span className="font-medium">{d.type.replace(/_/g, " ")}</span>{" "}
+                <span className="font-medium">{t(`docTypes.${d.type}`)}</span>{" "}
                 <a href={d.url} target="_blank" rel="noreferrer" className="text-brand hover:underline">
-                  {d.fileName ?? "view"}
+                  {d.fileName ?? t("common.view")}
                 </a>
               </div>
               {editable && <DeleteDocButton id={d.id} />}
@@ -58,6 +60,7 @@ export function VerificationDocuments({
 
 function UploadDocForm() {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -76,19 +79,19 @@ function UploadDocForm() {
 
   return (
     <form id="upload-kyb-doc-form" action={onSubmit} className="space-y-3 rounded-md border border-neutral-200 p-4">
-      <p className="text-sm font-medium">Add document</p>
+      <p className="text-sm font-medium">{t("kybDocs.addDoc")}</p>
       <div>
-        <Label htmlFor="doc-type">Type</Label>
+        <Label htmlFor="doc-type">{t("company.type")}</Label>
         <Select id="doc-type" name="type" defaultValue="BUSINESS_LICENSE">
-          {DOC_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.replace(/_/g, " ")}
+          {DOC_TYPES.map((dt) => (
+            <option key={dt} value={dt}>
+              {t(`docTypes.${dt}`)}
             </option>
           ))}
         </Select>
       </div>
       <div>
-        <Label htmlFor="doc-file">File (image or PDF — max 8 MB)</Label>
+        <Label htmlFor="doc-file">{t("kybDocs.fileLabel")}</Label>
         <Input
           id="doc-file"
           name="file"
@@ -100,7 +103,7 @@ function UploadDocForm() {
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={pending}>
-        {pending ? "Uploading…" : "Upload document"}
+        {pending ? t("kybDocs.uploading") : t("kybDocs.uploadDoc")}
       </Button>
     </form>
   );
@@ -108,6 +111,7 @@ function UploadDocForm() {
 
 function SubmitCaseButton({ disabled }: { disabled: boolean }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
 
   return (
@@ -115,7 +119,7 @@ function SubmitCaseButton({ disabled }: { disabled: boolean }) {
       <Button
         disabled={pending || disabled}
         onClick={() => {
-          if (!confirm("Submit your application for review? You won't be able to edit it while it's reviewed.")) return;
+          if (!confirm(t("kybDocs.submitConfirm"))) return;
           start(async () => {
             const res = await submitVerificationCase();
             if (!res.ok) alert(res.error);
@@ -123,15 +127,16 @@ function SubmitCaseButton({ disabled }: { disabled: boolean }) {
           });
         }}
       >
-        {pending ? "Submitting…" : "Submit for review"}
+        {pending ? t("kybDocs.submitting") : t("kybDocs.submitReview")}
       </Button>
-      {disabled && <span className="text-xs text-neutral-500">Attach at least one document first.</span>}
+      {disabled && <span className="text-xs text-neutral-500">{t("kybDocs.attachFirst")}</span>}
     </div>
   );
 }
 
 function DeleteDocButton({ id }: { id: string }) {
   const router = useRouter();
+  const t = useT();
   const [pending, start] = useTransition();
 
   return (
@@ -140,7 +145,7 @@ function DeleteDocButton({ id }: { id: string }) {
       size="sm"
       disabled={pending}
       onClick={() => {
-        if (!confirm("Remove this document?")) return;
+        if (!confirm(t("kybDocs.removeConfirm"))) return;
         const fd = new FormData();
         fd.set("id", id);
         start(async () => {
@@ -150,7 +155,7 @@ function DeleteDocButton({ id }: { id: string }) {
         });
       }}
     >
-      Remove
+      {t("common.remove")}
     </Button>
   );
 }
