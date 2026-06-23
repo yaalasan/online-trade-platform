@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
 import { ensureUserSynced, getActiveContext } from "@/lib/auth/session";
 import { CompanySwitcher } from "@/components/company-switcher";
+import { UserMenu } from "@/components/user-menu";
 import { RoleBadge } from "@/components/ui/primitives";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { getT } from "@/lib/i18n/server";
@@ -59,7 +59,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            <UserButton />
+            <UserMenu
+              label={
+                `${ctx.user.firstName ?? ""} ${ctx.user.lastName ?? ""}`.trim() || ctx.user.email
+              }
+            />
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 px-5">

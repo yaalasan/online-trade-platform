@@ -9,7 +9,7 @@ The project is two applications that share one catalog:
 | App | Audience | Stack | Default URL |
 |-----|----------|-------|-------------|
 | **Buyer site** (`/`, `index.html`, `main.py`) | Buyers — the public, Alibaba-style storefront (trilingual EN/中文/РУ) | Flask + SQLite | http://localhost:5000 |
-| **Supplier portal** (`web/`) | Manufacturers/suppliers + Fastflow staff | Next.js 15 + Prisma + Postgres + Clerk | http://localhost:3000 |
+| **Supplier portal** (`web/`) | Manufacturers/suppliers + Fastflow staff | Next.js 15 + Prisma + Postgres + better-auth | http://localhost:3000 |
 
 They are connected by a small read-only JSON **API bridge**: a manufacturer who
 registers in the portal and publishes a product appears on the buyer site
@@ -52,7 +52,8 @@ the portal's staff "broker queue."
 - **Python** 3.11+ (for the Flask buyer site)
 - **Node.js** 18.18+ and **npm** (for the portal)
 - **PostgreSQL** 14+ (portal database)
-- A free **Clerk** application for portal auth — https://dashboard.clerk.com
+- (Optional) an SMS provider (Alibaba Dysms / Tencent Cloud SMS) for phone login in
+  production — dev uses `SMS_PROVIDER=console`. Auth itself is self-hosted, no account needed.
 
 ---
 
@@ -76,7 +77,7 @@ SQLite demo data if the portal is offline).
 ```bash
 cd web
 npm install
-cp .env.example .env          # then fill in DATABASE_URL + Clerk keys
+cp .env.example .env          # then fill in DATABASE_URL + BETTER_AUTH_SECRET/URL
 npx prisma migrate deploy     # create the Postgres schema
 npx prisma generate
 npm run dev                   # → http://localhost:3000
@@ -85,7 +86,10 @@ npm run dev                   # → http://localhost:3000
 Sign up, create your company (choose **Manufacturer**), add products and set them
 **Active**, and they will surface on the buyer site.
 
-> The email in `PLATFORM_ADMIN_EMAILS` becomes a platform admin on first sign-in
+Sign in by **email + password** or **phone + SMS OTP** (Chinese suppliers use phone;
+in dev the code prints to the terminal). 
+
+> The email in `PLATFORM_ADMIN_EMAILS` becomes a platform admin on first sign-up
 > (access to the broker queue and KYB approvals).
 
 ---
@@ -106,10 +110,10 @@ Sign up, create your company (choose **Manufacturer**), add products and set the
 
 ### Portal (`web/.env`)
 
-See `web/.env.example`. Key values: `DATABASE_URL`, the three Clerk keys
-(`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`),
-`PLATFORM_ADMIN_EMAILS`, and `NEXT_PUBLIC_MAIN_SITE_URL` (link back to the buyer
-site, default `http://localhost:5000`).
+See `web/.env.example`. Key values: `DATABASE_URL`, `BETTER_AUTH_SECRET` (session
+signing key), `BETTER_AUTH_URL` (the portal's public origin), `SMS_PROVIDER`
+(`console` in dev), `PLATFORM_ADMIN_EMAILS`, and `NEXT_PUBLIC_MAIN_SITE_URL` (link
+back to the buyer site, default `http://localhost:5000`).
 
 ---
 

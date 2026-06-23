@@ -99,11 +99,20 @@ enum VerificationDocType {
 /// A person. Identity is owned by Clerk; this row is a synced mirror so we can
 /// foreign-key memberships/audit to a stable id. `id` IS the Clerk user id.
 model User {
-  id        String   @id // Clerk user id (e.g. "user_2abc...")
+  // Self-managed auth (better-auth). Generated locally — no external IdP.
+  id        String   @id @default(cuid())
   email     String   @unique
+  /// better-auth core fields.
+  name          String?
+  emailVerified Boolean @default(false)
+  image         String?
+  /// Phone + SMS-OTP login (phoneNumber plugin). Primary path for mainland-China
+  /// suppliers who cannot reach foreign auth providers.
+  phoneNumber         String?  @unique
+  phoneNumberVerified Boolean  @default(false)
+
   firstName String?
   lastName  String?
-  imageUrl  String?
 
   /// Server-authoritative active company selection. Validated against memberships
   /// on every read — never trusted from the client. Null => fall back to first membership.
@@ -120,8 +129,63 @@ model User {
   kybSubmitted      VerificationCase[] @relation("KybSubmittedBy")
   kybReviewed       VerificationCase[] @relation("KybReviewedBy")
 
+  /// better-auth session + credential tables.
+  sessions Session[]
+  accounts Account[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// better-auth: an active login session, keyed by an opaque cookie token.
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// better-auth: a credential (password) or linked OAuth account for a user.
+/// Email+password sign-ups store the scrypt hash in `password` here.
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// better-auth: short-lived verification values (email-verify tokens, phone OTPs).
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([identifier])
 }
 
 /// An organization (manufacturer or buyer company).

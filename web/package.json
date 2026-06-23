@@ -17,16 +17,14 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@clerk/localizations": "^4.9.2",
-    "@clerk/nextjs": "^6.12.0",
     "@prisma/client": "^6.5.0",
+    "better-auth": "^1.6.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
     "next": "^15.2.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "svix": "^1.45.0",
     "tailwind-merge": "^3.0.2",
     "zod": "^3.24.2"
   },

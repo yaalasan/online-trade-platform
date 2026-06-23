@@ -1,50 +1,28 @@
 import { cache } from "react";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import type { Company, Membership, MembershipRole, User } from "@prisma/client";
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth/server";
 
 /**
- * Bootstrap allowlist for Fastflow staff. Emails here are granted ADMIN
- * platformRole on first sync, so a fresh deployment has an admin without manual
- * DB edits. Already-synced users are granted via the staff admin path, not here.
+ * Resolve the current better-auth session and return the logged-in user id, or
+ * null if signed out. `cache()` dedupes the session lookup within a request.
  */
-const PLATFORM_ADMIN_EMAILS = (process.env.PLATFORM_ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
+const getSessionUserId = cache(async (): Promise<string | null> => {
+  const session = await auth.api.getSession({ headers: await headers() });
+  return session?.user?.id ?? null;
+});
 
 /**
- * Safety net for the Clerk → DB sync. The webhook is the primary path, but a user
- * can land on the app a beat before it fires. Call this at the top of authenticated
- * entry points (before any getCurrentUser) to lazily upsert the mirror row.
- * Idempotent and cheap (one indexed lookup when already synced).
+ * No-op retained for call sites at authenticated entry points.
+ *
+ * With self-hosted auth the `User` row is created by better-auth at sign-up
+ * (and platformRole/firstName are populated by its create hook in
+ * `@/lib/auth/server`), so there is no external IdP to lazily mirror. Kept as a
+ * stable seam in case future bootstrap logic is needed.
  */
 export async function ensureUserSynced(): Promise<void> {
-  const { userId } = await auth();
-  if (!userId) return;
-  const existing = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
-  if (existing) return;
-
-  const cu = await currentUser();
-  if (!cu) return;
-  const email =
-    cu.primaryEmailAddress?.emailAddress ?? cu.emailAddresses[0]?.emailAddress;
-  if (!email) return;
-
-  const platformRole = PLATFORM_ADMIN_EMAILS.includes(email.toLowerCase()) ? "ADMIN" : "NONE";
-
-  await db.user.upsert({
-    where: { id: userId },
-    create: {
-      id: userId,
-      email: email.toLowerCase(),
-      firstName: cu.firstName,
-      lastName: cu.lastName,
-      imageUrl: cu.imageUrl,
-      platformRole,
-    },
-    update: {},
-  });
+  return;
 }
 
 export type MembershipWithCompany = Membership & { company: Company };
@@ -70,7 +48,7 @@ export type ActiveContext = {
  * or not yet synced. `cache()` dedupes within a single request.
  */
 export const getCurrentUser = cache(async (): Promise<UserWithMemberships | null> => {
-  const { userId } = await auth();
+  const userId = await getSessionUserId();
   if (!userId) return null;
 
   return db.user.findUnique({
