@@ -14,7 +14,7 @@ Group=fastflow
 WorkingDirectory=/opt/fastflow/web
 Environment=NODE_ENV=production
 Environment=PORT=3000
-# Reads DATABASE_URL, Clerk keys, NEXT_PUBLIC_* etc.
+# Reads DATABASE_URL, BETTER_AUTH_SECRET/URL, SMS_PROVIDER, NEXT_PUBLIC_* etc.
 EnvironmentFile=/opt/fastflow/web/.env
 # Use the local next binary so this doesn't depend on npm being on PATH.
 ExecStart=/opt/fastflow/web/node_modules/.bin/next start -p 3000

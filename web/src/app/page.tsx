@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getT } from "@/lib/i18n/server";
 
 /**
@@ -10,8 +10,8 @@ import { getT } from "@/lib/i18n/server";
  * use the public Flask site. Signed-in users go straight to the dashboard.
  */
 export default async function HomePage() {
-  const { userId } = await auth();
-  if (userId) redirect("/dashboard");
+  const user = await getCurrentUser();
+  if (user) redirect("/dashboard");
 
   const t = await getT();
   const mainSite = process.env.NEXT_PUBLIC_MAIN_SITE_URL || "http://localhost:5000";

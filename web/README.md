@@ -4,21 +4,29 @@ The supplier/manufacturer + staff workspace for Fastflow. Buyers do **not** use
 this app — they use the Flask buyer site (see the [root README](../README.md)).
 This portal publishes the catalog that the buyer site reads over an API bridge.
 
-**Stack:** Next.js 15 (App Router) · Prisma · PostgreSQL · Clerk · Tailwind.
+**Stack:** Next.js 15 (App Router) · Prisma · PostgreSQL · better-auth · Tailwind.
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env      # fill in DATABASE_URL + Clerk keys + PLATFORM_ADMIN_EMAILS
+cp .env.example .env      # set DATABASE_URL, BETTER_AUTH_SECRET/URL, SMS_PROVIDER, PLATFORM_ADMIN_EMAILS
 npx prisma migrate deploy # apply migrations
 npx prisma generate
 npm run dev               # http://localhost:3000
 ```
 
-A free Clerk app provides auth: https://dashboard.clerk.com. The email in
-`PLATFORM_ADMIN_EMAILS` becomes a platform admin on first sign-in (broker queue +
-KYB approvals).
+Auth is **self-hosted** (better-auth) — no third-party provider, so it works from
+mainland China. Two login methods: **email + password** and **phone + SMS OTP**
+(the path for Chinese suppliers; see `src/lib/sms.ts`). In dev, `SMS_PROVIDER=console`
+prints OTP codes to the terminal. The email in `PLATFORM_ADMIN_EMAILS` becomes a
+platform admin on first sign-up (broker queue + KYB approvals).
+
+Bootstrap or reset a password from the CLI:
+
+```bash
+node scripts/set-password.mjs you@example.com 'a-strong-password'
+```
 
 ## Scripts
 

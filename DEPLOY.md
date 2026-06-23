@@ -12,9 +12,9 @@ fastflow.global ─┤ fastflow.global, www  ->  Flask (gunicorn) 127.0.0.1:5000
 ```
 
 - **fastflow.global** (+ www) → public buyer marketplace (Flask)
-- **portal.fastflow.global** → supplier portal (Next.js + Clerk + Postgres)
+- **portal.fastflow.global** → supplier portal (Next.js + self-hosted auth + Postgres)
 
-You run every command below **on the server** unless it says "Namecheap" or "Clerk dashboard".
+You run every command below **on the server** unless it says "Namecheap".
 Assumes **Ubuntu 22.04/24.04** and that you deploy into `/opt/fastflow` as a `fastflow` user.
 
 ---
@@ -29,7 +29,9 @@ Assumes **Ubuntu 22.04/24.04** and that you deploy into `/opt/fastflow` as a `fa
     Finland, Singapore)
   - Add your **SSH key** at creation. Note the public IPv4 → this is `SERVER_IP` everywhere below.
   - On a smaller 2 GB box, also do step 2b (swap) so the build doesn't get OOM-killed.
-- A **Clerk** account (free) — you'll create a *Production* instance in step 8.
+- An **SMS provider account** for phone/OTP login (Alibaba Cloud Dysms or Tencent Cloud SMS).
+  Required for mainland-China suppliers, who log in by phone. You can deploy with
+  `SMS_PROVIDER=console` first (codes print to the log) and wire the provider later.
 
 ---
 
@@ -45,7 +47,7 @@ Delete the default "parking"/redirect records, then **Add New Record**:
 | A Record  | `www`    | `SERVER_IP`   | Automatic |
 | A Record  | `portal` | `SERVER_IP`   | Automatic |
 
-(Leave the Clerk records for step 8.) Check propagation:
+Check propagation:
 `dig +short fastflow.global` should return `SERVER_IP` before you run certbot in step 7.
 
 ---
@@ -142,15 +144,21 @@ cd /opt/fastflow/web
 npm ci
 
 cp /opt/fastflow/deploy/portal.env.example .env
-nano .env    # set DATABASE_URL password, Clerk PROD keys (step 8), NEXT_PUBLIC_MAIN_SITE_URL,
+nano .env    # set DATABASE_URL password, BETTER_AUTH_SECRET, BETTER_AUTH_URL,
+             # SMS_PROVIDER, NEXT_PUBLIC_MAIN_SITE_URL,
              # PLATFORM_ADMIN_EMAILS (your email -> platform admin)
+
+# Generate a strong session secret for BETTER_AUTH_SECRET:
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 
 npx prisma migrate deploy     # creates the portal schema in Postgres
 npm run build                 # prisma generate + next build
 ```
 
-> You can do the build now with placeholder Clerk keys and swap in the real `pk_live_/sk_live_`
-> keys in step 8, then `sudo systemctl restart fastflow-portal`.
+Set `BETTER_AUTH_URL=https://portal.fastflow.global` (the public origin). Auth is fully
+self-hosted — no third-party keys, nothing to verify in an external dashboard, and it works
+from mainland China. You can deploy with `SMS_PROVIDER=console` (OTP codes print to the
+portal log) and wire a real SMS provider in step 8 once you're ready for phone login.
 
 ---
 
@@ -182,22 +190,30 @@ Auto-renewal is installed by the package (`systemctl status certbot.timer`).
 
 ---
 
-## 8. Clerk production (for the portal auth)
+## 8. SMS provider (for phone/OTP login)
 
-The portal currently uses **test** keys (`pk_test_…`) which only work on localhost. For `portal.fastflow.global`:
+Auth itself needs no external setup — it's self-hosted. The only external dependency is
+**SMS delivery** for phone login, the primary path for mainland-China suppliers.
 
-1. Clerk dashboard → create a **Production** instance (or "Deploy to production" on your app).
-2. Set the application domain to **`portal.fastflow.global`**.
-3. Clerk shows a set of **DNS records** (CNAMEs like `clerk`, `clkmail`, `clk._domainkey`, `clk2._domainkey`). Add each at **Namecheap → Advanced DNS** exactly as shown (Host = the subdomain, Value = Clerk's target, Type = CNAME).
-4. Wait for Clerk to verify those records (green checks).
-5. Copy the production **Publishable** and **Secret** keys into `/opt/fastflow/web/.env`
-   (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`).
-6. Webhooks → add endpoint `https://portal.fastflow.global/api/webhooks/clerk`, copy its signing secret → `CLERK_WEBHOOK_SECRET`.
-7. Rebuild + restart:
+1. Create an account with **Alibaba Cloud (Dysms)** or **Tencent Cloud SMS** and get an
+   approved signature + template (Chinese providers require template pre-approval).
+2. Open `/opt/fastflow/web/src/lib/sms.ts` and fill in the `aliyun`/`tencent` branch with the
+   provider's SDK call (one function, clearly marked).
+3. In `/opt/fastflow/web/.env` set `SMS_PROVIDER=aliyun` (or `tencent`) plus the provider creds.
+4. Bootstrap your admin login (the platform-admin email signs up via the form, or set a
+   password directly):
+   ```bash
+   cd /opt/fastflow/web
+   node scripts/set-password.mjs you@example.com 'a-strong-password'
+   ```
+5. Rebuild + restart:
    ```bash
    cd /opt/fastflow/web && npm run build
    sudo systemctl restart fastflow-portal
    ```
+
+Until you finish this, `SMS_PROVIDER=console` keeps email+password login fully working and
+prints phone OTP codes to `journalctl -u fastflow-portal`.
 
 ---
 
@@ -210,7 +226,7 @@ curl -I https://portal.fastflow.global       # 200/307 (redirects to /sign-in)
 
 In a browser:
 - `https://fastflow.global` → marketplace loads, search works, language switcher EN/中文/РУ.
-- `https://portal.fastflow.global` → sign up with your `PLATFORM_ADMIN_EMAILS` address → you land in the dashboard as platform admin.
+- `https://portal.fastflow.global` → sign up (email+password or phone) with your `PLATFORM_ADMIN_EMAILS` address → you land in the dashboard as platform admin.
 - Publish a product in the portal → it appears on the public marketplace (the Flask↔portal bridge via `PORTAL_API_URL`).
 
 ---
@@ -234,7 +250,10 @@ tail -f /var/log/nginx/error.log
 ```
 
 - **502 on a domain** → that app's service isn't running (`systemctl status …`).
-- **Portal 500 / auth loops** → wrong/missing Clerk prod keys, or Clerk DNS not verified yet.
+- **Portal 500 / auth loops** → missing `BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`, or `BETTER_AUTH_URL`
+  not matching the real origin (`https://portal.fastflow.global`).
+- **Phone OTP never arrives** → `SMS_PROVIDER` still `console` (codes only in the log), or provider
+  creds/template not approved yet.
 - **certbot fails** → DNS for that name isn't pointing at the server yet; re-check `dig +short <name>`.
 - **Secure-cookie / http redirect issues** → confirm `PRODUCTION=1` is set (enables ProxyFix + secure cookies).
 
@@ -248,34 +267,33 @@ tail -f /var/log/nginx/error.log
 
 ## China considerations (audience: foreign buyers + mainland manufacturers)
 
-**Recommended now:** an **offshore VPS in Singapore or Hong Kong**, deployed with the steps above
-**unchanged** (keep Clerk + Unsplash). Rationale:
+**Recommended now:** an **offshore VPS in Singapore or Hong Kong**, deployed with the steps above.
+Rationale:
 
 - Your paying customers (**buyers**) are **international** — no benefit to mainland hosting, and Unsplash
   images load fine for them. **No ICP needed.**
-- Mainland **manufacturers are onboarded manually by you/staff** at first, so the portal's only real
-  users early on are operators — Clerk works fine for them (VPN if ever needed).
+- **Auth is self-hosted** (better-auth on our own server + Postgres), so mainland suppliers can
+  register and sign in — including **phone + SMS OTP**, the method they expect — without hitting the
+  Great Firewall. This is no longer a blocker for self-registration.
 - Singapore = great global connectivity for buyers + reachable from China for your team. Providers:
   Vultr / DigitalOcean / Linode Singapore (or HK).
 
-**Only consider the mainland path below if** mainland manufacturers later start **self-registering at
-scale** and need mainland-fast access. Then these two firewall realities kick in:
+**Only consider the mainland path below if** suppliers need mainland-*fast* access (latency), not
+because anything is blocked. Then these firewall realities kick in:
 
 - **ICP filing (ICP备案) is mandatory** to host on a *mainland* data center (Alibaba/Tencent/Huawei,
   Beijing/Shanghai/Shenzhen). It's tied to a mainland business entity and takes ~1–3 weeks. Without
   it the data center blocks ports 80/443. **Start it in parallel — it's the long pole.**
-- **Some third-party services are blocked behind the Great Firewall** and must be replaced before
-  the mainland launch (they fail *inside* the mainland, and are slow even from Hong Kong):
+- **A China-reachable SMS provider** (Alibaba Dysms / Tencent Cloud SMS) for phone-login codes —
+  see step 8. This is needed regardless of where you host, since the suppliers are in China.
+- **One remaining blocked dependency to replace** for a mainland launch:
   - **Unsplash images** (`images.unsplash.com`) — the Flask hero/product images. Self-host them or
     serve from a China CDN (e.g. Alibaba OSS + CDN). Easy fix.
-  - **Clerk** — the entire portal auth. Clerk's scripts/domains are blocked in the mainland, so
-    supplier sign-in won't work there. Plan to replace it (e.g. self-hosted Casdoor/Authing, or
-    another China-viable auth) before the mainland cutover. Bigger fix.
 
 Migration path **if** you ever go mainland:
 1. Open a mainland cloud account with your entity; provision an ECS in a mainland region.
 2. File ICP for `fastflow.global` through that provider (≈1–3 weeks).
-3. Land the dependency fixes (self-hosted images + replaced auth) before/at cutover.
+3. Land the remaining dependency fix (self-hosted images) before/at cutover; auth is already China-ready.
 4. Re-run this runbook on the mainland box; repoint Namecheap DNS to its IP.
 
 Using **Alibaba Cloud** for the offshore box too (HK/Singapore region) keeps the same account/console
