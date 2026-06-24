@@ -17,6 +17,8 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@alicloud/dysmsapi20170525": "^4.5.1",
+    "@alicloud/openapi-client": "^0.4.15",
     "@prisma/client": "^6.5.0",
     "better-auth": "^1.6.20",
     "class-variance-authority": "^0.7.1",
