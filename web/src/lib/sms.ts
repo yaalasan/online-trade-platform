@@ -29,22 +29,20 @@ export async function sendSms(to: string, message: string): Promise<void> {
       return;
     }
     case "aliyun": {
-      const Dysmsapi = (await import("@alicloud/dysmsapi20170525")).default;
-      const OpenApiClient = (await import("@alicloud/openapi-client")).default;
+      const { default: Dysmsapi, SendSmsRequest } = await import("@alicloud/dysmsapi20170525");
+      const { Config } = await import("@alicloud/openapi-client");
 
-      const config = new OpenApiClient.Config({
+      const config = new Config({
         accessKeyId: process.env.ALIYUN_SMS_ACCESS_KEY_ID,
         accessKeySecret: process.env.ALIYUN_SMS_ACCESS_KEY_SECRET,
         endpoint: "dysmsapi.aliyuncs.com",
       });
 
       const client = new Dysmsapi(config);
-      const SendSmsRequest = (await import("@alicloud/dysmsapi20170525")).SendSmsRequest;
       const req = new SendSmsRequest({
         phoneNumbers: to,
         signName: process.env.ALIYUN_SMS_SIGN_NAME,
         templateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE,
-        // Your Aliyun template must have a ${code} variable.
         templateParam: JSON.stringify({ code: message.match(/\d{4,8}/)?.[0] ?? message }),
       });
 
