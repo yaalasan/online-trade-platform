@@ -29,10 +29,30 @@ export async function sendSms(to: string, message: string): Promise<void> {
       return;
     }
     case "aliyun": {
-      // TODO: integrate Alibaba Cloud Dysmsapi (SendSms) here.
-      // Required env: ALIYUN_SMS_ACCESS_KEY_ID, ALIYUN_SMS_ACCESS_KEY_SECRET,
-      // ALIYUN_SMS_SIGN_NAME, ALIYUN_SMS_TEMPLATE_CODE.
-      throw new Error("Aliyun SMS provider not yet wired up (see src/lib/sms.ts).");
+      const Dysmsapi = (await import("@alicloud/dysmsapi20170525")).default;
+      const OpenApiClient = (await import("@alicloud/openapi-client")).default;
+
+      const config = new OpenApiClient.Config({
+        accessKeyId: process.env.ALIYUN_SMS_ACCESS_KEY_ID,
+        accessKeySecret: process.env.ALIYUN_SMS_ACCESS_KEY_SECRET,
+        endpoint: "dysmsapi.aliyuncs.com",
+      });
+
+      const client = new Dysmsapi(config);
+      const SendSmsRequest = (await import("@alicloud/dysmsapi20170525")).SendSmsRequest;
+      const req = new SendSmsRequest({
+        phoneNumbers: to,
+        signName: process.env.ALIYUN_SMS_SIGN_NAME,
+        templateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE,
+        // Your Aliyun template must have a ${code} variable.
+        templateParam: JSON.stringify({ code: message.match(/\d{4,8}/)?.[0] ?? message }),
+      });
+
+      const resp = await client.sendSms(req);
+      if (resp.body?.code !== "OK") {
+        throw new Error(`Aliyun SMS error: ${resp.body?.code} — ${resp.body?.message}`);
+      }
+      return;
     }
     case "tencent": {
       // TODO: integrate Tencent Cloud SMS (SendSms) here.
