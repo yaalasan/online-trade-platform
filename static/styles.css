@@ -737,6 +737,35 @@ dl { margin: 0; }
 }
 .status-pill.good { background: var(--green-bg); color: var(--green); }
 .status-pill.warn { background: var(--amber-bg); color: var(--amber); }
+.status-pill.translated-badge { background: #e8f4ff; color: #0070c0; font-size: .65rem; }
+
+.card-pills { display: flex; flex-wrap: wrap; gap: .3rem; }
+
+/* ---------- Shimmer skeleton ---------- */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.shimmer-card {
+  pointer-events: none;
+}
+.shimmer-img {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+.shimmer-line {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  margin-bottom: .6rem;
+}
+.shimmer-title { height: 18px; width: 70%; }
+.shimmer-short { width: 40%; }
 
 /* ---------- Supplier grid ---------- */
 .supplier-grid {

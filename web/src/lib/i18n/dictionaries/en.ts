@@ -399,6 +399,7 @@ export const en = {
     specsPlaceholder: "One per line, e.g.\nMaterial: 304 stainless steel\nCapacity: 750 ml",
     specsHint: 'One per line as "name: value".',
     createProduct: "Create product",
+    translationNotice: "After saving, AI will auto-translate your listing to English, Chinese, and Russian so buyers worldwide can read it.",
   },
   rfqForm: {
     title: "Title",

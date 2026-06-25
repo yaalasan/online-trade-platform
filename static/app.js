@@ -318,7 +318,11 @@ const translations = {
     pfDescription: 'Description',
     pfDescriptionPh: 'Materials, specs, packaging, use cases',
     pfSubmit: 'Add listing',
-    rfqSubmitted: 'RFQ submitted. Check My Fastflow.'
+    rfqSubmitted: 'RFQ submitted. Check My Fastflow.',
+    aiTranslatedBadge: 'AI Translated',
+    rfqTranslating: 'Translating your message to Chinese...',
+    rfqTranslateError: 'Translation unavailable, sending original.',
+    translationPending: 'Auto-translating...'
   },
   zh: {
     utilitySlogan: 'AI驱动采购、合规和全球供应商撮合',
@@ -609,7 +613,11 @@ const translations = {
     pfDescription: '描述',
     pfDescriptionPh: '材料、规格、包装、用途',
     pfSubmit: '添加产品',
-    rfqSubmitted: '询盘已提交，请查看“我的 Fastflow”。'
+    rfqSubmitted: '询盘已提交，请查看”我的 Fastflow”。',
+    aiTranslatedBadge: 'AI已翻译',
+    rfqTranslating: '正在翻译您的消息...',
+    rfqTranslateError: '翻译暂不可用，发送原文。',
+    translationPending: '自动翻译中...'
   },
   ru: {
     utilitySlogan: 'ИИ-поддержка закупок, комплаенса и глобального поиска поставщиков',
@@ -900,7 +908,11 @@ const translations = {
     pfDescription: 'Описание',
     pfDescriptionPh: 'Материалы, характеристики, упаковка, применение',
     pfSubmit: 'Добавить',
-    rfqSubmitted: 'Запрос отправлен. Проверьте «Мой Fastflow».'
+    rfqSubmitted: 'Запрос отправлен. Проверьте «Мой Fastflow».',
+    aiTranslatedBadge: 'AI перевёл',
+    rfqTranslating: 'Переводим ваше сообщение на китайский...',
+    rfqTranslateError: 'Перевод недоступен, отправляем оригинал.',
+    translationPending: 'Автоперевод...'
   }
 };
 
@@ -1115,12 +1127,29 @@ function flattenCategories(categories) {
   return categories.flatMap(category => category.items.map(item => ({ ...item, category: category.name })));
 }
 
+function renderProductSkeleton() {
+  return Array.from({ length: 4 }, () => `
+    <article class="product-card shimmer-card" aria-hidden="true">
+      <div class="shimmer-img"></div>
+      <div class="product-body">
+        <div class="shimmer-line shimmer-title"></div>
+        <div class="shimmer-line"></div>
+        <div class="shimmer-line shimmer-short"></div>
+      </div>
+    </article>
+  `).join('');
+}
+
 async function loadMarketplace(query = lastMarketplaceQuery, category = activeCategory) {
   lastMarketplaceQuery = query || '';
   activeCategory = category || '';
   const params = new URLSearchParams();
   if (lastMarketplaceQuery) params.set('q', lastMarketplaceQuery);
   if (activeCategory) params.set('category', activeCategory);
+  // Request server-side translation from cache when UI is not in Chinese.
+  if (currentLang && currentLang !== 'zh') params.set('target_lang', currentLang);
+
+  marketplaceGrid.innerHTML = renderProductSkeleton();
 
   try {
     const data = await apiFetch(`/api/marketplace${params.toString() ? `?${params}` : ''}`);
@@ -1138,7 +1167,10 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
         <div class="product-body">
           <div class="product-title-row">
             <button class="product-title" data-product-id="${product.id}">${escapeHtml(product.name)}</button>
-            <span class="status-pill ${product.verified ? 'good' : 'warn'}">${escapeHtml(product.verified ? t('pillVerified') : t('pillReview'))}</span>
+            <div class="card-pills">
+              <span class="status-pill ${product.verified ? 'good' : 'warn'}">${escapeHtml(product.verified ? t('pillVerified') : t('pillReview'))}</span>
+              ${product.translated ? `<span class="status-pill translated-badge">${escapeHtml(t('aiTranslatedBadge'))}</span>` : ''}
+            </div>
           </div>
           <p>${escapeHtml(product.description)}</p>
           <strong class="price">${escapeHtml(product.price)}</strong>
@@ -1397,7 +1429,31 @@ async function loadThread(quoteId) {
     `;
     document.getElementById('message-form').addEventListener('submit', async event => {
       event.preventDefault();
-      const body = new FormData(event.target).get('body');
+      const form = event.target;
+      let body = new FormData(form).get('body');
+      const submitBtn = form.querySelector('button[type="submit"]');
+
+      // Auto-translate buyer messages to Chinese so suppliers can read them.
+      if (currentLang && currentLang !== 'zh' && body && body.trim()) {
+        const originalLabel = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = t('rfqTranslating');
+        try {
+          const res = await apiFetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: body.trim(), target_lang: 'zh' })
+          });
+          if (res.translated && res.translated !== body.trim()) {
+            body = `${body.trim()}\n\n---\n${res.translated}`;
+          }
+        } catch (_) {
+          // Translation failed — send original silently.
+        }
+        submitBtn.textContent = originalLabel;
+        submitBtn.disabled = false;
+      }
+
       await apiFetch(`/api/messages/${quoteId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
