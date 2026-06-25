@@ -106,9 +106,14 @@ export function ManufacturerProfileForm({
         </div>
 
         {!readOnly && (
-          <Button type="submit" disabled={pending}>
-            {pending ? t("common.saving") : t("profileForm.saveProfile")}
-          </Button>
+          <>
+            <p className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded px-3 py-2">
+              {t("productForm.translationNotice")}
+            </p>
+            <Button type="submit" disabled={pending}>
+              {pending ? t("common.saving") : t("profileForm.saveProfile")}
+            </Button>
+          </>
         )}
       </fieldset>
 

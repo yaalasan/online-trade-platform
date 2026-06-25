@@ -1,7 +1,9 @@
+import hashlib
 import hmac
 import os
 import secrets
 import sqlite3
+import threading
 from datetime import UTC, datetime, timedelta
 from html import escape as html_escape
 from pathlib import Path
@@ -13,6 +15,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
+CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
@@ -289,6 +292,14 @@ CREATE TABLE IF NOT EXISTS trust_events (
     created_at TEXT NOT NULL,
     FOREIGN KEY(quote_id) REFERENCES quotes(id)
 );
+
+CREATE TABLE IF NOT EXISTS translations_cache (
+    cache_key TEXT PRIMARY KEY,
+    source_text TEXT NOT NULL,
+    target_lang TEXT NOT NULL,
+    translated_text TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 SAMPLE_USERS = [
@@ -401,6 +412,121 @@ def row_to_dict(row):
     if not row:
         return None
     return {key: row[key] for key in row.keys()}
+
+
+# --- Translation helpers ------------------------------------------------------
+
+def _open_translation_db():
+    """Open a dedicated SQLite connection for use outside request context."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _translate_via_claude(text, target_lang):
+    """Call Claude API. Returns translated text, or original on error."""
+    if not CLAUDE_API_KEY or not text:
+        return text
+    try:
+        import anthropic  # lazy import – only needed when API key is set
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        lang_names = {"en": "English", "zh": "Simplified Chinese", "ru": "Russian"}
+        lang_name = lang_names.get(target_lang, target_lang)
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=512,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Translate the following B2B product or company text to {lang_name}. "
+                    f"Return ONLY the translated text, no commentary:\n\n{text}"
+                ),
+            }],
+        )
+        return msg.content[0].text.strip()
+    except Exception:
+        return text
+
+
+def _cache_key(text, target_lang):
+    return hashlib.sha256(f"{text}|{target_lang}".encode()).hexdigest()
+
+
+def get_cached_translation(text, target_lang, db):
+    """Return cached translation string or None if not cached."""
+    if not text:
+        return None
+    row = db.execute(
+        "SELECT translated_text FROM translations_cache WHERE cache_key = ?",
+        (_cache_key(text, target_lang),),
+    ).fetchone()
+    return row["translated_text"] if row else None
+
+
+def _store_translation(text, target_lang, translated, db):
+    db.execute(
+        """
+        INSERT OR REPLACE INTO translations_cache
+        (cache_key, source_text, target_lang, translated_text, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (_cache_key(text, target_lang), text, target_lang, translated, utc_now()),
+    )
+
+
+def translate_text_cached(text, target_lang):
+    """Translate text using Claude, with SQLite cache. Uses its own DB connection (thread-safe)."""
+    if not text:
+        return text
+    db = _open_translation_db()
+    try:
+        cached = get_cached_translation(text, target_lang, db)
+        if cached is not None:
+            return cached
+        translated = _translate_via_claude(text, target_lang)
+        _store_translation(text, target_lang, translated, db)
+        db.commit()
+        return translated
+    finally:
+        db.close()
+
+
+def _bg_translate_product(name, description):
+    """Pre-translate product fields to EN/ZH/RU. Runs in a daemon thread."""
+    db = _open_translation_db()
+    try:
+        for lang in ("en", "zh", "ru"):
+            for text in (name, description):
+                if text and get_cached_translation(text, lang, db) is None:
+                    translated = _translate_via_claude(text, lang)
+                    _store_translation(text, lang, translated, db)
+        db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
+
+
+def _apply_translations(products, target_lang, db):
+    """Overlay cached translations onto a list of product dicts. Mutates copies in-place."""
+    if not target_lang or target_lang not in ("en", "zh", "ru"):
+        return products
+    result = []
+    for p in products:
+        t_name = get_cached_translation(p.get("name", ""), target_lang, db)
+        t_desc = get_cached_translation(p.get("description", ""), target_lang, db)
+        if t_name or t_desc:
+            p = dict(p)
+            if t_name:
+                p["name"] = t_name
+            if t_desc:
+                p["description"] = t_desc
+            p["translated"] = True
+        else:
+            p = dict(p)
+            p["translated"] = False
+        result.append(p)
+    return result
 
 
 def add_column_if_missing(db, table, column, definition):
@@ -767,6 +893,33 @@ def api_me():
     return jsonify({"authenticated": user is not None, "user": user})
 
 
+@app.route("/api/translate", methods=["POST"])
+@limiter.limit("20 per minute")
+def api_translate():
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    target_lang = (data.get("target_lang") or "en").strip()
+    if not text:
+        return jsonify({"error": "text is required."}), 400
+    if target_lang not in ("en", "zh", "ru"):
+        return jsonify({"error": "target_lang must be en, zh, or ru."}), 400
+    if len(text) > 2000:
+        return jsonify({"error": "text too long (max 2000 characters)."}), 400
+
+    db = get_db()
+    cached = get_cached_translation(text, target_lang, db)
+    if cached is not None:
+        return jsonify({"translated": cached, "cached": True})
+
+    if not CLAUDE_API_KEY:
+        return jsonify({"translated": text, "cached": False})
+
+    translated = _translate_via_claude(text, target_lang)
+    _store_translation(text, target_lang, translated, db)
+    db.commit()
+    return jsonify({"translated": translated, "cached": False})
+
+
 @app.route("/api/overview")
 def overview():
     db = get_db()
@@ -803,6 +956,9 @@ def overview():
 def marketplace():
     query = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
+    target_lang = request.args.get("target_lang", "").strip()
+    if target_lang not in ("en", "zh", "ru"):
+        target_lang = ""
     db = get_db()
     params = []
     filters = []
@@ -831,6 +987,13 @@ def marketplace():
         if category and prow["category"] != category:
             continue
         categories.setdefault(prow["category"], []).append(prow)
+
+    # Apply cached translations if target_lang was requested.
+    if target_lang:
+        categories = {
+            name: _apply_translations(items, target_lang, db)
+            for name, items in categories.items()
+        }
 
     return jsonify({"categories": [{"name": name, "items": items} for name, items in categories.items()]})
 
@@ -959,7 +1122,18 @@ def create_product():
     )
     log_audit("created", "product", cursor.lastrowid, f"{supplier} listed {fields['name']}")
     db.commit()
-    return jsonify({"product_id": cursor.lastrowid})
+    product_id = cursor.lastrowid
+
+    # Pre-translate name + description to all 3 languages in the background so
+    # marketplace requests with ?target_lang= get instant cache hits.
+    if CLAUDE_API_KEY:
+        t_name = fields["name"]
+        t_desc = fields["description"]
+        threading.Thread(
+            target=_bg_translate_product, args=(t_name, t_desc), daemon=True
+        ).start()
+
+    return jsonify({"product_id": product_id})
 
 
 @app.route("/api/quotes", methods=["GET", "POST"])

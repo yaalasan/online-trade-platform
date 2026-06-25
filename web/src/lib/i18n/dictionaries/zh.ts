@@ -395,6 +395,7 @@ export const zh: Dictionary = {
     specsPlaceholder: "每行一项，例如\n材质：304 不锈钢\n容量：750 毫升",
     specsHint: "每行一项，格式为“名称：数值”。",
     createProduct: "创建产品",
+    translationNotice: "保存后，AI 将自动将您的产品信息翻译成英文、中文和俄文，方便全球买家阅读。",
   },
   rfqForm: {
     title: "标题",

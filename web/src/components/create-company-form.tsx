@@ -50,6 +50,9 @@ export function CreateCompanyForm() {
         <Label htmlFor="description">{t("common.description")}</Label>
         <Textarea id="description" name="description" rows={3} placeholder={t("company.descriptionPlaceholder")} />
       </div>
+      <p className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded px-3 py-2">
+        {t("productForm.translationNotice")}
+      </p>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={pending}>
         {pending ? t("common.creating") : t("company.create")}
