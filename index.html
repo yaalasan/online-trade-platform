@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Fastflow connects global buyers with verified Chinese manufacturers. AI-powered matching, multilingual support, and full-process trade consulting." />
   <title>Fastflow — AI-Powered Global Sourcing Platform</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
@@ -110,8 +111,8 @@
     </div>
   </section>
 
-  <!-- Live stats strip -->
-  <section class="stats-strip" aria-label="Platform metrics">
+  <!-- Live stats strip — hidden until real data is available -->
+  <section class="stats-strip hidden" id="stats-strip" aria-label="Platform metrics">
     <div class="stat-card">
       <strong><span id="metric-products">0</span>+</strong>
       <span data-i18n="statsProducts">Products available for sourcing</span>
@@ -140,22 +141,22 @@
     </div>
     <div class="feature-cards">
       <article>
-        <div class="feature-icon">🎯</div>
+        <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
         <strong data-i18n="featureMatchTitle">AI Intelligent Matching</strong>
         <p data-i18n="featureMatchCopy">Powered by AI algorithm, automatically match ideal partners based on product category, production capacity, quotation, certification and lead time.</p>
       </article>
       <article>
-        <div class="feature-icon">🌐</div>
+        <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
         <strong data-i18n="featureCommTitle">24/7 Multilingual Communication</strong>
         <p data-i18n="featureCommCopy">Supports English, Spanish, French, Arabic and other mainstream languages with real-time AI translation and intelligent response.</p>
       </article>
       <article>
-        <div class="feature-icon">🛡️</div>
+        <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
         <strong data-i18n="featureRiskTitle">Full-Trade Compliance & Risk Control</strong>
         <p data-i18n="featureRiskCopy">AI qualification checks, transaction risk ratings and order monitoring across customs, logistics and contracts.</p>
       </article>
       <article>
-        <div class="feature-icon">📋</div>
+        <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
         <strong data-i18n="featureConsultTitle">End-to-End Trade Consulting</strong>
         <p data-i18n="featureConsultCopy">Policy analysis, market research, tariff consulting, factory audit, quality inspection and document production.</p>
       </article>
@@ -250,27 +251,27 @@
     </div>
     <div class="service-cards">
       <article>
-        <div class="service-icon">🤝</div>
+        <div class="service-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
         <strong data-i18n="serviceMatch">Trade Mediation</strong>
         <p data-i18n="serviceMatchSub">Supply-demand matching, order brokerage and negotiation support.</p>
       </article>
       <article>
-        <div class="service-icon">⚖️</div>
+        <div class="service-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 12 3 8 3"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M6 9L2 15h8L6 9z"/><path d="M18 9l-4 6h8l-4-6z"/><line x1="4" y1="21" x2="20" y2="21"/></svg></div>
         <strong data-i18n="serviceCompliance">Compliance Consulting</strong>
         <p data-i18n="serviceComplianceSub">Import/export policy, tariff, rebate and certification support.</p>
       </article>
       <article>
-        <div class="service-icon">📄</div>
+        <div class="service-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
         <strong data-i18n="serviceDocument">Document Service</strong>
         <p data-i18n="serviceDocumentSub">AI auto-generate contracts, PI, packing lists and customs documents.</p>
       </article>
       <article>
-        <div class="service-icon">🔍</div>
+        <div class="service-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
         <strong data-i18n="serviceInspection">Factory Audit & QC</strong>
         <p data-i18n="serviceInspectionSub">On-site audit, pre-shipment inspection and third-party quality control.</p>
       </article>
       <article>
-        <div class="service-icon">🚢</div>
+        <div class="service-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1"/><path d="M4 18V8l8-4 8 4v10"/><line x1="12" y1="4" x2="12" y2="18"/><line x1="4" y1="12" x2="20" y2="12"/></svg></div>
         <strong data-i18n="serviceLogistics">Logistics Solution</strong>
         <p data-i18n="serviceLogisticsSub">Integrated sea freight, air freight and dedicated line services.</p>
       </article>
@@ -319,6 +320,19 @@
         <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem3">Full-process risk control</span></div>
         <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem4">Multilingual support 24/7</span></div>
       </div>
+    </div>
+  </section>
+
+  <!-- Team -->
+  <section class="section team-section" id="team">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow" data-i18n="teamEyebrow">Our Team</span>
+        <h2 data-i18n="teamTitle">The people behind Fastflow</h2>
+      </div>
+    </div>
+    <div class="team-grid" id="team-grid">
+      <!-- Team members will be added here -->
     </div>
   </section>
 
@@ -372,18 +386,6 @@
     </div>
   </section>
 
-  <!-- News -->
-  <section class="section" id="news">
-    <div class="section-heading">
-      <div>
-        <span class="eyebrow" data-i18n="newsEyebrow">News & Blog</span>
-        <h2 data-i18n="newsTitle">Industry updates and trade intelligence</h2>
-      </div>
-    </div>
-    <div class="news-copy">
-      <p data-i18n="newsCopy1">Daily updates on global trade trends, import and export policies, tariff changes, fraud prevention and operation tips with AI-assisted insight.</p>
-    </div>
-  </section>
 
   <!-- FAQ -->
   <section class="section faq-section" id="faq">

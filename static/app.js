@@ -127,9 +127,8 @@ const translations = {
     aiFunctionDocsSub: 'Generate standard trade documents with one click.',
     aiFunctionRisk: 'Risk control system',
     aiFunctionRiskSub: 'Verify qualification and assess transaction risks in real time.',
-    newsEyebrow: 'News & Blog',
-    newsTitle: 'Industry updates and trade intelligence',
-    newsCopy1: 'Daily updates on global trade trends, import and export policies, tariff changes, fraud prevention and operation tips with AI-assisted insight.',
+    teamEyebrow: 'Our Team',
+    teamTitle: 'The people behind Fastflow',
     faqEyebrow: 'FAQ',
     faqTitle: 'Frequently asked questions',
     faqSafetyQ: 'How does the platform secure transactions?',
@@ -419,9 +418,8 @@ const translations = {
     aiFunctionDocsSub: '一键生成标准外贸单据。',
     aiFunctionRisk: '风控系统',
     aiFunctionRiskSub: 'AI核验资质，实时评估风险。',
-    newsEyebrow: '资讯中心',
-    newsTitle: '行业动态与贸易情报',
-    newsCopy1: '每日更新全球外贸行情、进出口政策、关税变动、防骗指南与运营技巧。',
+    teamEyebrow: '我们的团队',
+    teamTitle: 'Fastflow背后的人',
     faqEyebrow: '常见问答',
     faqTitle: '常见问题',
     faqSafetyQ: '平台如何保障交易安全？',
@@ -711,9 +709,8 @@ const translations = {
     aiFunctionDocsSub: 'Генерация стандартных торговых документов одним кликом.',
     aiFunctionRisk: 'Система контроля рисков',
     aiFunctionRiskSub: 'ИИ проверяет квалификацию и оценивает риски в реальном времени.',
-    newsEyebrow: 'Новости',
-    newsTitle: 'Отраслевые обновления и торговая аналитика',
-    newsCopy1: 'Ежедневные обновления о торговых трендах, политике, тарифах, предупреждениях о мошенничестве и советах по работе.',
+    teamEyebrow: 'Наша команда',
+    teamTitle: 'Люди за Fastflow',
     faqEyebrow: 'Вопросы',
     faqTitle: 'Часто задаваемые вопросы',
     faqSafetyQ: 'Как платформа обеспечивает безопасность сделок?',
@@ -1076,6 +1073,8 @@ async function loadOverview() {
     document.getElementById('metric-rfqs').textContent = data.stats.open_rfqs;
     document.getElementById('metric-orders-count').textContent = data.stats.orders;
     document.getElementById('metric-orders').textContent = `${data.stats.orders} ${t('metricOrdersLabel')}`;
+    const hasData = data.stats.products > 0 || data.stats.verified_suppliers > 0;
+    if (hasData) document.getElementById('stats-strip')?.classList.remove('hidden');
     document.getElementById('audit-list').innerHTML = data.audit.length ? data.audit.map(item => `
       <article>
         <div>
