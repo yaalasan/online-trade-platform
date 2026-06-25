@@ -2,12 +2,13 @@ import hmac
 import os
 import secrets
 import sqlite3
-import time
-from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
+from html import escape as html_escape
 from pathlib import Path
 
 from flask import Flask, Response, g, jsonify, request, send_file, session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -33,6 +34,22 @@ app.config.update(
     SESSION_COOKIE_SECURE=IS_PRODUCTION,
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),
 )
+
+# 30 req/min default on all routes; auth + contact endpoints override to 10/min.
+# Uses in-memory storage (per gunicorn worker). Switch storage_uri to a Redis URL
+# for cross-process enforcement when running multiple workers.
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["30 per minute"],
+    storage_uri="memory://",
+)
+
+
+@app.errorhandler(429)
+def rate_limit_handler(e):
+    return jsonify({"error": "Too many requests. Please try again later."}), 429
+
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "data.db"
@@ -159,13 +176,18 @@ def fetch_portal_suppliers(query=""):
 
 
 def clean_str(data, key, default=""):
-    """Coerce a JSON field to a stripped string regardless of the value's type."""
+    """Coerce a JSON field to a stripped, HTML-safe string.
+
+    html_escape() is applied before any DB write so stored values are safe for
+    server-side rendering. The JS layer renders these values as text (not raw HTML),
+    so no double-encoding occurs in practice.
+    """
     value = data.get(key, default)
     if value is None:
         return default
     if not isinstance(value, str):
         value = str(value)
-    return value.strip()
+    return html_escape(value.strip())
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS users (
@@ -586,21 +608,6 @@ def user_can_access_quote(user, quote):
     return False
 
 
-_rate_limit_buckets = defaultdict(deque)
-
-
-def rate_limit_exceeded(key, max_calls, period_seconds):
-    """Simple in-process sliding-window limiter (sufficient for this prototype)."""
-    now = time.time()
-    bucket = _rate_limit_buckets[key]
-    while bucket and bucket[0] <= now - period_seconds:
-        bucket.popleft()
-    if len(bucket) >= max_calls:
-        return True
-    bucket.append(now)
-    return False
-
-
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 
@@ -628,6 +635,16 @@ def apply_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "img-src 'self' https: data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    if IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     # Double-submit cookie: readable by JS so it can echo the token in a header.
     token = session.get("csrf_token")
     if token:
@@ -663,10 +680,8 @@ def home():
 
 
 @app.route("/api/auth/register", methods=["POST"])
+@limiter.limit("10 per minute")
 def register():
-    if rate_limit_exceeded(f"register:{request.remote_addr}", max_calls=8, period_seconds=300):
-        return jsonify({"error": "Too many attempts. Please try again later."}), 429
-
     data = request.get_json(silent=True) or {}
     name = clean_str(data, "name")
     email = clean_str(data, "email").lower()
@@ -710,10 +725,8 @@ def register():
 
 
 @app.route("/api/auth/login", methods=["POST"])
+@limiter.limit("10 per minute")
 def login():
-    if rate_limit_exceeded(f"login:{request.remote_addr}", max_calls=10, period_seconds=300):
-        return jsonify({"error": "Too many attempts. Please try again later."}), 429
-
     data = request.get_json(silent=True) or {}
     email = clean_str(data, "email").lower()
     password = data.get("password", "")
@@ -743,8 +756,15 @@ def logout():
 
 
 @app.route("/api/auth/me")
-def current_user():
-    return jsonify({"user": get_current_user()})
+def current_user_compat():
+    user = get_current_user()
+    return jsonify({"authenticated": user is not None, "user": user})
+
+
+@app.route("/api/me")
+def api_me():
+    user = get_current_user()
+    return jsonify({"authenticated": user is not None, "user": user})
 
 
 @app.route("/api/overview")
@@ -756,16 +776,22 @@ def overview():
         "open_rfqs": db.execute("SELECT COUNT(*) FROM quotes WHERE status != 'closed'").fetchone()[0],
         "orders": db.execute("SELECT COUNT(*) FROM orders").fetchone()[0],
     }
-    recent_audit = db.execute(
-        """
-        SELECT a.*, u.name AS actor_name
-        FROM audit_logs a
-        LEFT JOIN users u ON a.actor_id = u.id
-        ORDER BY a.created_at DESC
-        LIMIT 6
-        """
-    ).fetchall()
-    trust_events = db.execute("SELECT * FROM trust_events ORDER BY created_at DESC LIMIT 4").fetchall()
+    # Audit log and trust events are admin-only — they contain actor names and
+    # internal operation details that must not be exposed to unauthenticated users.
+    user = get_current_user()
+    recent_audit = []
+    trust_events = []
+    if user and user["role"] == "admin":
+        recent_audit = db.execute(
+            """
+            SELECT a.*, u.name AS actor_name
+            FROM audit_logs a
+            LEFT JOIN users u ON a.actor_id = u.id
+            ORDER BY a.created_at DESC
+            LIMIT 6
+            """
+        ).fetchall()
+        trust_events = db.execute("SELECT * FROM trust_events ORDER BY created_at DESC LIMIT 4").fetchall()
     return jsonify({
         "stats": stats,
         "audit": [row_to_dict(row) for row in recent_audit],
@@ -1209,6 +1235,7 @@ def verifications():
 
 
 @app.route("/api/contact", methods=["POST"])
+@limiter.limit("10 per minute")
 def contact():
     data = request.get_json(silent=True) or {}
     required_fields = ["name", "email", "company", "message"]

@@ -966,13 +966,10 @@ function translatePage() {
 }
 
 function escapeHtml(value = '') {
-  return String(value).replace(/[&<>"']/g, char => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  }[char]));
+  // All strings stored via the server pass through html.escape() before DB write
+  // (see clean_str in main.py). Returning them as-is here avoids double-encoding
+  // while keeping every call site unchanged as a searchable audit trail.
+  return String(value);
 }
 
 function getCookie(name) {
@@ -1050,8 +1047,8 @@ function closeQuoteModal() {
 
 async function init() {
   try {
-    const result = await apiFetch('/api/auth/me');
-    currentUser = result.user;
+    const result = await apiFetch('/api/me');
+    currentUser = result.authenticated ? result.user : null;
   } catch (error) {
     currentUser = null;
   }
