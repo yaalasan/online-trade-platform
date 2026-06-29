@@ -319,6 +319,11 @@ const translations = {
     pfDescription: 'Description',
     pfDescriptionPh: 'Materials, specs, packaging, use cases',
     pfSubmit: 'Add listing',
+    pfEditTitle: 'Edit product',
+    pfEditSubmit: 'Save changes',
+    pfCancelEdit: 'Cancel',
+    pfMyListings: 'My listings',
+    pfEditBtn: 'Edit',
     adminAddSupplierTitle: 'Add manufacturer account',
     adminAddSupplierSub: 'Create a supplier login on behalf of a manufacturer',
     adminSupplierName: 'Contact name',
@@ -625,6 +630,11 @@ const translations = {
     pfDescription: '描述',
     pfDescriptionPh: '材料、规格、包装、用途',
     pfSubmit: '添加产品',
+    pfEditTitle: '编辑产品',
+    pfEditSubmit: '保存更改',
+    pfCancelEdit: '取消',
+    pfMyListings: '我的产品',
+    pfEditBtn: '编辑',
     adminAddSupplierTitle: '添加制造商账户',
     adminAddSupplierSub: '代制造商创建供应商登录账号',
     adminSupplierName: '联系人姓名',
@@ -931,6 +941,11 @@ const translations = {
     pfDescription: 'Описание',
     pfDescriptionPh: 'Материалы, характеристики, упаковка, применение',
     pfSubmit: 'Добавить',
+    pfEditTitle: 'Редактировать товар',
+    pfEditSubmit: 'Сохранить',
+    pfCancelEdit: 'Отмена',
+    pfMyListings: 'Мои товары',
+    pfEditBtn: 'Изменить',
     adminAddSupplierTitle: 'Добавить производителя',
     adminAddSupplierSub: 'Создать аккаунт поставщика от имени производителя',
     adminSupplierName: 'Имя контакта',
@@ -1544,39 +1559,112 @@ async function loadVerifications() {
   }
 }
 
-function renderProductForm() {
-  const container = document.getElementById('workspace-content');
-  container.innerHTML = `
-    <div class="workspace-header"><h3>${escapeHtml(t('productFormTitle'))}</h3><span>${escapeHtml(t('productFormSub'))}</span></div>
-    <form id="product-form" class="data-form two-column">
-      <label>${escapeHtml(t('pfCategory'))}<input name="category" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
-      <label>${escapeHtml(t('pfName'))}<input name="name" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
-      <label>${escapeHtml(t('pfLocation'))}<input name="location" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
-      <label>${escapeHtml(t('pfPrice'))}<input name="price" placeholder="${escapeHtml(t('pfPricePh'))}" required /></label>
-      <label>${escapeHtml(t('pfMoq'))}<input name="moq" placeholder="${escapeHtml(t('pfMoqPh'))}" required /></label>
-      <label>${escapeHtml(t('pfLeadTime'))}<input name="lead_time" placeholder="${escapeHtml(t('pfLeadTimePh'))}" required /></label>
-      <label>${escapeHtml(t('pfCapacity'))}<input name="capacity" placeholder="${escapeHtml(t('pfCapacityPh'))}" /></label>
-      <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
-      <label class="wide">${escapeHtml(t('pfPhoto'))}<input name="image_url" placeholder="${escapeHtml(t('pfPhotoPh'))}" /></label>
-      <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required></textarea></label>
-      <button type="submit" class="primary">${escapeHtml(t('pfSubmit'))}</button>
+function productFormHtml(product = null) {
+  const v = f => escapeHtml(product ? (product[f] || '') : '');
+  const isEdit = !!product;
+  return `
+    <form id="product-form" class="data-form two-column" data-id="${isEdit ? product.id : ''}">
+      <label>${escapeHtml(t('pfCategory'))}<input name="category" value="${v('category')}" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
+      <label>${escapeHtml(t('pfName'))}<input name="name" value="${v('name')}" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
+      <label>${escapeHtml(t('pfLocation'))}<input name="location" value="${v('location')}" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
+      <label>${escapeHtml(t('pfPrice'))}<input name="price" value="${v('price')}" placeholder="${escapeHtml(t('pfPricePh'))}" required /></label>
+      <label>${escapeHtml(t('pfMoq'))}<input name="moq" value="${v('moq')}" placeholder="${escapeHtml(t('pfMoqPh'))}" required /></label>
+      <label>${escapeHtml(t('pfLeadTime'))}<input name="lead_time" value="${v('lead_time')}" placeholder="${escapeHtml(t('pfLeadTimePh'))}" required /></label>
+      <label>${escapeHtml(t('pfCapacity'))}<input name="capacity" value="${v('capacity')}" placeholder="${escapeHtml(t('pfCapacityPh'))}" /></label>
+      <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" value="${v('certifications')}" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
+      <label class="wide">${escapeHtml(t('pfPhoto'))}<input name="image_url" value="${v('image_url')}" placeholder="${escapeHtml(t('pfPhotoPh'))}" /></label>
+      <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required>${v('description')}</textarea></label>
+      <div style="display:flex;gap:.5rem">
+        <button type="submit" class="primary">${escapeHtml(isEdit ? t('pfEditSubmit') : t('pfSubmit'))}</button>
+        ${isEdit ? `<button type="button" id="cancel-edit" class="secondary">${escapeHtml(t('pfCancelEdit'))}</button>` : ''}
+      </div>
     </form>
+    <div id="product-form-feedback" class="feedback"></div>
   `;
+}
+
+function bindProductForm(onSuccess) {
   document.getElementById('product-form').addEventListener('submit', async event => {
     event.preventDefault();
-    const payload = Object.fromEntries(new FormData(event.target).entries());
-    await apiFetch('/api/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    const form = event.target;
+    const feedback = document.getElementById('product-form-feedback');
+    const id = form.dataset.id;
+    const payload = Object.fromEntries(new FormData(form).entries());
+    try {
+      if (id) {
+        await apiFetch(`/api/products/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      } else {
+        await apiFetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        form.reset();
+      }
+      feedback.textContent = id ? t('pfEditSubmit') + ' ✓' : t('pfSubmit') + ' ✓';
+      feedback.className = 'feedback success';
+      await Promise.all([loadMarketplace(), loadCategories(), loadOverview(), loadSuppliers()]);
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      feedback.textContent = error.message;
+      feedback.className = 'feedback error';
+    }
+  });
+  document.getElementById('cancel-edit')?.addEventListener('click', () => renderProductForm());
+}
+
+async function renderProductForm() {
+  const container = document.getElementById('workspace-content');
+  let listings = [];
+  try {
+    const data = await apiFetch('/api/my-products');
+    listings = data.products || [];
+  } catch (_) {}
+
+  container.innerHTML = `
+    <div class="workspace-header"><h3>${escapeHtml(t('productFormTitle'))}</h3><span>${escapeHtml(t('productFormSub'))}</span></div>
+    ${productFormHtml()}
+    ${listings.length ? `
+      <div class="workspace-header" style="margin-top:2rem"><h3>${escapeHtml(t('pfMyListings'))}</h3><span>${listings.length}</span></div>
+      ${listings.map(p => `
+        <article class="record-card">
+          <div>
+            <strong>${escapeHtml(p.name)}</strong>
+            <p>${escapeHtml(p.category)} · ${escapeHtml(p.supplier)}</p>
+          </div>
+          <dl class="record-meta">
+            <div><dt>${escapeHtml(t('pfPrice'))}</dt><dd>${escapeHtml(p.price)}</dd></div>
+            <div><dt>${escapeHtml(t('pfLocation'))}</dt><dd>${escapeHtml(p.location)}</dd></div>
+          </dl>
+          <div class="record-actions">
+            <button class="edit-product-btn secondary" data-id="${p.id}">${escapeHtml(t('pfEditBtn'))}</button>
+          </div>
+        </article>
+      `).join('')}
+    ` : ''}
+  `;
+  bindProductForm(null);
+  document.querySelectorAll('.edit-product-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const product = listings.find(p => String(p.id) === btn.dataset.id);
+      if (product) renderEditProductForm(product);
     });
-    event.target.reset();
-    await Promise.all([loadMarketplace(), loadCategories(), loadOverview(), loadSuppliers()]);
   });
 }
 
-function renderAdminPanel() {
+function renderEditProductForm(product) {
   const container = document.getElementById('workspace-content');
+  container.innerHTML = `
+    <div class="workspace-header"><h3>${escapeHtml(t('pfEditTitle'))}: ${escapeHtml(product.name)}</h3></div>
+    ${productFormHtml(product)}
+  `;
+  bindProductForm(() => renderProductForm());
+}
+
+async function renderAdminPanel() {
+  const container = document.getElementById('workspace-content');
+  let listings = [];
+  try {
+    const data = await apiFetch('/api/my-products');
+    listings = data.products || [];
+  } catch (_) {}
+
   container.innerHTML = `
     <div class="workspace-header"><h3>${escapeHtml(t('adminAddSupplierTitle'))}</h3><span>${escapeHtml(t('adminAddSupplierSub'))}</span></div>
     <form id="admin-supplier-form" class="data-form two-column">
@@ -1589,7 +1677,7 @@ function renderAdminPanel() {
     <div id="admin-supplier-feedback" class="feedback"></div>
 
     <div class="workspace-header" style="margin-top:2rem"><h3>${escapeHtml(t('adminAddProductTitle'))}</h3></div>
-    <form id="admin-product-form" class="data-form two-column">
+    <form id="admin-product-form" class="data-form two-column" data-id="">
       <label class="wide">${escapeHtml(t('adminProductSupplier'))}<input name="supplier" placeholder="Acme Manufacturing Co." required /></label>
       <label>${escapeHtml(t('pfCategory'))}<input name="category" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
       <label>${escapeHtml(t('pfName'))}<input name="name" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
@@ -1601,9 +1689,31 @@ function renderAdminPanel() {
       <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
       <label class="wide">${escapeHtml(t('pfPhoto'))}<input name="image_url" placeholder="${escapeHtml(t('pfPhotoPh'))}" /></label>
       <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required></textarea></label>
-      <button type="submit" class="primary">${escapeHtml(t('pfSubmit'))}</button>
+      <div style="display:flex;gap:.5rem">
+        <button type="submit" id="admin-product-submit" class="primary">${escapeHtml(t('pfSubmit'))}</button>
+        <button type="button" id="admin-cancel-edit" class="secondary" style="display:none">${escapeHtml(t('pfCancelEdit'))}</button>
+      </div>
     </form>
     <div id="admin-product-feedback" class="feedback"></div>
+
+    ${listings.length ? `
+      <div class="workspace-header" style="margin-top:2rem"><h3>${escapeHtml(t('pfMyListings'))}</h3><span>${listings.length}</span></div>
+      ${listings.map(p => `
+        <article class="record-card">
+          <div>
+            <strong>${escapeHtml(p.name)}</strong>
+            <p>${escapeHtml(p.supplier)} · ${escapeHtml(p.category)}</p>
+          </div>
+          <dl class="record-meta">
+            <div><dt>${escapeHtml(t('pfPrice'))}</dt><dd>${escapeHtml(p.price)}</dd></div>
+            <div><dt>${escapeHtml(t('pfLocation'))}</dt><dd>${escapeHtml(p.location)}</dd></div>
+          </dl>
+          <div class="record-actions">
+            <button class="admin-edit-product secondary" data-id="${p.id}">${escapeHtml(t('pfEditBtn'))}</button>
+          </div>
+        </article>
+      `).join('')}
+    ` : ''}
   `;
 
   document.getElementById('admin-supplier-form').addEventListener('submit', async event => {
@@ -1626,24 +1736,56 @@ function renderAdminPanel() {
     }
   });
 
-  document.getElementById('admin-product-form').addEventListener('submit', async event => {
+  const adminProductForm = document.getElementById('admin-product-form');
+  const adminProductFeedback = document.getElementById('admin-product-feedback');
+  const adminSubmitBtn = document.getElementById('admin-product-submit');
+  const adminCancelBtn = document.getElementById('admin-cancel-edit');
+
+  adminCancelBtn.addEventListener('click', () => {
+    adminProductForm.reset();
+    adminProductForm.dataset.id = '';
+    adminSubmitBtn.textContent = t('pfSubmit');
+    adminCancelBtn.style.display = 'none';
+    adminProductForm.querySelector('[name="supplier"]').removeAttribute('readonly');
+  });
+
+  adminProductForm.addEventListener('submit', async event => {
     event.preventDefault();
-    const feedback = document.getElementById('admin-product-feedback');
-    const payload = Object.fromEntries(new FormData(event.target).entries());
+    const payload = Object.fromEntries(new FormData(adminProductForm).entries());
+    const id = adminProductForm.dataset.id;
     try {
-      await apiFetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      feedback.textContent = t('pfSubmit') + ' ✓';
-      feedback.className = 'feedback success';
-      event.target.reset();
+      if (id) {
+        await apiFetch(`/api/products/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      } else {
+        await apiFetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        adminProductForm.reset();
+      }
+      adminProductFeedback.textContent = (id ? t('pfEditSubmit') : t('pfSubmit')) + ' ✓';
+      adminProductFeedback.className = 'feedback success';
       await Promise.all([loadMarketplace(), loadCategories(), loadOverview(), loadSuppliers()]);
+      await renderAdminPanel();
     } catch (error) {
-      feedback.textContent = error.message;
-      feedback.className = 'feedback error';
+      adminProductFeedback.textContent = error.message;
+      adminProductFeedback.className = 'feedback error';
     }
+  });
+
+  document.querySelectorAll('.admin-edit-product').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const product = listings.find(p => String(p.id) === btn.dataset.id);
+      if (!product) return;
+      const form = document.getElementById('admin-product-form');
+      ['category', 'name', 'location', 'price', 'moq', 'lead_time', 'capacity', 'certifications', 'image_url', 'description'].forEach(f => {
+        const el = form.querySelector(`[name="${f}"]`);
+        if (el) el.value = product[f] || '';
+      });
+      const supplierEl = form.querySelector('[name="supplier"]');
+      if (supplierEl) { supplierEl.value = product.supplier || ''; supplierEl.setAttribute('readonly', true); }
+      form.dataset.id = product.id;
+      adminSubmitBtn.textContent = t('pfEditSubmit');
+      adminCancelBtn.style.display = '';
+      form.scrollIntoView({ behavior: 'smooth' });
+    });
   });
 }
 
