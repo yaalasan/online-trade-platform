@@ -1408,6 +1408,45 @@ def verifications():
     return jsonify({"verifications": [row_to_dict(row) for row in rows]})
 
 
+@app.route("/api/admin/suppliers", methods=["POST"])
+def admin_create_supplier():
+    user, error = require_user()
+    if error:
+        return error
+    if user["role"] != "admin":
+        return jsonify({"error": "Admin only."}), 403
+
+    data = request.get_json(silent=True) or {}
+    name = clean_str(data, "name")
+    email = clean_str(data, "email").lower()
+    company = clean_str(data, "company")
+    password = data.get("password", "")
+    if not isinstance(password, str):
+        password = ""
+
+    if not name or not email or not company or not password:
+        return jsonify({"error": "name, email, company and password are required."}), 400
+    if len(password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters."}), 400
+
+    db = get_db()
+    if db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
+        return jsonify({"error": "Email is already registered."}), 400
+    if db.execute(
+        "SELECT id FROM users WHERE LOWER(company) = LOWER(?) AND role IN ('supplier', 'admin')",
+        (company,),
+    ).fetchone():
+        return jsonify({"error": "A supplier with that company name already exists."}), 400
+
+    cursor = db.execute(
+        "INSERT INTO users (name, email, password_hash, company, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (name, email, generate_password_hash(password), company, "supplier", utc_now()),
+    )
+    log_audit("created", "user", cursor.lastrowid, f"admin created supplier account for {company}", cursor.lastrowid)
+    db.commit()
+    return jsonify({"supplier_id": cursor.lastrowid, "company": company, "email": email})
+
+
 @app.route("/api/contact", methods=["POST"])
 @limiter.limit("10 per minute")
 def contact():

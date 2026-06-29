@@ -222,6 +222,7 @@ const translations = {
     dashboardTabOrders: 'Orders',
     dashboardTabVerification: 'Verification',
     dashboardTabProducts: 'Products',
+    dashboardTabAdmin: 'Admin',
     dashboardLogout: 'Logout',
     dashboardRfqThread: 'RFQ Thread',
     dashboardRfqThreadEmpty: 'Select an RFQ to open the thread.',
@@ -318,6 +319,16 @@ const translations = {
     pfDescription: 'Description',
     pfDescriptionPh: 'Materials, specs, packaging, use cases',
     pfSubmit: 'Add listing',
+    adminAddSupplierTitle: 'Add manufacturer account',
+    adminAddSupplierSub: 'Create a supplier login on behalf of a manufacturer',
+    adminSupplierName: 'Contact name',
+    adminSupplierCompany: 'Company name',
+    adminSupplierEmail: 'Email',
+    adminSupplierPassword: 'Temporary password',
+    adminSupplierSubmit: 'Create account',
+    adminSupplierCreated: 'Supplier account created.',
+    adminAddProductTitle: 'Add product on behalf of supplier',
+    adminProductSupplier: 'Supplier company name',
     rfqSubmitted: 'RFQ submitted. Check My Fastflow.',
     aiTranslatedBadge: 'AI Translated',
     rfqTranslating: 'Translating your message to Chinese...',
@@ -517,6 +528,7 @@ const translations = {
     dashboardTabOrders: '订单',
     dashboardTabVerification: '资质认证',
     dashboardTabProducts: '产品管理',
+    dashboardTabAdmin: '管理员',
     dashboardLogout: '退出登录',
     dashboardRfqThread: '询盘会话',
     dashboardRfqThreadEmpty: '选择询盘查看对话。',
@@ -613,6 +625,16 @@ const translations = {
     pfDescription: '描述',
     pfDescriptionPh: '材料、规格、包装、用途',
     pfSubmit: '添加产品',
+    adminAddSupplierTitle: '添加制造商账户',
+    adminAddSupplierSub: '代制造商创建供应商登录账号',
+    adminSupplierName: '联系人姓名',
+    adminSupplierCompany: '公司名称',
+    adminSupplierEmail: '电子邮箱',
+    adminSupplierPassword: '临时密码',
+    adminSupplierSubmit: '创建账户',
+    adminSupplierCreated: '供应商账户已创建。',
+    adminAddProductTitle: '代供应商添加产品',
+    adminProductSupplier: '供应商公司名称',
     rfqSubmitted: '询盘已提交，请查看”我的 Fastflow”。',
     aiTranslatedBadge: 'AI已翻译',
     rfqTranslating: '正在翻译您的消息...',
@@ -812,6 +834,7 @@ const translations = {
     dashboardTabOrders: 'Заказы',
     dashboardTabVerification: 'Верификация',
     dashboardTabProducts: 'Товары',
+    dashboardTabAdmin: 'Админ',
     dashboardLogout: 'Выйти',
     dashboardRfqThread: 'Тред запроса',
     dashboardRfqThreadEmpty: 'Выберите запрос для просмотра треда.',
@@ -908,6 +931,16 @@ const translations = {
     pfDescription: 'Описание',
     pfDescriptionPh: 'Материалы, характеристики, упаковка, применение',
     pfSubmit: 'Добавить',
+    adminAddSupplierTitle: 'Добавить производителя',
+    adminAddSupplierSub: 'Создать аккаунт поставщика от имени производителя',
+    adminSupplierName: 'Имя контакта',
+    adminSupplierCompany: 'Название компании',
+    adminSupplierEmail: 'Email',
+    adminSupplierPassword: 'Временный пароль',
+    adminSupplierSubmit: 'Создать аккаунт',
+    adminSupplierCreated: 'Аккаунт поставщика создан.',
+    adminAddProductTitle: 'Добавить продукт от поставщика',
+    adminProductSupplier: 'Название компании поставщика',
     rfqSubmitted: 'Запрос отправлен. Проверьте «Мой Fastflow».',
     aiTranslatedBadge: 'AI перевёл',
     rfqTranslating: 'Переводим ваше сообщение на китайский...',
@@ -1283,6 +1316,7 @@ function renderUserPanel() {
         <button class="tab-button" data-tab="orders">${escapeHtml(t('dashboardTabOrders'))}</button>
         <button class="tab-button" data-tab="verification">${escapeHtml(t('dashboardTabVerification'))}</button>
         ${currentUser.role === 'supplier' || currentUser.role === 'admin' ? `<button class="tab-button" data-tab="products">${escapeHtml(t('dashboardTabProducts'))}</button>` : ''}
+        ${currentUser.role === 'admin' ? `<button class="tab-button" data-tab="admin">${escapeHtml(t('dashboardTabAdmin'))}</button>` : ''}
       </div>
       <div id="workspace-content"></div>
     </section>
@@ -1311,6 +1345,7 @@ async function switchTab(tab) {
   if (tab === 'orders') await loadOrders();
   if (tab === 'verification') await loadVerifications();
   if (tab === 'products') renderProductForm();
+  if (tab === 'admin') renderAdminPanel();
 }
 
 async function loadQuotes() {
@@ -1537,6 +1572,78 @@ function renderProductForm() {
     });
     event.target.reset();
     await Promise.all([loadMarketplace(), loadCategories(), loadOverview(), loadSuppliers()]);
+  });
+}
+
+function renderAdminPanel() {
+  const container = document.getElementById('workspace-content');
+  container.innerHTML = `
+    <div class="workspace-header"><h3>${escapeHtml(t('adminAddSupplierTitle'))}</h3><span>${escapeHtml(t('adminAddSupplierSub'))}</span></div>
+    <form id="admin-supplier-form" class="data-form two-column">
+      <label>${escapeHtml(t('adminSupplierName'))}<input name="name" placeholder="Jane Smith" required /></label>
+      <label>${escapeHtml(t('adminSupplierCompany'))}<input name="company" placeholder="Acme Manufacturing Co." required /></label>
+      <label>${escapeHtml(t('adminSupplierEmail'))}<input type="email" name="email" placeholder="contact@acme.com" required /></label>
+      <label>${escapeHtml(t('adminSupplierPassword'))}<input type="password" name="password" minlength="8" placeholder="min 8 chars" required /></label>
+      <button type="submit" class="primary">${escapeHtml(t('adminSupplierSubmit'))}</button>
+    </form>
+    <div id="admin-supplier-feedback" class="feedback"></div>
+
+    <div class="workspace-header" style="margin-top:2rem"><h3>${escapeHtml(t('adminAddProductTitle'))}</h3></div>
+    <form id="admin-product-form" class="data-form two-column">
+      <label class="wide">${escapeHtml(t('adminProductSupplier'))}<input name="supplier" placeholder="Acme Manufacturing Co." required /></label>
+      <label>${escapeHtml(t('pfCategory'))}<input name="category" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
+      <label>${escapeHtml(t('pfName'))}<input name="name" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
+      <label>${escapeHtml(t('pfLocation'))}<input name="location" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
+      <label>${escapeHtml(t('pfPrice'))}<input name="price" placeholder="${escapeHtml(t('pfPricePh'))}" required /></label>
+      <label>${escapeHtml(t('pfMoq'))}<input name="moq" placeholder="${escapeHtml(t('pfMoqPh'))}" required /></label>
+      <label>${escapeHtml(t('pfLeadTime'))}<input name="lead_time" placeholder="${escapeHtml(t('pfLeadTimePh'))}" required /></label>
+      <label>${escapeHtml(t('pfCapacity'))}<input name="capacity" placeholder="${escapeHtml(t('pfCapacityPh'))}" /></label>
+      <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
+      <label class="wide">${escapeHtml(t('pfPhoto'))}<input name="image_url" placeholder="${escapeHtml(t('pfPhotoPh'))}" /></label>
+      <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required></textarea></label>
+      <button type="submit" class="primary">${escapeHtml(t('pfSubmit'))}</button>
+    </form>
+    <div id="admin-product-feedback" class="feedback"></div>
+  `;
+
+  document.getElementById('admin-supplier-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const feedback = document.getElementById('admin-supplier-feedback');
+    const payload = Object.fromEntries(new FormData(event.target).entries());
+    try {
+      const result = await apiFetch('/api/admin/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      feedback.textContent = `${t('adminSupplierCreated')} ID: ${result.supplier_id} — ${result.company} (${result.email})`;
+      feedback.className = 'feedback success';
+      event.target.reset();
+      await Promise.all([loadOverview(), loadSuppliers()]);
+    } catch (error) {
+      feedback.textContent = error.message;
+      feedback.className = 'feedback error';
+    }
+  });
+
+  document.getElementById('admin-product-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const feedback = document.getElementById('admin-product-feedback');
+    const payload = Object.fromEntries(new FormData(event.target).entries());
+    try {
+      await apiFetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      feedback.textContent = t('pfSubmit') + ' ✓';
+      feedback.className = 'feedback success';
+      event.target.reset();
+      await Promise.all([loadMarketplace(), loadCategories(), loadOverview(), loadSuppliers()]);
+    } catch (error) {
+      feedback.textContent = error.message;
+      feedback.className = 'feedback error';
+    }
   });
 }
 
