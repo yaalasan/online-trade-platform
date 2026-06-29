@@ -1026,6 +1026,52 @@ def categories():
     return jsonify({"categories": cats})
 
 
+@app.route("/api/my-products")
+def my_products():
+    user, error = require_user()
+    if error:
+        return error
+    if user["role"] not in ("supplier", "admin"):
+        return jsonify({"error": "Suppliers only."}), 403
+    db = get_db()
+    if user["role"] == "admin":
+        rows = db.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
+    else:
+        rows = db.execute(
+            "SELECT * FROM products WHERE supplier_id = ? OR supplier = ? ORDER BY created_at DESC",
+            (user["id"], user["company"]),
+        ).fetchall()
+    return jsonify({"products": [row_to_dict(r) for r in rows]})
+
+
+@app.route("/api/products/<int:product_id>", methods=["PATCH"])
+def update_product(product_id):
+    user, error = require_user()
+    if error:
+        return error
+    if user["role"] not in ("supplier", "admin"):
+        return jsonify({"error": "Suppliers only."}), 403
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "Product not found."}), 404
+    product = row_to_dict(row)
+    if user["role"] != "admin" and product.get("supplier_id") != user["id"] and product.get("supplier") != user["company"]:
+        return jsonify({"error": "Not your product."}), 403
+
+    data = request.get_json(silent=True) or {}
+    editable = ["category", "name", "location", "description", "price", "moq", "lead_time", "capacity", "certifications", "image_url"]
+    updates = {f: clean_str(data, f) for f in editable if data.get(f) is not None}
+    if not updates:
+        return jsonify({"error": "No fields to update."}), 400
+
+    set_clause = ", ".join(f"{f} = ?" for f in updates)
+    db.execute(f"UPDATE products SET {set_clause} WHERE id = ?", [*updates.values(), product_id])
+    log_audit("updated", "product", product_id, f"{user['company']} updated {product.get('name')}")
+    db.commit()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/products/<int:product_id>")
 def product_detail(product_id):
     row = get_db().execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
