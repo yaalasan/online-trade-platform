@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import os
+import re
 import secrets
 import sqlite3
 import threading
@@ -300,6 +301,29 @@ CREATE TABLE IF NOT EXISTS translations_cache (
     translated_text TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS product_specs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    value TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(product_id) REFERENCES products(id)
+);
+
+CREATE TABLE IF NOT EXISTS product_inquiries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    supplier_id INTEGER,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    company TEXT NOT NULL DEFAULT '',
+    quantity TEXT NOT NULL DEFAULT '',
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(product_id) REFERENCES products(id)
+);
 """
 
 SAMPLE_USERS = [
@@ -507,6 +531,16 @@ def _bg_translate_product(name, description):
         db.close()
 
 
+def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
+    """Background supplier notification. Email delivery not yet configured
+    (same console-mode pattern as SMS_PROVIDER=console in the portal).
+    Replace this stub with an SMTP/SendGrid call when the provider is wired."""
+    app.logger.info(
+        "product_inquiry#%s on product#%s → notify supplier#%s",
+        inquiry_id, product_id, supplier_id,
+    )
+
+
 def _apply_translations(products, target_lang, db):
     """Overlay cached translations onto a list of product dicts. Mutates copies in-place."""
     if not target_lang or target_lang not in ("en", "zh", "ru"):
@@ -712,6 +746,13 @@ def require_user():
     if not user:
         return None, (jsonify({"error": "Authentication required."}), 401)
     return user, None
+
+
+def _owns_product(user, product):
+    """Return True when the user may mutate this product (IDOR guard)."""
+    if user["role"] == "admin":
+        return True
+    return product.get("supplier_id") == user["id"] or product.get("supplier") == user["company"]
 
 
 def quote_scope_clause(user):
@@ -1070,6 +1111,145 @@ def update_product(product_id):
     log_audit("updated", "product", product_id, f"{user['company']} updated {product.get('name')}")
     db.commit()
     return jsonify({"ok": True})
+
+
+# ---- Specs limits -------------------------------------------------------
+_MAX_SPECS           = 100
+_MAX_SPEC_LABEL_LEN  = 200
+_MAX_SPEC_VALUE_LEN  = 500
+
+@app.route("/api/products/<int:product_id>/specs", methods=["PUT"])
+@limiter.limit("20 per minute")
+def save_product_specs(product_id):
+    user, error = require_user()
+    if error:
+        return error
+
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "Product not found."}), 404
+    product = row_to_dict(row)
+    if not _owns_product(user, product):
+        return jsonify({"error": "Not your product."}), 403
+
+    data = request.get_json(silent=True) or {}
+    specs = data.get("specs")
+    if not isinstance(specs, list):
+        return jsonify({"error": "specs must be an array."}), 400
+    if len(specs) > _MAX_SPECS:
+        return jsonify({"error": f"Too many specs (max {_MAX_SPECS})."}), 400
+
+    validated = []
+    for i, item in enumerate(specs):
+        if not isinstance(item, dict):
+            return jsonify({"error": f"specs[{i}] must be an object."}), 400
+        # Validate on raw values, then escape.
+        raw_label = str(item.get("label", "")).strip()
+        raw_value = str(item.get("value", "")).strip()
+        if not raw_label:
+            return jsonify({"error": f"specs[{i}].label is required."}), 400
+        if len(raw_label) > _MAX_SPEC_LABEL_LEN:
+            return jsonify({"error": f"specs[{i}].label too long (max {_MAX_SPEC_LABEL_LEN})."}), 400
+        if len(raw_value) > _MAX_SPEC_VALUE_LEN:
+            return jsonify({"error": f"specs[{i}].value too long (max {_MAX_SPEC_VALUE_LEN})."}), 400
+        validated.append({
+            "label": html_escape(raw_label),
+            "value": html_escape(raw_value),
+            "sort_order": i,  # derived from array position, client value ignored
+        })
+
+    now = utc_now()
+    # Transactional replace: delete-then-reinsert under the same implicit transaction.
+    db.execute("DELETE FROM product_specs WHERE product_id = ?", (product_id,))
+    saved = []
+    for spec in validated:
+        cursor = db.execute(
+            "INSERT INTO product_specs (product_id, label, value, sort_order, created_at) VALUES (?, ?, ?, ?, ?)",
+            (product_id, spec["label"], spec["value"], spec["sort_order"], now),
+        )
+        saved.append({**spec, "id": cursor.lastrowid, "product_id": product_id})
+    log_audit("updated", "product_specs", product_id,
+              f"{len(saved)} specs saved by {user['company']}")
+    db.commit()
+    return jsonify({"specs": saved})
+
+
+# ---- Inquiry validation constants ---------------------------------------
+_EMAIL_RE        = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_QUANTITY_RE     = re.compile(r"^[\d,.\s]+$")
+_MIN_MSG_LEN     = 20
+_MAX_MSG_LEN     = 4000
+_MAX_NAME_LEN    = 200
+_MAX_COMPANY_LEN = 200
+_MAX_QTY_LEN     = 100
+
+@app.route("/api/products/<int:product_id>/inquiry", methods=["POST"])
+@limiter.limit("5 per hour")
+def product_inquiry(product_id):
+    db = get_db()
+    row = db.execute("SELECT id, supplier_id FROM products WHERE id = ?", (product_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "Product not found."}), 404
+    product = row_to_dict(row)
+
+    data = request.get_json(silent=True) or {}
+
+    # Honeypot: bots fill the hidden "website" field; legitimate forms leave it empty.
+    if data.get("website", ""):
+        return jsonify({"status": "success"}), 200
+
+    # Extract and validate on raw strings before sanitizing.
+    raw_name     = str(data.get("name",     "")).strip()
+    raw_email    = str(data.get("email",    "")).strip().lower()
+    raw_company  = str(data.get("company",  "")).strip()
+    raw_quantity = str(data.get("quantity", "")).strip()
+    raw_message  = str(data.get("message",  "")).strip()
+
+    errors = {}
+    if not raw_name or len(raw_name) > _MAX_NAME_LEN:
+        errors["name"] = "Required (max 200 characters)."
+    if not raw_email or not _EMAIL_RE.match(raw_email):
+        errors["email"] = "Valid email address required."
+    if len(raw_company) > _MAX_COMPANY_LEN:
+        errors["company"] = f"Max {_MAX_COMPANY_LEN} characters."
+    if raw_quantity and len(raw_quantity) > _MAX_QTY_LEN:
+        errors["quantity"] = f"Max {_MAX_QTY_LEN} characters."
+    if raw_quantity and not _QUANTITY_RE.match(raw_quantity):
+        errors["quantity"] = "Quantity must be numeric."
+    if len(raw_message) < _MIN_MSG_LEN:
+        errors["message"] = f"Message must be at least {_MIN_MSG_LEN} characters."
+    if len(raw_message) > _MAX_MSG_LEN:
+        errors["message"] = f"Message must be {_MAX_MSG_LEN} characters or fewer."
+    if errors:
+        return jsonify({"error": "Validation failed.", "fields": errors}), 400
+
+    # Sanitize after validation passes.
+    name     = html_escape(raw_name)
+    email    = html_escape(raw_email)
+    company  = html_escape(raw_company)
+    quantity = html_escape(raw_quantity)
+    message  = html_escape(raw_message)
+
+    cursor = db.execute(
+        """INSERT INTO product_inquiries
+           (product_id, supplier_id, name, email, company, quantity, message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (product_id, product.get("supplier_id"), name, email, company, quantity, message, utc_now()),
+    )
+    inquiry_id = cursor.lastrowid
+    log_audit("created", "product_inquiry", product_id,
+              f"inquiry from {email}", actor_id=None)
+    db.commit()
+
+    if product.get("supplier_id"):
+        threading.Thread(
+            target=_notify_supplier_inquiry,
+            args=(product_id, product["supplier_id"], inquiry_id),
+            daemon=True,
+        ).start()
+
+    return jsonify({"status": "success"}), 200
 
 
 @app.route("/api/products/<int:product_id>")
