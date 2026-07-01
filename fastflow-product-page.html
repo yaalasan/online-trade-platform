@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fastflow — Product Detail (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ---- Design tokens ---------------------------------------------------- */
+  :root{
+    --ink:#0F1B24;          /* near-black slate, primary text            */
+    --ink-2:#4A5A66;        /* secondary text                            */
+    --line:#E3E8EC;         /* hairline borders                          */
+    --panel:#F5F7F8;        /* light surface panels                      */
+    --white:#FFFFFF;
+    --brand:#0C7B69;        /* deep teal-green = "verified trade"        */
+    --brand-ink:#095D50;
+    --amber:#E08A1E;        /* MOQ / hot-item highlight                  */
+    --focus:#0C7B69;
+    --shadow:0 1px 2px rgba(15,27,36,.06), 0 8px 24px rgba(15,27,36,.06);
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--panel); color:var(--ink);
+    font-family:"Inter",system-ui,sans-serif; font-size:14px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.disp{font-family:"Space Grotesk","Inter",sans-serif; letter-spacing:-.01em}
+  a{color:var(--brand-ink); text-decoration:none}
+  .wrap{max-width:1140px; margin:0 auto; padding:0 20px}
+
+  /* ---- Top / breadcrumb ------------------------------------------------- */
+  .topbar{background:var(--white); border-bottom:1px solid var(--line)}
+  .topbar .wrap{display:flex; align-items:center; gap:16px; height:56px}
+  .logo{font-family:"Space Grotesk"; font-weight:700; font-size:18px; color:var(--ink)}
+  .logo span{color:var(--brand)}
+  .crumbs{font-size:12.5px; color:var(--ink-2); padding:10px 0}
+  .crumbs a{color:var(--ink-2)} .crumbs b{color:var(--ink); font-weight:600}
+
+  /* ---- Hero two-column -------------------------------------------------- */
+  .hero{display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:28px; padding:22px 0 8px}
+  @media(max-width:900px){.hero{grid-template-columns:1fr}}
+
+  /* Gallery */
+  .gallery{background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:14px}
+  .stage{position:relative; aspect-ratio:4/3; border-radius:8px; overflow:hidden; background:#0d1418}
+  .stage img,.stage video{width:100%; height:100%; object-fit:cover; display:block}
+  .stage .counter{position:absolute; right:10px; bottom:10px; background:rgba(15,27,36,.72);
+    color:#fff; font-size:12px; padding:3px 9px; border-radius:20px}
+  .stage .zoomhint{position:absolute; left:10px; top:10px; background:rgba(255,255,255,.9);
+    color:var(--ink); font-size:11px; padding:3px 8px; border-radius:6px; display:flex; gap:5px; align-items:center}
+  .play{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; cursor:pointer}
+  .play span{width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.92);
+    display:flex; align-items:center; justify-content:center}
+  .play span::after{content:""; border-left:18px solid var(--brand); border-top:11px solid transparent;
+    border-bottom:11px solid transparent; margin-left:4px}
+
+  .rail{display:flex; gap:8px; margin-top:12px; overflow-x:auto; padding-bottom:2px}
+  .thumb{flex:0 0 64px; height:64px; border-radius:7px; overflow:hidden; border:2px solid transparent;
+    cursor:pointer; position:relative; background:var(--panel)}
+  .thumb img{width:100%; height:100%; object-fit:cover}
+  .thumb.active{border-color:var(--brand)}
+  .thumb .vtag{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(15,27,36,.35)}
+  .thumb .vtag::after{content:""; border-left:12px solid #fff; border-top:7px solid transparent;
+    border-bottom:7px solid transparent; margin-left:3px}
+  .addtile{flex:0 0 64px; height:64px; border-radius:7px; border:1.5px dashed var(--line);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    color:var(--ink-2); font-size:10px; cursor:pointer; background:var(--white)}
+  .addtile:hover{border-color:var(--brand); color:var(--brand)}
+  .addtile b{font-size:18px; font-weight:400; line-height:1}
+
+  /* Buy panel */
+  .buy{background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:20px; height:fit-content}
+  .hot{display:inline-flex; align-items:center; gap:6px; background:#FCEFDD; color:var(--amber);
+    font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; margin-bottom:10px}
+  .ptitle{font-size:18px; font-weight:600; line-height:1.35; margin:0 0 14px}
+  .pricebox{display:flex; align-items:baseline; gap:12px; padding:12px 14px; background:var(--panel);
+    border-radius:8px; margin-bottom:6px}
+  .price{font-family:"Space Grotesk"; font-size:26px; font-weight:700; color:var(--ink)}
+  .price small{font-size:13px; font-weight:500; color:var(--ink-2)}
+  .moq{margin-left:auto; text-align:right; font-size:12px; color:var(--ink-2)}
+  .moq b{display:block; color:var(--ink); font-size:14px}
+
+  .optrow{margin:16px 0}
+  .optlabel{font-size:12px; color:var(--ink-2); margin-bottom:7px; text-transform:uppercase; letter-spacing:.04em}
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chip{border:1px solid var(--line); background:var(--white); padding:6px 13px; border-radius:7px;
+    font-size:13px; cursor:pointer; user-select:none}
+  .chip[aria-pressed="true"]{border-color:var(--brand); background:#EAF5F2; color:var(--brand-ink); font-weight:600}
+  .swatch{width:15px; height:15px; border-radius:4px; display:inline-block; vertical-align:-2px; margin-right:6px; border:1px solid rgba(0,0,0,.1)}
+
+  .qty{display:flex; align-items:center; gap:0; width:fit-content; border:1px solid var(--line); border-radius:7px; overflow:hidden}
+  .qty button{width:34px; height:34px; border:0; background:var(--white); font-size:16px; cursor:pointer; color:var(--ink)}
+  .qty input{width:56px; height:34px; border:0; text-align:center; font-size:14px; border-left:1px solid var(--line); border-right:1px solid var(--line)}
+
+  .cta{display:block; width:100%; text-align:center; padding:12px; border-radius:8px; font-size:14px;
+    font-weight:600; cursor:pointer; border:1px solid var(--brand); margin-top:10px; font-family:inherit}
+  .cta.primary{background:var(--brand); color:#fff}
+  .cta.primary:hover{background:var(--brand-ink)}
+  .cta.ghost{background:var(--white); color:var(--brand-ink)}
+  .cta.ghost:hover{background:#EAF5F2}
+
+  .trust{margin-top:18px; border-top:1px solid var(--line); padding-top:14px; display:grid; gap:10px}
+  .trust div{display:flex; gap:9px; font-size:12.5px; color:var(--ink-2); align-items:flex-start}
+  .trust .tick{color:var(--brand); font-weight:700; flex:0 0 auto}
+
+  /* ---- Supplier strip --------------------------------------------------- */
+  .supplier{background:var(--white); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 20px; margin-top:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+  .avatar{width:44px; height:44px; border-radius:9px; background:linear-gradient(135deg,var(--brand),var(--brand-ink));
+    color:#fff; display:flex; align-items:center; justify-content:center; font-family:"Space Grotesk"; font-weight:700; font-size:18px}
+  .supplier .name{font-weight:600; font-size:15px}
+  .supplier .meta{font-size:12px; color:var(--ink-2)}
+  .badge{font-size:11px; padding:4px 9px; border-radius:6px; font-weight:600; white-space:nowrap}
+  .badge.verified{background:#EAF5F2; color:var(--brand-ink)}
+  .badge.audited{background:#EEF2FF; color:#3B4CB8}
+  .badge.member{background:#FCEFDD; color:var(--amber)}
+  .supplier .spacer{flex:1}
+
+  /* ---- Sticky tabs ------------------------------------------------------ */
+  .tabs{position:sticky; top:0; z-index:20; background:var(--white); border:1px solid var(--line);
+    border-radius:var(--radius); margin-top:20px; display:flex; gap:4px; padding:4px; overflow-x:auto}
+  .tabs a{padding:9px 16px; border-radius:7px; font-size:13px; font-weight:600; color:var(--ink-2); white-space:nowrap}
+  .tabs a.active,.tabs a:hover{background:var(--panel); color:var(--ink)}
+
+  /* ---- Content sections ------------------------------------------------- */
+  section.block{background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-top:16px}
+  section.block h2{font-size:16px; margin:0 0 16px; padding-bottom:12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:9px}
+  section.block h2::before{content:""; width:4px; height:16px; background:var(--brand); border-radius:3px}
+
+  .spectable{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+  @media(max-width:640px){.spectable{grid-template-columns:1fr}}
+  .spectable .row{display:grid; grid-template-columns:150px 1fr; border-bottom:1px solid var(--line)}
+  .spectable .row:nth-last-child(-n+2){border-bottom:0}
+  .spectable .k{background:var(--panel); padding:11px 14px; font-size:12.5px; color:var(--ink-2); font-weight:500; border-right:1px solid var(--line)}
+  .spectable .v{padding:11px 14px; font-size:13px; font-weight:500}
+
+  /* description media blocks */
+  .descblock{margin-bottom:22px}
+  .descblock p{color:var(--ink-2); max-width:70ch}
+  .mediagrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px}
+  @media(max-width:640px){.mediagrid{grid-template-columns:repeat(2,1fr)}}
+  .mediagrid img{width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px; border:1px solid var(--line)}
+  .mediabanner{width:100%; aspect-ratio:21/8; object-fit:cover; border-radius:10px; border:1px solid var(--line); margin-top:12px}
+  .add-media-cta{margin-top:14px; border:1.5px dashed var(--line); border-radius:8px; padding:18px; text-align:center; color:var(--ink-2); font-size:13px}
+  .add-media-cta b{color:var(--brand)}
+
+  /* faq */
+  .faq{border:1px solid var(--line); border-radius:8px; overflow:hidden}
+  .faq details{border-bottom:1px solid var(--line)}
+  .faq details:last-child{border-bottom:0}
+  .faq summary{padding:14px 16px; font-weight:600; font-size:13.5px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+"; color:var(--brand); font-size:18px; font-weight:400}
+  .faq details[open] summary::after{content:"–"}
+  .faq .ans{padding:0 16px 15px; color:var(--ink-2); font-size:13px; max-width:74ch}
+
+  /* inquiry form */
+  .formgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media(max-width:640px){.formgrid{grid-template-columns:1fr}}
+  .field{display:flex; flex-direction:column; gap:5px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:12px; color:var(--ink-2); font-weight:500}
+  .field input,.field textarea{border:1px solid var(--line); border-radius:7px; padding:10px 12px; font:inherit; font-size:13px; background:var(--white)}
+  .field input:focus,.field textarea:focus{outline:2px solid var(--focus); outline-offset:-1px; border-color:transparent}
+
+  /* related */
+  .related{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:16px}
+  @media(max-width:800px){.related{grid-template-columns:repeat(2,1fr)}}
+  .card{background:var(--white); border:1px solid var(--line); border-radius:9px; overflow:hidden}
+  .card img{width:100%; aspect-ratio:1; object-fit:cover}
+  .card .cb{padding:11px}
+  .card .ct{font-size:12.5px; line-height:1.4; height:35px; overflow:hidden; margin-bottom:6px}
+  .card .cp{font-family:"Space Grotesk"; font-weight:700; color:var(--brand-ink); font-size:14px}
+
+  footer{padding:40px 0; text-align:center; color:var(--ink-2); font-size:12px}
+  .note{background:#FFF8EC; border:1px solid #F3E2C0; border-radius:8px; padding:10px 14px; font-size:12px; color:#8a6412; margin:16px 0}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <div class="logo">Fast<span>flow</span></div>
+  <div style="font-size:12.5px;color:var(--ink-2)">Global sourcing</div>
+</div></div>
+
+<div class="wrap">
+  <div class="crumbs">
+    <a href="#">Home</a> ›
+    <a href="#">Building & Construction</a> ›
+    <a href="#">Awning & Canopy</a> ›
+    <b>Aluminum Frame Polycarbonate Carport</b>
+  </div>
+
+  <div class="note">Mockup — structure &amp; media gallery reference for the Fastflow product page. Placeholder photos. Wire the gallery to <code>product.media[]</code> and the spec rows to <code>product.specs[]</code>.</div>
+
+  <!-- ========================= HERO ========================= -->
+  <div class="hero">
+
+    <!-- GALLERY -->
+    <div class="gallery">
+      <div class="stage" id="stage">
+        <img id="stageImg" src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80" alt="Product">
+        <div class="zoomhint">🔍 Hover to zoom</div>
+        <div class="counter" id="counter">1 / 8</div>
+      </div>
+      <div class="rail" id="rail"><!-- thumbs injected --></div>
+    </div>
+
+    <!-- BUY PANEL -->
+    <div class="buy">
+      <div class="hot">🔥 Hot item</div>
+      <h1 class="ptitle">Garden Aluminum Frame Polycarbonate Canopy — Transparent Outdoor Car Shelter / Carport</h1>
+
+      <div class="pricebox">
+        <div class="price">US$40<small>.00 / m²</small></div>
+        <div class="moq"><b>9 m²</b>Min. order (MOQ)</div>
+      </div>
+      <div style="font-size:11.5px;color:var(--ink-2);margin-bottom:4px">Tiered pricing: 9–99 m² · $40 &nbsp;|&nbsp; 100–499 m² · $36 &nbsp;|&nbsp; 500 m²+ · $33</div>
+
+      <div class="optrow">
+        <div class="optlabel">Color</div>
+        <div class="chips" data-group="color">
+          <div class="chip" role="button" aria-pressed="true"><span class="swatch" style="background:#2f6fb0"></span>Blue</div>
+          <div class="chip" role="button" aria-pressed="false"><span class="swatch" style="background:#d9b23a"></span>Yellow</div>
+          <div class="chip" role="button" aria-pressed="false"><span class="swatch" style="background:#b23b3b"></span>Red</div>
+        </div>
+      </div>
+
+      <div class="optrow">
+        <div class="optlabel">Size</div>
+        <div class="chips" data-group="size">
+          <div class="chip" role="button" aria-pressed="true">S</div>
+          <div class="chip" role="button" aria-pressed="false">M</div>
+          <div class="chip" role="button" aria-pressed="false">L</div>
+        </div>
+      </div>
+
+      <div class="optrow">
+        <div class="optlabel">Length</div>
+        <div class="chips" data-group="length">
+          <div class="chip" role="button" aria-pressed="true">Standard</div>
+          <div class="chip" role="button" aria-pressed="false">Lengthened</div>
+        </div>
+      </div>
+
+      <div class="optrow">
+        <div class="optlabel">Quantity (m²)</div>
+        <div class="qty">
+          <button onclick="stepQty(-1)">−</button>
+          <input id="qty" value="9" inputmode="numeric">
+          <button onclick="stepQty(1)">+</button>
+        </div>
+      </div>
+
+      <button class="cta primary">Send inquiry</button>
+      <button class="cta ghost">Start order (escrow)</button>
+      <button class="cta ghost">Chat with supplier</button>
+
+      <div class="trust">
+        <div><span class="tick">✓</span> Escrow payment — funds released only after you confirm delivery</div>
+        <div><span class="tick">✓</span> Pre-shipment inspection available</div>
+        <div><span class="tick">✓</span> Platform-supported logistics &amp; tracking</div>
+        <div><span class="tick">✓</span> Dispute resolution &amp; refund support on eligible orders</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPPLIER STRIP -->
+  <div class="supplier">
+    <div class="avatar">FY</div>
+    <div>
+      <div class="name">Foshan Yueling Outdoor Building Materials Co., Ltd</div>
+      <div class="meta">Manufacturer / Trading Co. · Guangdong, China</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="badge verified">✓ Verified supplier</span>
+    <span class="badge audited">Audited factory</span>
+    <span class="badge member">Member since 2025</span>
+  </div>
+
+  <!-- STICKY TABS -->
+  <nav class="tabs" id="tabs">
+    <a href="#specs" class="active">Specifications</a>
+    <a href="#packaging">Packaging</a>
+    <a href="#desc">Description</a>
+    <a href="#faq">FAQ</a>
+    <a href="#inquiry">Contact supplier</a>
+  </nav>
+
+  <!-- SPECS -->
+  <section class="block" id="specs">
+    <h2>Basic information</h2>
+    <div class="spectable">
+      <div class="row"><div class="k">Model No.</div><div class="v">RA-Carport</div></div>
+      <div class="row"><div class="k">Brand</div><div class="v">We Lead</div></div>
+      <div class="row"><div class="k">Frame material</div><div class="v">Aluminum alloy</div></div>
+      <div class="row"><div class="k">Roof material</div><div class="v">Polycarbonate (transparent)</div></div>
+      <div class="row"><div class="k">Waterproof index</div><div class="v">&gt; 3000 mm</div></div>
+      <div class="row"><div class="k">Control</div><div class="v">Fixed</div></div>
+      <div class="row"><div class="k">Customization</div><div class="v">OEM / ODM available</div></div>
+      <div class="row"><div class="k">Origin</div><div class="v">China</div></div>
+      <div class="row"><div class="k">HS Code</div><div class="v">7610100000</div></div>
+      <div class="row"><div class="k">Production capacity</div><div class="v">1,000 m² / month</div></div>
+    </div>
+  </section>
+
+  <!-- PACKAGING -->
+  <section class="block" id="packaging">
+    <h2>Packaging &amp; delivery</h2>
+    <div class="spectable">
+      <div class="row"><div class="k">Package size</div><div class="v">300 × 30 × 50 cm</div></div>
+      <div class="row"><div class="k">Gross weight</div><div class="v">500 kg</div></div>
+      <div class="row"><div class="k">Port</div><div class="v">Guangzhou / Shenzhen</div></div>
+      <div class="row"><div class="k">Lead time</div><div class="v">15–25 days after deposit</div></div>
+    </div>
+  </section>
+
+  <!-- DESCRIPTION with media blocks -->
+  <section class="block" id="desc">
+    <h2>Product description</h2>
+
+    <div class="descblock">
+      <p>Science-and-technology-oriented door &amp; window manufacturer with 10+ years in high-end aluminum systems. Production equipment imported from Germany and Italy, with an in-house R&amp;D team covering sunrooms, canopies, pergolas, insulated windows and heavy-duty sliding doors.</p>
+      <img class="mediabanner" src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80" alt="Factory / product banner">
+    </div>
+
+    <div class="descblock">
+      <p><b>Detail shots</b> — frame joints, polycarbonate sheet, and mounting hardware. Suppliers can add as many blocks as needed; each block is text, an image grid, a banner, or a video.</p>
+      <div class="mediagrid">
+        <img src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=600&q=80" alt="">
+        <img src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=600&q=80" alt="">
+        <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=600&q=80" alt="">
+      </div>
+    </div>
+
+    <div class="add-media-cta">
+      <b>+ Add media block</b> &nbsp;·&nbsp; image grid, full-width banner, or video &nbsp;·&nbsp; drag to reorder
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="block" id="faq">
+    <h2>Frequently asked questions</h2>
+    <div class="faq">
+      <details open><summary>Is this carport easy to assemble?</summary><div class="ans">Yes — each order ships with an assembly manual tailored to your site dimensions. Door-to-door delivery and installation guidance available.</div></details>
+      <details><summary>Can it be customized to my site?</summary><div class="ans">Send the area sizes and photos of your site. We design a proposal and quote; once confirmed, we handle production through shipping.</div></details>
+      <details><summary>How does it hold up in extreme weather?</summary><div class="ans">Engineered for hurricane-force winds and heavy snow loads. Waterproof index above 3000 mm.</div></details>
+      <details><summary>What is the warranty?</summary><div class="ans">15-year structural warranty on powder-coated frames; 3-year warranty on any electronic components.</div></details>
+      <details><summary>Standard and custom sizes?</summary><div class="ans">Standard 3×3 m, 3×4 m and more. The open-roof system is flexible and fully customizable in length and louver direction.</div></details>
+    </div>
+  </section>
+
+  <!-- INQUIRY -->
+  <section class="block" id="inquiry">
+    <h2>Send your message to this supplier</h2>
+    <div class="formgrid">
+      <div class="field"><label>Your name</label><input placeholder="Full name"></div>
+      <div class="field"><label>Company email</label><input placeholder="you@company.com"></div>
+      <div class="field"><label>Company</label><input placeholder="Company name"></div>
+      <div class="field"><label>Target quantity (m²)</label><input placeholder="e.g. 200"></div>
+      <div class="field full"><label>Message</label><textarea rows="4" placeholder="Describe your requirement, target price, destination port… (20–4000 characters)"></textarea></div>
+      <div class="field full"><button class="cta primary" style="max-width:220px">Send inquiry</button></div>
+    </div>
+  </section>
+
+  <!-- RELATED -->
+  <section class="block">
+    <h2>People who viewed this also viewed</h2>
+    <div class="related">
+      <div class="card"><img src="https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=400&q=80"><div class="cb"><div class="ct">Electric Patio Awning — Motorized Retractable Roof</div><div class="cp">US$50–68 / m²</div></div></div>
+      <div class="card"><img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80"><div class="cb"><div class="ct">Retractable Folding PVC Awning — Pool &amp; Patio</div><div class="cp">US$50–68 / m²</div></div></div>
+      <div class="card"><img src="https://images.unsplash.com/photo-1600585152220-90363fe7e115?auto=format&fit=crop&w=400&q=80"><div class="cb"><div class="ct">Luxury Polycarbonate Car Shelter — Aluminum Frame</div><div class="cp">US$40 / m²</div></div></div>
+      <div class="card"><img src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=400&q=80"><div class="cb"><div class="ct">Aluminum Frame Polycarbonate Sheet Awning</div><div class="cp">US$35–40 / m²</div></div></div>
+    </div>
+  </section>
+</div>
+
+<footer>Fastflow · product detail structure mockup</footer>
+
+<script>
+  /* ---- Media gallery: driven by a media[] array (video + images + upload slots) ---- */
+  const media = [
+    { type:'video', thumb:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=200&q=60',
+      src:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80' },
+    { type:'image', src:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=900&q=80' },
+    { type:'image', src:'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80' },
+    { type:'image', src:'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=900&q=80' },
+    { type:'image', src:'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80' },
+    { type:'image', src:'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80' },
+    { type:'image', src:'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=900&q=80' },
+    { type:'image', src:'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=900&q=80' },
+  ];
+
+  const rail = document.getElementById('rail');
+  const stageImg = document.getElementById('stageImg');
+  const counter = document.getElementById('counter');
+
+  media.forEach((m, i) => {
+    const t = document.createElement('div');
+    t.className = 'thumb' + (i === 0 ? ' active' : '');
+    t.innerHTML = `<img src="${m.thumb || m.src}">` + (m.type === 'video' ? `<div class="vtag"></div>` : '');
+    t.onclick = () => select(i);
+    rail.appendChild(t);
+  });
+  // supplier-side "add media" slots — this is the "more space to add media" affordance
+  ['+ Photo','+ Video','+ 360°'].forEach(label => {
+    const a = document.createElement('div');
+    a.className = 'addtile';
+    a.innerHTML = `<b>+</b>${label.replace('+ ','')}`;
+    rail.appendChild(a);
+  });
+
+  function select(i){
+    document.querySelectorAll('.thumb').forEach((el,idx)=>el.classList.toggle('active', idx===i));
+    stageImg.src = media[i].src;
+    counter.textContent = (i+1) + ' / ' + media.length;
+  }
+
+  /* zoom on hover over the main stage */
+  const stage = document.getElementById('stage');
+  stage.addEventListener('mousemove', e=>{
+    const r = stage.getBoundingClientRect();
+    stageImg.style.transformOrigin = `${((e.clientX-r.left)/r.width)*100}% ${((e.clientY-r.top)/r.height)*100}%`;
+    stageImg.style.transform = 'scale(1.9)';
+  });
+  stage.addEventListener('mouseleave', ()=>{ stageImg.style.transform='scale(1)'; });
+  stageImg.style.transition = 'transform .12s ease';
+
+  /* variant chips (single-select per group) */
+  document.querySelectorAll('.chips').forEach(group=>{
+    group.querySelectorAll('.chip').forEach(chip=>{
+      chip.onclick = ()=>{
+        group.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+        chip.setAttribute('aria-pressed','true');
+      };
+    });
+  });
+
+  /* quantity stepper */
+  function stepQty(d){
+    const el = document.getElementById('qty');
+    el.value = Math.max(9, (parseInt(el.value)||9) + d*10);
+  }
+
+  /* tab scroll-spy */
+  const tabLinks = [...document.querySelectorAll('#tabs a')];
+  tabLinks.forEach(a=>a.onclick = e=>{
+    e.preventDefault();
+    document.querySelector(a.getAttribute('href')).scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  const spy = new IntersectionObserver(entries=>{
+    entries.forEach(en=>{
+      if(en.isIntersecting){
+        tabLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+en.target.id));
+      }
+    });
+  }, {rootMargin:'-20% 0px -70% 0px'});
+  ['specs','packaging','desc','faq','inquiry'].forEach(id=>spy.observe(document.getElementById(id)));
+</script>
+</body>
+</html>

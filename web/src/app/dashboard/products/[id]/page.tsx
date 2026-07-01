@@ -6,9 +6,10 @@ import { db } from "@/lib/db";
 import type { ProductSpec } from "@/lib/validation";
 import { Card, CardContent, CardHeader, CardTitle, ProductStatusBadge } from "@/components/ui/primitives";
 import { ProductForm, type ProductFormValues } from "@/components/product-form";
-import { ProductImageManager, type ProductImageView } from "@/components/product-image-manager";
 import { DeleteProductButton } from "@/components/delete-product-button";
 import { getT } from "@/lib/i18n/server";
+import { ProductDetailClient } from "./product-detail-client";
+import type { Product } from "@/components/product/types";
 
 export default async function ProductEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -46,7 +47,45 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
     specifications: specs.map((s) => `${s.name}: ${s.value}`).join("\n"),
   };
 
-  const images: ProductImageView[] = product.images.map((i) => ({ id: i.id, url: i.url, alt: i.alt }));
+  const productForDetail: Product = {
+    id: product.id,
+    title: product.name,
+    priceMin: product.priceMin ? Number(product.priceMin) : 0,
+    priceMax: product.priceMax ? Number(product.priceMax) : null,
+    priceUnit: product.unit,
+    moq: product.moq,
+    moqUnit: product.unit,
+    supplier: {
+      id: company.id,
+      name: company.name,
+      kind: company.type,
+      location: "",
+      verified: false,
+      audited: false,
+    },
+    media: product.images.map((img) => ({
+      id: img.id,
+      type: "image" as const,
+      url: img.url,
+      thumbUrl: img.url,
+      sortOrder: img.position,
+    })),
+    specs: specs.map((s, i) => ({
+      id: String(i),
+      label: s.name,
+      value: s.value,
+      sortOrder: i,
+    })),
+    variants: [],
+    priceTiers: [],
+    packaging: {
+      leadTime: product.leadTimeDays ? `${product.leadTimeDays} days` : null,
+    },
+    descriptionBlocks: product.description
+      ? [{ id: "desc-0", type: "text" as const, sortOrder: 0, content: { text: product.description } }]
+      : [],
+    faqs: [],
+  };
 
   return (
     <div className="space-y-6">
@@ -65,15 +104,6 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("products.images")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ProductImageManager productId={product.id} images={images} canManage={canManage} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>{t("products.details")}</CardTitle>
         </CardHeader>
         <CardContent>
@@ -89,6 +119,8 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
           )}
         </CardContent>
       </Card>
+
+      <ProductDetailClient product={productForDetail} canManage={canManage} />
     </div>
   );
 }
