@@ -291,6 +291,36 @@ export async function uploadProductImage(formData: FormData): Promise<ActionResu
   });
 }
 
+/** Save the specs array for a product owned by the active company. */
+export async function saveProductSpecs(
+  productId: string,
+  specs: Array<{ label: string; value: string }>,
+): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireActiveContext();
+    assertCanManage(ctx.role);
+
+    if (specs.length > 100) throw new ValidationError("At most 100 specifications are allowed.");
+
+    const product = await db.product.findFirst({
+      where: { id: productId, manufacturer: { companyId: ctx.company.id } },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundError("Product not found in this company.");
+
+    const specData = specs
+      .filter((s) => s.label.trim() && s.value.trim())
+      .map((s) => ({ name: s.label.trim().slice(0, 80), value: s.value.trim().slice(0, 200) }));
+
+    await db.product.update({
+      where: { id: product.id },
+      data: { specifications: specData as unknown as Prisma.InputJsonValue },
+    });
+
+    revalidatePath(`/dashboard/products/${productId}`);
+  });
+}
+
 /** Delete a product image owned by the active company. */
 export async function deleteProductImage(formData: FormData): Promise<ActionResult> {
   return run(async () => {

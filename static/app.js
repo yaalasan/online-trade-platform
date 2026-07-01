@@ -1069,8 +1069,10 @@ function scrollToId(id) {
   window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - headerH - 12, behavior: 'smooth' });
 }
 
-function openModal(contentHtml) {
+function openModal(contentHtml, { wide = false } = {}) {
   modalBody.innerHTML = contentHtml;
+  const content = accountModal.querySelector('.modal-content');
+  content?.classList.toggle('pd-wide', wide);
   accountModal.classList.remove('hidden');
 }
 
@@ -1246,30 +1248,145 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
 }
 
 async function openProductDetail(productId) {
+  openModal('<div class="pd-loading" style="text-align:center;padding:60px 0;color:#6b7280">Loading…</div>', { wide: true });
+  let product;
   try {
-    const { product } = await apiFetch(`/api/products/${productId}`);
-    openModal(`
-      <div class="product-detail">
-        <img src="${escapeHtml(product.image_url || '')}" alt="${escapeHtml(product.name)}" />
-        <div>
-          <span class="eyebrow">${escapeHtml(product.category)}</span>
-          <h3>${escapeHtml(product.name)}</h3>
-          <p>${escapeHtml(product.description)}</p>
-          <dl class="detail-grid">
-            <div><dt>${escapeHtml(t('detailSupplier'))}</dt><dd>${escapeHtml(product.supplier)}</dd></div>
-            <div><dt>${escapeHtml(t('detailLocation'))}</dt><dd>${escapeHtml(product.location)}</dd></div>
-            <div><dt>${escapeHtml(t('detailPrice'))}</dt><dd>${escapeHtml(product.price)}</dd></div>
-            <div><dt>${escapeHtml(t('specMoq'))}</dt><dd>${escapeHtml(product.moq)}</dd></div>
-            <div><dt>${escapeHtml(t('specLeadTime'))}</dt><dd>${escapeHtml(product.lead_time)}</dd></div>
-            <div><dt>${escapeHtml(t('specCapacity'))}</dt><dd>${escapeHtml(product.capacity)}</dd></div>
-            <div><dt>${escapeHtml(t('detailCertifications'))}</dt><dd>${escapeHtml(product.certifications || t('detailPending'))}</dd></div>
-          </dl>
-          <button class="primary" data-quote-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
-        </div>
-      </div>
-    `);
+    ({ product } = await apiFetch(`/api/products/${productId}`));
   } catch (error) {
     openModal(`<h3>${escapeHtml(t('productUnavailable'))}</h3><p class="error">${escapeHtml(error.message)}</p>`);
+    return;
+  }
+
+  const specs = (product.specs || []);
+  const specsHtml = specs.length
+    ? `<div class="pd-spectable">${specs.map(s => `
+        <div class="pd-srow">
+          <div class="pd-k">${escapeHtml(s.label)}</div>
+          <div class="pd-v">${escapeHtml(s.value)}</div>
+        </div>`).join('')}</div>`
+    : [
+        ['MOQ', product.moq],
+        [t('specLeadTime'), product.lead_time],
+        [t('specCapacity'), product.capacity],
+        [t('detailCertifications'), product.certifications || t('detailPending')],
+      ].filter(([, v]) => v).map(([k, v]) => `
+        <div class="pd-srow">
+          <div class="pd-k">${escapeHtml(String(k))}</div>
+          <div class="pd-v">${escapeHtml(String(v))}</div>
+        </div>`).join('');
+
+  const supplierInitials = escapeHtml((product.supplier || '??').slice(0, 2).toUpperCase());
+  const isVerified = product.verified;
+
+  openModal(`
+    <div class="pd">
+      <div class="pd-hero">
+        ${product.image_url
+          ? `<div class="pd-gallery"><img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name)}" /></div>`
+          : `<div class="pd-gallery pd-no-img"><span>${escapeHtml(product.category || '')}</span></div>`}
+        <div class="pd-buy">
+          <span class="pd-eyebrow">${escapeHtml(product.category || '')}</span>
+          <h2 class="pd-title">${escapeHtml(product.name)}</h2>
+          <div class="pd-pricebox">
+            <div class="pd-price">${escapeHtml(product.price || '—')}</div>
+            ${product.moq ? `<div class="pd-moq"><b>${escapeHtml(product.moq)}</b> Min. order</div>` : ''}
+          </div>
+          <p class="pd-desc">${escapeHtml(product.description || '')}</p>
+          <button class="primary pd-cta" data-quote-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
+          <div class="pd-trust">
+            <div><span class="pd-tick">✓</span> Escrow — funds released only after delivery confirmed</div>
+            <div><span class="pd-tick">✓</span> Pre-shipment inspection available</div>
+            <div><span class="pd-tick">✓</span> Platform dispute resolution</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pd-supplier">
+        <div class="pd-avatar">${supplierInitials}</div>
+        <div>
+          <div class="pd-sname">${escapeHtml(product.supplier || '')}</div>
+          <div class="pd-smeta">${escapeHtml(product.location || '')}</div>
+        </div>
+        <div class="pd-spacer"></div>
+        ${isVerified ? '<span class="pd-badge pd-verified">✓ Verified supplier</span>' : ''}
+        ${product.certifications ? `<span class="pd-badge pd-cert">${escapeHtml(product.certifications)}</span>` : ''}
+      </div>
+
+      <div class="pd-section">
+        <h3 class="pd-sh">Specifications</h3>
+        <div class="pd-spectable">${specsHtml}</div>
+      </div>
+
+      <div class="pd-section" id="pd-inquiry-section">
+        <h3 class="pd-sh">Send inquiry</h3>
+        <div class="pd-formgrid" id="pd-form">
+          <input type="text" name="website" style="display:none" aria-hidden="true" tabindex="-1" autocomplete="off" />
+          <div class="pd-field"><label>Your name</label><input id="pd-name" placeholder="Full name" /></div>
+          <div class="pd-field"><label>Company email</label><input id="pd-email" type="email" placeholder="you@company.com" /></div>
+          <div class="pd-field"><label>Company</label><input id="pd-company" placeholder="Company name" /></div>
+          <div class="pd-field"><label>Target quantity</label><input id="pd-qty" placeholder="e.g. 200" /></div>
+          <div class="pd-field pd-full">
+            <label>Message</label>
+            <textarea id="pd-message" rows="4" placeholder="Requirements, target price, destination port… (20–4000 characters)"></textarea>
+          </div>
+          <div class="pd-field pd-full pd-err hidden" id="pd-err"></div>
+          <div class="pd-field pd-full">
+            <button class="primary pd-submit" data-product-id="${product.id}">Send inquiry</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `, { wide: true });
+
+  // Wire up the inquiry form
+  const submitBtn = document.querySelector('.pd-submit');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', () => submitProductInquiry(product.id));
+  }
+}
+
+async function submitProductInquiry(productId) {
+  const errEl = document.getElementById('pd-err');
+  const showErr = (msg) => {
+    errEl.textContent = msg;
+    errEl.classList.remove('hidden');
+  };
+
+  const name = document.getElementById('pd-name')?.value.trim() || '';
+  const email = document.getElementById('pd-email')?.value.trim() || '';
+  const company = document.getElementById('pd-company')?.value.trim() || '';
+  const quantity = document.getElementById('pd-qty')?.value.trim() || '';
+  const message = document.getElementById('pd-message')?.value.trim() || '';
+  const website = document.querySelector('#pd-form input[name="website"]')?.value || '';
+
+  if (!name) return showErr('Please enter your name.');
+  if (!/^\S+@\S+\.\S+$/.test(email)) return showErr('Enter a valid email address.');
+  if (message.length < 20) return showErr('Message must be at least 20 characters.');
+
+  errEl.classList.add('hidden');
+  const btn = document.querySelector('.pd-submit');
+  if (btn) { btn.textContent = 'Sending…'; btn.disabled = true; }
+
+  try {
+    const res = await fetch(`/api/products/${productId}/inquiry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, email, company, quantity, message, website }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showErr(data.error || 'Could not send inquiry. Please try again.');
+      if (btn) { btn.textContent = 'Send inquiry'; btn.disabled = false; }
+      return;
+    }
+    const form = document.getElementById('pd-form');
+    if (form) {
+      form.innerHTML = '<p style="color:#0C7B69;font-weight:600;padding:20px 0">✓ Inquiry sent! The supplier will be in touch shortly.</p>';
+    }
+  } catch {
+    showErr('Network error. Please try again.');
+    if (btn) { btn.textContent = 'Send inquiry'; btn.disabled = false; }
   }
 }
 

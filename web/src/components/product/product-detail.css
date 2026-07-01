@@ -1,0 +1,126 @@
+/* product-detail.css — design tokens + classes for the product page.
+   Same visual language as the approved mockup. Import once in the page:
+   import "./product-detail.css";
+   Change the tokens under :root to rebrand everything at once. */
+
+.ff{
+  --ink:#0F1B24; --ink-2:#4A5A66; --line:#E3E8EC; --panel:#F5F7F8; --white:#fff;
+  --brand:#0C7B69; --brand-ink:#095D50; --amber:#E08A1E; --radius:10px;
+  color:var(--ink); font-family:"Inter",system-ui,sans-serif; font-size:14px; line-height:1.55;
+}
+.ff *{box-sizing:border-box}
+.ff .disp,.ff h1,.ff h2,.ff h3{font-family:"Space Grotesk","Inter",sans-serif; letter-spacing:-.01em}
+.ff a{color:var(--brand-ink); text-decoration:none}
+.ff .wrap{max-width:1140px; margin:0 auto; padding:0 20px}
+
+/* hero */
+.ff .hero{display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:28px; padding:22px 0 8px}
+@media(max-width:900px){.ff .hero{grid-template-columns:1fr}}
+
+/* gallery */
+.ff .gallery{background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:14px}
+.ff .stage{position:relative; aspect-ratio:4/3; border-radius:8px; overflow:hidden; background:#0d1418}
+.ff .stage img,.ff .stage video{width:100%; height:100%; object-fit:cover; display:block; transition:transform .12s ease}
+.ff .stage .counter{position:absolute; right:10px; bottom:10px; background:rgba(15,27,36,.72); color:#fff; font-size:12px; padding:3px 9px; border-radius:20px}
+.ff .stage .zoomhint{position:absolute; left:10px; top:10px; background:rgba(255,255,255,.9); color:var(--ink); font-size:11px; padding:3px 8px; border-radius:6px}
+.ff .rail{display:flex; gap:8px; margin-top:12px; overflow-x:auto; padding-bottom:2px}
+.ff .thumb{flex:0 0 64px; height:64px; border-radius:7px; overflow:hidden; border:2px solid transparent; cursor:pointer; position:relative; background:var(--panel)}
+.ff .thumb img{width:100%; height:100%; object-fit:cover}
+.ff .thumb.active{border-color:var(--brand)}
+.ff .thumb .vtag{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(15,27,36,.35)}
+.ff .thumb .vtag::after{content:""; border-left:12px solid #fff; border-top:7px solid transparent; border-bottom:7px solid transparent; margin-left:3px}
+.ff .addtile{flex:0 0 64px; height:64px; border-radius:7px; border:1.5px dashed var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--ink-2); font-size:10px; cursor:pointer; background:var(--white)}
+.ff .addtile:hover{border-color:var(--brand); color:var(--brand)}
+.ff .addtile b{font-size:18px; font-weight:400; line-height:1}
+
+/* buy panel */
+.ff .buy{background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:20px; height:fit-content}
+.ff .hot{display:inline-flex; gap:6px; background:#FCEFDD; color:var(--amber); font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; margin-bottom:10px}
+.ff .ptitle{font-size:18px; font-weight:600; line-height:1.35; margin:0 0 14px}
+.ff .pricebox{display:flex; align-items:baseline; gap:12px; padding:12px 14px; background:var(--panel); border-radius:8px; margin-bottom:6px}
+.ff .price{font-family:"Space Grotesk"; font-size:26px; font-weight:700}
+.ff .price small{font-size:13px; font-weight:500; color:var(--ink-2)}
+.ff .moq{margin-left:auto; text-align:right; font-size:12px; color:var(--ink-2)}
+.ff .moq b{display:block; color:var(--ink); font-size:14px}
+.ff .tiers{font-size:11.5px; color:var(--ink-2); margin-bottom:4px}
+.ff .optrow{margin:16px 0}
+.ff .optlabel{font-size:12px; color:var(--ink-2); margin-bottom:7px; text-transform:uppercase; letter-spacing:.04em}
+.ff .chips{display:flex; flex-wrap:wrap; gap:8px}
+.ff .chip{border:1px solid var(--line); background:var(--white); padding:6px 13px; border-radius:7px; font-size:13px; cursor:pointer; user-select:none}
+.ff .chip[aria-pressed="true"]{border-color:var(--brand); background:#EAF5F2; color:var(--brand-ink); font-weight:600}
+.ff .qty{display:flex; align-items:center; width:fit-content; border:1px solid var(--line); border-radius:7px; overflow:hidden}
+.ff .qty button{width:34px; height:34px; border:0; background:var(--white); font-size:16px; cursor:pointer; color:var(--ink)}
+.ff .qty input{width:64px; height:34px; border:0; text-align:center; font-size:14px; border-left:1px solid var(--line); border-right:1px solid var(--line)}
+.ff .cta{display:block; width:100%; text-align:center; padding:12px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:1px solid var(--brand); margin-top:10px; font-family:inherit}
+.ff .cta.primary{background:var(--brand); color:#fff}
+.ff .cta.primary:hover{background:var(--brand-ink)}
+.ff .cta.ghost{background:var(--white); color:var(--brand-ink)}
+.ff .cta.ghost:hover{background:#EAF5F2}
+.ff .trust{margin-top:18px; border-top:1px solid var(--line); padding-top:14px; display:grid; gap:10px}
+.ff .trust div{display:flex; gap:9px; font-size:12.5px; color:var(--ink-2)}
+.ff .trust .tick{color:var(--brand); font-weight:700; flex:0 0 auto}
+
+/* supplier strip */
+.ff .supplier{background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:16px 20px; margin-top:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+.ff .avatar{width:44px; height:44px; border-radius:9px; background:linear-gradient(135deg,var(--brand),var(--brand-ink)); color:#fff; display:flex; align-items:center; justify-content:center; font-family:"Space Grotesk"; font-weight:700; font-size:18px}
+.ff .sname{font-weight:600; font-size:15px}
+.ff .smeta{font-size:12px; color:var(--ink-2)}
+.ff .badge{font-size:11px; padding:4px 9px; border-radius:6px; font-weight:600; white-space:nowrap}
+.ff .badge.verified{background:#EAF5F2; color:var(--brand-ink)}
+.ff .badge.audited{background:#EEF2FF; color:#3B4CB8}
+.ff .badge.member{background:#FCEFDD; color:var(--amber)}
+.ff .spacer{flex:1}
+
+/* tabs */
+.ff .tabs{position:sticky; top:0; z-index:20; background:var(--white); border:1px solid var(--line); border-radius:var(--radius); margin-top:20px; display:flex; gap:4px; padding:4px; overflow-x:auto}
+.ff .tabs a{padding:9px 16px; border-radius:7px; font-size:13px; font-weight:600; color:var(--ink-2); white-space:nowrap; cursor:pointer}
+.ff .tabs a.active,.ff .tabs a:hover{background:var(--panel); color:var(--ink)}
+
+/* sections */
+.ff section.block{background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:24px; margin-top:16px}
+.ff section.block h2{font-size:16px; margin:0 0 16px; padding-bottom:12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:9px}
+.ff section.block h2::before{content:""; width:4px; height:16px; background:var(--brand); border-radius:3px}
+
+/* spec table */
+.ff .spectable{display:grid; grid-template-columns:1fr 1fr; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+@media(max-width:640px){.ff .spectable{grid-template-columns:1fr}}
+.ff .srow{display:grid; grid-template-columns:150px 1fr; border-bottom:1px solid var(--line)}
+.ff .srow .k{background:var(--panel); padding:11px 14px; font-size:12.5px; color:var(--ink-2); font-weight:500; border-right:1px solid var(--line)}
+.ff .srow .v{padding:11px 14px; font-size:13px; font-weight:500}
+
+/* spec editor */
+.ff .editrow{display:grid; grid-template-columns:150px 1fr auto; gap:8px; margin-bottom:8px; align-items:center}
+.ff .editrow input{border:1px solid var(--line); border-radius:7px; padding:8px 10px; font:inherit; font-size:13px}
+.ff .iconbtn{border:1px solid var(--line); background:var(--white); border-radius:6px; width:30px; height:30px; cursor:pointer; color:var(--ink-2)}
+.ff .iconbtn:hover{border-color:var(--brand); color:var(--brand)}
+.ff .addrow{border:1.5px dashed var(--line); border-radius:7px; padding:9px; width:100%; background:var(--white); color:var(--brand); cursor:pointer; font:inherit; font-weight:600}
+
+/* description blocks */
+.ff .descblock{margin-bottom:22px}
+.ff .descblock p{color:var(--ink-2); max-width:70ch}
+.ff .mediagrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:12px}
+@media(max-width:640px){.ff .mediagrid{grid-template-columns:repeat(2,1fr)}}
+.ff .mediagrid img{width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px; border:1px solid var(--line)}
+.ff .mediabanner{width:100%; aspect-ratio:21/8; object-fit:cover; border-radius:10px; border:1px solid var(--line)}
+.ff .add-media-cta{margin-top:14px; border:1.5px dashed var(--line); border-radius:8px; padding:18px; text-align:center; color:var(--ink-2); font-size:13px; cursor:pointer}
+.ff .add-media-cta b{color:var(--brand)}
+
+/* faq */
+.ff .faq{border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.ff .faq details{border-bottom:1px solid var(--line)}
+.ff .faq details:last-child{border-bottom:0}
+.ff .faq summary{padding:14px 16px; font-weight:600; font-size:13.5px; cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center}
+.ff .faq summary::-webkit-details-marker{display:none}
+.ff .faq summary::after{content:"+"; color:var(--brand); font-size:18px}
+.ff .faq details[open] summary::after{content:"–"}
+.ff .faq .ans{padding:0 16px 15px; color:var(--ink-2); font-size:13px; max-width:74ch}
+
+/* inquiry form */
+.ff .formgrid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media(max-width:640px){.ff .formgrid{grid-template-columns:1fr}}
+.ff .field{display:flex; flex-direction:column; gap:5px}
+.ff .field.full{grid-column:1/-1}
+.ff .field label{font-size:12px; color:var(--ink-2); font-weight:500}
+.ff .field input,.ff .field textarea{border:1px solid var(--line); border-radius:7px; padding:10px 12px; font:inherit; font-size:13px; background:var(--white)}
+.ff .field input:focus,.ff .field textarea:focus{outline:2px solid var(--brand); outline-offset:-1px; border-color:transparent}
+.ff .err{color:#b23b3b; font-size:11.5px}
