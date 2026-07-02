@@ -17,6 +17,12 @@ from werkzeug.security import check_password_hash, generate_password_hash
 IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 
+ALLOWED_ORIGINS = {
+    "https://fastflow.global",
+    "https://www.fastflow.global",
+    "https://portal.fastflow.global",
+}
+
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
 # Behind nginx (TLS terminates there): trust one proxy hop's X-Forwarded-* so
@@ -761,6 +767,15 @@ def init_db():
         """
     )
 
+    # S4: log any products still lacking a supplier_id after backfill.
+    orphans = db.execute(
+        "SELECT id, supplier FROM products WHERE supplier_id IS NULL"
+    ).fetchall()
+    if orphans:
+        import logging
+        for row in orphans:
+            logging.warning("S4: product id=%s supplier=%r has no supplier_id — cannot be owned", row[0], row[1])
+
     db.commit()
     db.close()
 
@@ -806,10 +821,12 @@ def require_user():
 
 
 def _owns_product(user, product):
-    """Return True when the user may mutate this product (IDOR guard)."""
+    """Return True when the user may mutate this product (IDOR guard).
+    Ownership requires a numeric supplier_id match; the free-text company-name
+    branch has been removed to prevent IDOR via shared company names."""
     if user["role"] == "admin":
         return True
-    return product.get("supplier_id") == user["id"] or product.get("supplier") == user["company"]
+    return product.get("supplier_id") == user["id"]
 
 
 def quote_scope_clause(user):
@@ -992,8 +1009,16 @@ def api_me():
 
 
 @app.route("/api/translate", methods=["POST"])
-@limiter.limit("20 per minute")
+@limiter.limit("15 per minute")
 def api_translate():
+    # Same-origin guard: only serve requests from our own domains (or dev).
+    if IS_PRODUCTION:
+        origin = request.headers.get("Origin", "")
+        referer = request.headers.get("Referer", "")
+        source = origin or referer
+        if not any(source == o or source.startswith(o + "/") for o in ALLOWED_ORIGINS):
+            return jsonify({"error": "Forbidden."}), 403
+
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     target_lang = (data.get("target_lang") or "en").strip()
@@ -1152,8 +1177,8 @@ def my_products():
         rows = db.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
     else:
         rows = db.execute(
-            "SELECT * FROM products WHERE supplier_id = ? OR supplier = ? ORDER BY created_at DESC",
-            (user["id"], user["company"]),
+            "SELECT * FROM products WHERE supplier_id = ? ORDER BY created_at DESC",
+            (user["id"],),
         ).fetchall()
     return jsonify({"products": [row_to_dict(r) for r in rows]})
 
@@ -1170,7 +1195,7 @@ def update_product(product_id):
     if not row:
         return jsonify({"error": "Product not found."}), 404
     product = row_to_dict(row)
-    if user["role"] != "admin" and product.get("supplier_id") != user["id"] and product.get("supplier") != user["company"]:
+    if user["role"] != "admin" and not _owns_product(user, product):
         return jsonify({"error": "Not your product."}), 403
 
     data = request.get_json(silent=True) or {}

@@ -1,8 +1,8 @@
 # Fastflow Fix Progress  ([x]=done+verified, [ ]=todo; add evidence when marking done)
 - [x] S1  csrf-enforce-flask          # main.py:844 @before_request hook + app.js:1044 X-CSRF-Token header — already wired
 - [x] S2  double-escape-fix+migration  # clean_str:181 strips only; specs/inquiry write paths raw; schema_migrations guard + html_unescape loop in init_db:633
-- [ ] S3  translate-abuse-close
-- [ ] S4  idor-drop-companyname-fallback
+- [x] S3  translate-abuse-close        # main.py:1005 ALLOWED_ORIGINS same-origin guard; 15/min limit; cache already present
+- [x] S4  idor-drop-companyname-fallback # _owns_product:822 numeric-only; my-products query:1175; update_product:1192; orphan log added
 - [ ] O1  portal-next-chown
 - [ ] O2  dead-r2-upload-remove-or-activate
 - [ ] O3  portal-inquiry-uuid-fix
