@@ -1247,6 +1247,38 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
   }
 }
 
+function galleryHtml(media, fallbackUrl, alt) {
+  const items = media && media.length
+    ? media
+    : (fallbackUrl ? [{ type: 'image', url: fallbackUrl, thumb_url: fallbackUrl, is_primary: true }] : []);
+
+  if (!items.length) {
+    return `<div class="pd-gallery pd-no-img"><span>${escapeHtml(alt)}</span></div>`;
+  }
+
+  const primary = items.find(m => m.is_primary) || items[0];
+
+  const stageInner = (item) => item.type === 'video'
+    ? `<video src="${escapeHtml(item.url)}" controls class="pd-main-video" preload="metadata"></video>`
+    : `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(alt)}" class="pd-main-img" />`;
+
+  const thumbRail = items.length > 1
+    ? `<div class="pd-thumb-rail" id="pd-thumb-rail">${items.map(m =>
+        `<button class="pd-thumb${m === primary ? ' active' : ''}" type="button"
+          data-url="${escapeHtml(m.url)}" data-type="${escapeHtml(m.type || 'image')}"
+          aria-label="${escapeHtml(m.type === 'video' ? 'Video' : 'Image')}">
+          ${m.type === 'video'
+            ? `<div class="pd-thumb-play">▶</div>`
+            : `<img src="${escapeHtml(m.thumb_url || m.url)}" alt="" loading="lazy" />`}
+        </button>`).join('')}</div>`
+    : '';
+
+  return `<div class="pd-gallery-wrap">
+    <div class="pd-main-stage" id="pd-main-stage">${stageInner(primary)}</div>
+    ${thumbRail}
+  </div>`;
+}
+
 async function openProductDetail(productId) {
   openModal('<div class="pd-loading" style="text-align:center;padding:60px 0;color:#6b7280">Loading…</div>', { wide: true });
   let product;
@@ -1281,9 +1313,7 @@ async function openProductDetail(productId) {
   openModal(`
     <div class="pd">
       <div class="pd-hero">
-        ${product.image_url
-          ? `<div class="pd-gallery"><img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name)}" /></div>`
-          : `<div class="pd-gallery pd-no-img"><span>${escapeHtml(product.category || '')}</span></div>`}
+        ${galleryHtml(product.media || [], product.image_url, product.name)}
         <div class="pd-buy">
           <span class="pd-eyebrow">${escapeHtml(product.category || '')}</span>
           <h2 class="pd-title">${escapeHtml(product.name)}</h2>
@@ -1337,6 +1367,21 @@ async function openProductDetail(productId) {
       </div>
     </div>
   `, { wide: true });
+
+  // Wire gallery thumbnail clicks
+  const thumbRail = document.getElementById('pd-thumb-rail');
+  const mainStage = document.getElementById('pd-main-stage');
+  if (thumbRail && mainStage) {
+    thumbRail.addEventListener('click', e => {
+      const btn = e.target.closest('.pd-thumb');
+      if (!btn) return;
+      const { url, type } = btn.dataset;
+      mainStage.innerHTML = type === 'video'
+        ? `<video src="${escapeHtml(url)}" controls class="pd-main-video" autoplay></video>`
+        : `<img src="${escapeHtml(url)}" alt="" class="pd-main-img" />`;
+      thumbRail.querySelectorAll('.pd-thumb').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  }
 
   // Wire up the inquiry form
   const submitBtn = document.querySelector('.pd-submit');

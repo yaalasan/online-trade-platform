@@ -11,7 +11,7 @@
 - [ ] L3  team-section
 - [ ] L4  testimonials
 - [ ] B1  portal-schema-gaps
-- [ ] B2  buyer-gallery-render        # display half of M2
+- [x] B2  buyer-gallery-render        # app.js galleryHtml():1250, openProductDetail:1316, thumb click wiring:1372; styles.css .pd-gallery-wrap/.pd-thumb-rail
 - [ ] M1  portal-multimedia-uploader
 - [x] M2  flask-product_media-input  # main.py:328 schema, :622 backfill, :1229 _get_media, :1238 _save_media; app.js mediaEditorHtml+collectMedia; styles.css .media-editor
 - [ ] M3  marketplace-homepage-browse

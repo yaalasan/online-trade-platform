@@ -1211,6 +1211,16 @@ dl { margin: 0; }
 
 .pd-gallery { background: #0d1418; border-radius: 10px; overflow: hidden; aspect-ratio: 4/3; }
 .pd-gallery img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pd-gallery-wrap { display: flex; flex-direction: column; gap: .35rem; border-radius: 10px; overflow: hidden; background: #0d1418; }
+.pd-main-stage { aspect-ratio: 4/3; overflow: hidden; }
+.pd-main-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pd-main-video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+.pd-thumb-rail { display: flex; gap: .3rem; padding: .35rem .4rem; overflow-x: auto; scrollbar-width: thin; }
+.pd-thumb { flex: 0 0 56px; height: 42px; border: 2px solid transparent; border-radius: 4px; overflow: hidden; padding: 0; cursor: pointer; background: #1a2b35; }
+.pd-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pd-thumb.active { border-color: #0C7B69; }
+.pd-thumb:hover:not(.active) { border-color: #4a8a80; }
+.pd-thumb-play { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
 .pd-no-img { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; }
 
 .pd-buy { display: flex; flex-direction: column; gap: 10px; }
