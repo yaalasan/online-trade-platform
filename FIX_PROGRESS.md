@@ -1,0 +1,17 @@
+# Fastflow Fix Progress  ([x]=done+verified, [ ]=todo; add evidence when marking done)
+- [ ] S1  csrf-enforce-flask
+- [ ] S2  double-escape-fix+migration
+- [ ] S3  translate-abuse-close
+- [ ] S4  idor-drop-companyname-fallback
+- [ ] O1  portal-next-chown
+- [ ] O2  dead-r2-upload-remove-or-activate
+- [ ] O3  portal-inquiry-uuid-fix
+- [ ] L1  hero-fabricated-stats
+- [ ] L2  hero-copy+ai-spam
+- [ ] L3  team-section
+- [ ] L4  testimonials
+- [ ] B1  portal-schema-gaps
+- [ ] B2  buyer-gallery-render        # display half of M2
+- [ ] M1  portal-multimedia-uploader
+- [x] M2  flask-product_media-input  # main.py:328 schema, :622 backfill, :1229 _get_media, :1238 _save_media; app.js mediaEditorHtml+collectMedia; styles.css .media-editor
+- [ ] M3  marketplace-homepage-browse

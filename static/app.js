@@ -1676,9 +1676,67 @@ async function loadVerifications() {
   }
 }
 
+function mediaEditorHtml(mediaRows = []) {
+  const rows = mediaRows.length
+    ? mediaRows
+    : [{ type: 'image', url: '', is_primary: true }];
+  return `
+    <div class="media-editor" id="media-editor">
+      <div id="media-rows">
+        ${rows.map((m, i) => mediaRowHtml(m, i)).join('')}
+      </div>
+      <button type="button" class="secondary media-add-btn" style="margin-top:.5rem;font-size:.8rem">+ Add photo / video URL</button>
+    </div>`;
+}
+
+function mediaRowHtml(m, i) {
+  return `
+    <div class="media-row" data-index="${i}">
+      <select class="media-type" style="width:90px;padding:6px 4px">
+        <option value="image" ${m.type === 'image' ? 'selected' : ''}>Image</option>
+        <option value="video" ${m.type === 'video' ? 'selected' : ''}>Video</option>
+      </select>
+      <input class="media-url" type="url" value="${escapeHtml(m.url || '')}" placeholder="https://…  (image or video URL)" style="flex:1" />
+      <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;white-space:nowrap">
+        <input type="radio" name="media-primary" value="${i}" ${m.is_primary ? 'checked' : ''} /> Primary
+      </label>
+      <button type="button" class="media-remove-btn secondary" style="padding:4px 10px">✕</button>
+    </div>`;
+}
+
+function collectMedia(container) {
+  const rows = container.querySelectorAll('.media-row');
+  const primaryIdx = parseInt(container.querySelector('input[name="media-primary"]:checked')?.value ?? '0');
+  const media = [];
+  rows.forEach((row, i) => {
+    const url = row.querySelector('.media-url').value.trim();
+    const type = row.querySelector('.media-type').value;
+    if (url) media.push({ type, url, thumb_url: url, is_primary: i === primaryIdx ? 1 : 0 });
+  });
+  return media;
+}
+
+function bindMediaEditor(container) {
+  container.querySelector('.media-add-btn').addEventListener('click', () => {
+    const rowsEl = container.querySelector('#media-rows');
+    const idx = rowsEl.querySelectorAll('.media-row').length;
+    rowsEl.insertAdjacentHTML('beforeend', mediaRowHtml({ type: 'image', url: '', is_primary: false }, idx));
+  });
+  container.addEventListener('click', e => {
+    if (e.target.closest('.media-remove-btn')) {
+      const row = e.target.closest('.media-row');
+      if (container.querySelectorAll('.media-row').length > 1) row.remove();
+      else row.querySelector('.media-url').value = '';
+    }
+  });
+}
+
 function productFormHtml(product = null) {
   const v = f => escapeHtml(product ? (product[f] || '') : '');
   const isEdit = !!product;
+  const media = product?.media?.length
+    ? product.media
+    : (product?.image_url ? [{ type: 'image', url: product.image_url, is_primary: true }] : []);
   return `
     <form id="product-form" class="data-form two-column" data-id="${isEdit ? product.id : ''}">
       <label>${escapeHtml(t('pfCategory'))}<input name="category" value="${v('category')}" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
@@ -1689,7 +1747,10 @@ function productFormHtml(product = null) {
       <label>${escapeHtml(t('pfLeadTime'))}<input name="lead_time" value="${v('lead_time')}" placeholder="${escapeHtml(t('pfLeadTimePh'))}" required /></label>
       <label>${escapeHtml(t('pfCapacity'))}<input name="capacity" value="${v('capacity')}" placeholder="${escapeHtml(t('pfCapacityPh'))}" /></label>
       <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" value="${v('certifications')}" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
-      <label class="wide">${escapeHtml(t('pfPhoto'))}<input name="image_url" value="${v('image_url')}" placeholder="${escapeHtml(t('pfPhotoPh'))}" /></label>
+      <div class="wide">
+        <div style="font-size:.85rem;color:#4A5A66;margin-bottom:.4rem">Photos &amp; video</div>
+        ${mediaEditorHtml(media)}
+      </div>
       <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required>${v('description')}</textarea></label>
       <div style="display:flex;gap:.5rem">
         <button type="submit" class="primary">${escapeHtml(isEdit ? t('pfEditSubmit') : t('pfSubmit'))}</button>
@@ -1701,12 +1762,16 @@ function productFormHtml(product = null) {
 }
 
 function bindProductForm(onSuccess) {
-  document.getElementById('product-form').addEventListener('submit', async event => {
+  const form = document.getElementById('product-form');
+  const mediaEditor = form.querySelector('#media-editor');
+  if (mediaEditor) bindMediaEditor(mediaEditor);
+
+  form.addEventListener('submit', async event => {
     event.preventDefault();
-    const form = event.target;
     const feedback = document.getElementById('product-form-feedback');
     const id = form.dataset.id;
     const payload = Object.fromEntries(new FormData(form).entries());
+    payload.media = collectMedia(form.querySelector('#media-editor'));
     try {
       if (id) {
         await apiFetch(`/api/products/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1804,7 +1869,10 @@ async function renderAdminPanel() {
       <label>${escapeHtml(t('pfLeadTime'))}<input name="lead_time" placeholder="${escapeHtml(t('pfLeadTimePh'))}" required /></label>
       <label>${escapeHtml(t('pfCapacity'))}<input name="capacity" placeholder="${escapeHtml(t('pfCapacityPh'))}" /></label>
       <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
-      <label class="wide">${escapeHtml(t('pfPhoto'))}<input name="image_url" placeholder="${escapeHtml(t('pfPhotoPh'))}" /></label>
+      <div class="wide">
+        <div style="font-size:.85rem;color:#4A5A66;margin-bottom:.4rem">Photos &amp; video</div>
+        ${mediaEditorHtml([])}
+      </div>
       <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required></textarea></label>
       <div style="display:flex;gap:.5rem">
         <button type="submit" id="admin-product-submit" class="primary">${escapeHtml(t('pfSubmit'))}</button>
@@ -1858,17 +1926,22 @@ async function renderAdminPanel() {
   const adminSubmitBtn = document.getElementById('admin-product-submit');
   const adminCancelBtn = document.getElementById('admin-cancel-edit');
 
+  bindMediaEditor(adminProductForm.querySelector('.media-editor'));
+
   adminCancelBtn.addEventListener('click', () => {
     adminProductForm.reset();
     adminProductForm.dataset.id = '';
     adminSubmitBtn.textContent = t('pfSubmit');
     adminCancelBtn.style.display = 'none';
     adminProductForm.querySelector('[name="supplier"]').removeAttribute('readonly');
+    const mediaEditor = adminProductForm.querySelector('.media-editor');
+    if (mediaEditor) mediaEditor.querySelector('#media-rows').innerHTML = mediaRowHtml({ type: 'image', url: '', is_primary: true }, 0);
   });
 
   adminProductForm.addEventListener('submit', async event => {
     event.preventDefault();
     const payload = Object.fromEntries(new FormData(adminProductForm).entries());
+    payload.media = collectMedia(adminProductForm.querySelector('.media-editor'));
     const id = adminProductForm.dataset.id;
     try {
       if (id) {
@@ -1888,11 +1961,11 @@ async function renderAdminPanel() {
   });
 
   document.querySelectorAll('.admin-edit-product').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const product = listings.find(p => String(p.id) === btn.dataset.id);
       if (!product) return;
       const form = document.getElementById('admin-product-form');
-      ['category', 'name', 'location', 'price', 'moq', 'lead_time', 'capacity', 'certifications', 'image_url', 'description'].forEach(f => {
+      ['category', 'name', 'location', 'price', 'moq', 'lead_time', 'capacity', 'certifications', 'description'].forEach(f => {
         const el = form.querySelector(`[name="${f}"]`);
         if (el) el.value = product[f] || '';
       });
@@ -1901,6 +1974,18 @@ async function renderAdminPanel() {
       form.dataset.id = product.id;
       adminSubmitBtn.textContent = t('pfEditSubmit');
       adminCancelBtn.style.display = '';
+
+      // Populate media editor from the full product (which includes product_media rows)
+      try {
+        const res = await apiFetch(`/api/products/${product.id}`);
+        const full = res.product || res;
+        const mediaList = full.media?.length
+          ? full.media
+          : (full.image_url ? [{ type: 'image', url: full.image_url, is_primary: true }] : [{ type: 'image', url: '', is_primary: true }]);
+        const mediaEditor = form.querySelector('.media-editor');
+        if (mediaEditor) mediaEditor.querySelector('#media-rows').innerHTML = mediaList.map((m, i) => mediaRowHtml(m, i)).join('');
+      } catch (_) {}
+
       form.scrollIntoView({ behavior: 'smooth' });
     });
   });

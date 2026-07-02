@@ -324,6 +324,18 @@ CREATE TABLE IF NOT EXISTS product_inquiries (
     created_at TEXT NOT NULL,
     FOREIGN KEY(product_id) REFERENCES products(id)
 );
+
+CREATE TABLE IF NOT EXISTS product_media (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    type       TEXT NOT NULL DEFAULT 'image' CHECK(type IN ('image','video')),
+    url        TEXT NOT NULL,
+    thumb_url  TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_primary INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(product_id) REFERENCES products(id)
+);
 """
 
 SAMPLE_USERS = [
@@ -606,6 +618,17 @@ def init_db():
     add_column_if_missing(db, "supplier_verifications", "supplier_id", "INTEGER")
     add_column_if_missing(db, "quotes", "target_price", "TEXT DEFAULT ''")
     add_column_if_missing(db, "quotes", "destination", "TEXT DEFAULT ''")
+
+    # Backfill product_media from the legacy image_url column (idempotent).
+    db.execute(
+        """
+        INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at)
+        SELECT id, 'image', image_url, image_url, 0, 1, created_at
+        FROM   products
+        WHERE  TRIM(COALESCE(image_url, '')) != ''
+          AND  id NOT IN (SELECT DISTINCT product_id FROM product_media)
+        """
+    )
 
     existing_emails = {row[0] for row in db.execute("SELECT email FROM users").fetchall()}
     for user in SAMPLE_USERS:
@@ -1018,9 +1041,25 @@ def marketplace():
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
     products = db.execute(f"SELECT * FROM products {where} ORDER BY verified DESC, category, name", params).fetchall()
 
+    # Pull primary media URL for each product in one query.
+    product_ids = [row["id"] for row in products]
+    primary_media = {}
+    if product_ids:
+        placeholders = ",".join("?" * len(product_ids))
+        media_rows = db.execute(
+            f"SELECT product_id, url FROM product_media WHERE product_id IN ({placeholders}) "
+            f"AND is_primary = 1 ORDER BY sort_order ASC",
+            product_ids,
+        ).fetchall()
+        for mr in media_rows:
+            if mr["product_id"] not in primary_media:
+                primary_media[mr["product_id"]] = mr["url"]
+
     categories = {}
     for row in products:
         product = row_to_dict(row)
+        # Prefer product_media primary URL; fall back to legacy image_url.
+        product["image_url"] = primary_media.get(product["id"]) or product.get("image_url", "")
         categories.setdefault(product["category"], []).append(product)
 
     # Merge in live products published from the supplier portal (best-effort).
@@ -1101,13 +1140,18 @@ def update_product(product_id):
         return jsonify({"error": "Not your product."}), 403
 
     data = request.get_json(silent=True) or {}
-    editable = ["category", "name", "location", "description", "price", "moq", "lead_time", "capacity", "certifications", "image_url"]
+    editable = ["category", "name", "location", "description", "price", "moq", "lead_time", "capacity", "certifications"]
     updates = {f: clean_str(data, f) for f in editable if data.get(f) is not None}
-    if not updates:
+
+    media_list = data.get("media") if isinstance(data.get("media"), list) else None
+    if not updates and media_list is None:
         return jsonify({"error": "No fields to update."}), 400
 
-    set_clause = ", ".join(f"{f} = ?" for f in updates)
-    db.execute(f"UPDATE products SET {set_clause} WHERE id = ?", [*updates.values(), product_id])
+    if updates:
+        set_clause = ", ".join(f"{f} = ?" for f in updates)
+        db.execute(f"UPDATE products SET {set_clause} WHERE id = ?", [*updates.values(), product_id])
+    if media_list is not None and len(media_list) <= _MAX_MEDIA:
+        _save_media(db, product_id, media_list, utc_now())
     log_audit("updated", "product", product_id, f"{user['company']} updated {product.get('name')}")
     db.commit()
     return jsonify({"ok": True})
@@ -1173,6 +1217,80 @@ def save_product_specs(product_id):
               f"{len(saved)} specs saved by {user['company']}")
     db.commit()
     return jsonify({"specs": saved})
+
+
+_MAX_MEDIA       = 20
+_MAX_MEDIA_URL   = 2000
+_ALLOWED_MEDIA_TYPES = {"image", "video"}
+
+
+def _get_media(db, product_id):
+    rows = db.execute(
+        "SELECT id, type, url, thumb_url, sort_order, is_primary FROM product_media "
+        "WHERE product_id = ? ORDER BY sort_order ASC",
+        (product_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _save_media(db, product_id, media_list, now):
+    """Replace all media for a product. Returns the saved rows."""
+    db.execute("DELETE FROM product_media WHERE product_id = ?", (product_id,))
+    saved = []
+    has_primary = False
+    for i, item in enumerate(media_list):
+        kind = str(item.get("type", "image")).strip().lower()
+        if kind not in _ALLOWED_MEDIA_TYPES:
+            kind = "image"
+        url = str(item.get("url", "")).strip()
+        if not url:
+            continue
+        if len(url) > _MAX_MEDIA_URL:
+            continue
+        thumb = str(item.get("thumb_url", url)).strip() or url
+        is_primary = 1 if (item.get("is_primary") and not has_primary) else 0
+        if is_primary:
+            has_primary = True
+        cursor = db.execute(
+            "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (product_id, kind, url, thumb, i, is_primary, now),
+        )
+        saved.append({"id": cursor.lastrowid, "product_id": product_id, "type": kind,
+                      "url": url, "thumb_url": thumb, "sort_order": i, "is_primary": is_primary})
+    # If caller sent rows but none were marked primary, promote first one.
+    if saved and not has_primary:
+        db.execute("UPDATE product_media SET is_primary=1 WHERE id=?", (saved[0]["id"],))
+        saved[0]["is_primary"] = 1
+    return saved
+
+
+@app.route("/api/products/<int:product_id>/media", methods=["PUT"])
+@limiter.limit("20 per minute")
+def save_product_media(product_id):
+    user, error = require_user()
+    if error:
+        return error
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "Product not found."}), 404
+    if not _owns_product(user, row_to_dict(row)):
+        return jsonify({"error": "Not your product."}), 403
+
+    data = request.get_json(silent=True) or {}
+    media_list = data.get("media")
+    if not isinstance(media_list, list):
+        return jsonify({"error": "media must be an array."}), 400
+    if len(media_list) > _MAX_MEDIA:
+        return jsonify({"error": f"Too many media items (max {_MAX_MEDIA})."}), 400
+
+    now = utc_now()
+    saved = _save_media(db, product_id, media_list, now)
+    log_audit("updated", "product_media", product_id,
+              f"{len(saved)} media rows saved by {user['company']}")
+    db.commit()
+    return jsonify({"media": saved})
 
 
 # ---- Inquiry validation constants ---------------------------------------
@@ -1264,6 +1382,7 @@ def product_detail(product_id):
         (product_id,),
     ).fetchall()
     product["specs"] = [{"label": r["label"], "value": r["value"]} for r in spec_rows]
+    product["media"] = _get_media(db, product_id)
     return jsonify({"product": product})
 
 
@@ -1354,8 +1473,20 @@ def create_product():
         ),
     )
     log_audit("created", "product", cursor.lastrowid, f"{supplier} listed {fields['name']}")
-    db.commit()
     product_id = cursor.lastrowid
+
+    # Persist media rows if provided; otherwise fall back to legacy image_url field.
+    media_list = data.get("media") if isinstance(data.get("media"), list) else None
+    if media_list is not None and len(media_list) <= _MAX_MEDIA:
+        _save_media(db, product_id, media_list, utc_now())
+    elif clean_str(data, "image_url"):
+        db.execute(
+            "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
+            "VALUES (?, 'image', ?, ?, 0, 1, ?)",
+            (product_id, clean_str(data, "image_url"), clean_str(data, "image_url"), utc_now()),
+        )
+
+    db.commit()
 
     # Pre-translate name + description to all 3 languages in the background so
     # marketplace requests with ?target_lang= get instant cache hits.
