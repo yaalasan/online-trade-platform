@@ -23,6 +23,10 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
     include: {
       images: { orderBy: { position: "asc" } },
       categories: { select: { categoryId: true } },
+      variants: { orderBy: { sortOrder: "asc" } },
+      priceTiers: { orderBy: { sortOrder: "asc" } },
+      descriptionBlocks: { orderBy: { sortOrder: "asc" } },
+      faqs: { orderBy: { sortOrder: "asc" } },
     },
   });
   if (!product) notFound();
@@ -76,15 +80,41 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
       value: s.value,
       sortOrder: i,
     })),
-    variants: [],
-    priceTiers: [],
+    variants: product.variants.map((v) => ({
+      id: v.id,
+      name: v.name,
+      options: v.options as unknown as string[],
+      sortOrder: v.sortOrder,
+    })),
+    priceTiers: product.priceTiers.map((t) => ({
+      id: t.id,
+      minQty: t.minQty,
+      maxQty: t.maxQty ?? null,
+      price: Number(t.price),
+      sortOrder: t.sortOrder,
+    })),
     packaging: {
+      packageSize: product.packageSize ?? null,
+      grossWeight: product.grossWeight ?? null,
+      port: product.port ?? null,
       leadTime: product.leadTimeDays ? `${product.leadTimeDays} days` : null,
     },
-    descriptionBlocks: product.description
-      ? [{ id: "desc-0", type: "text" as const, sortOrder: 0, content: { text: product.description } }]
-      : [],
-    faqs: [],
+    descriptionBlocks: product.descriptionBlocks.length > 0
+      ? product.descriptionBlocks.map((b) => ({
+          id: b.id,
+          type: b.type as "text" | "banner" | "image_grid" | "video",
+          sortOrder: b.sortOrder,
+          content: b.content as { text: string } & { url: string; alt?: string } & { images: { url: string; alt?: string }[] } & { url: string; poster?: string },
+        }))
+      : product.description
+        ? [{ id: "desc-0", type: "text" as const, sortOrder: 0, content: { text: product.description } }]
+        : [],
+    faqs: product.faqs.map((f) => ({
+      id: f.id,
+      question: f.question,
+      answer: f.answer,
+      sortOrder: f.sortOrder,
+    })),
   };
 
   return (
