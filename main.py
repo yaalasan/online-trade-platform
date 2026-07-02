@@ -1894,42 +1894,6 @@ def contact():
     return jsonify({"status": "success", "message": "Request received and logged for sourcing review."})
 
 
-# --- R2 media upload blueprint -----------------------------------------------
-# Requires: pip install boto3
-# Env vars: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_BASE
-# The blueprint is only registered when all five vars are present so the app
-# starts cleanly in dev / staging without R2 credentials.
-_R2_VARS = ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET", "R2_PUBLIC_BASE")
-if all(os.environ.get(v) for v in _R2_VARS):
-    try:
-        import importlib.util as _ilu
-        import sys as _sys
-
-        _spec = _ilu.spec_from_file_location(
-            "product_uploads",
-            os.path.join(os.path.dirname(__file__), "product_uploads.py"),
-        )
-        _mod = _ilu.module_from_spec(_spec)  # type: ignore[arg-type]
-        _sys.modules["product_uploads"] = _mod
-        _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
-
-        # Patch the stubs with real auth before registering the blueprint.
-        _mod.current_user = get_current_user
-        _mod.user_owns_product = lambda user, pid: (
-            user is not None and _owns_product(
-                user,
-                get_db().execute(
-                    "SELECT id, supplier_id, supplier FROM products WHERE id = ?",
-                    (int(pid) if str(pid).isdigit() else -1,)
-                ).fetchone() or {},
-            )
-        )
-        app.register_blueprint(_mod.bp)
-    except Exception as _e:
-        import warnings
-        warnings.warn(f"R2 media upload blueprint failed to load: {_e}", stacklevel=1)
-
-
 if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
     # Bind to localhost by default; opt into all interfaces explicitly.
