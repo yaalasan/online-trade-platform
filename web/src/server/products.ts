@@ -321,6 +321,155 @@ export async function saveProductSpecs(
   });
 }
 
+/** Replace all variants for a product owned by the active company. */
+export async function saveProductVariants(
+  productId: string,
+  variants: Array<{ name: string; options: string[] }>,
+): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireActiveContext();
+    assertCanManage(ctx.role);
+    const product = await db.product.findFirst({
+      where: { id: productId, manufacturer: { companyId: ctx.company.id } },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundError("Product not found in this company.");
+    await db.$transaction(async (tx) => {
+      await tx.productVariant.deleteMany({ where: { productId: product.id } });
+      if (variants.length > 0) {
+        await tx.productVariant.createMany({
+          data: variants.map((v, i) => ({
+            productId: product.id,
+            name: v.name.trim().slice(0, 80),
+            options: v.options as unknown as Prisma.InputJsonValue,
+            sortOrder: i,
+          })),
+        });
+      }
+    });
+    revalidatePath(`/dashboard/products/${productId}`);
+  });
+}
+
+/** Replace all price tiers for a product owned by the active company. */
+export async function saveProductPriceTiers(
+  productId: string,
+  tiers: Array<{ minQty: number; maxQty: number | null; price: number }>,
+): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireActiveContext();
+    assertCanManage(ctx.role);
+    const product = await db.product.findFirst({
+      where: { id: productId, manufacturer: { companyId: ctx.company.id } },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundError("Product not found in this company.");
+    await db.$transaction(async (tx) => {
+      await tx.productPriceTier.deleteMany({ where: { productId: product.id } });
+      if (tiers.length > 0) {
+        await tx.productPriceTier.createMany({
+          data: tiers.map((t, i) => ({
+            productId: product.id,
+            minQty: Math.max(0, t.minQty),
+            maxQty: t.maxQty ?? null,
+            price: t.price,
+            sortOrder: i,
+          })),
+        });
+      }
+    });
+    revalidatePath(`/dashboard/products/${productId}`);
+  });
+}
+
+/** Update packaging inline fields for a product owned by the active company. */
+export async function savePackaging(
+  productId: string,
+  packaging: { packageSize?: string | null; grossWeight?: string | null; port?: string | null },
+): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireActiveContext();
+    assertCanManage(ctx.role);
+    const product = await db.product.findFirst({
+      where: { id: productId, manufacturer: { companyId: ctx.company.id } },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundError("Product not found in this company.");
+    await db.product.update({
+      where: { id: product.id },
+      data: {
+        packageSize: packaging.packageSize?.trim().slice(0, 100) || null,
+        grossWeight: packaging.grossWeight?.trim().slice(0, 100) || null,
+        port: packaging.port?.trim().slice(0, 100) || null,
+      },
+    });
+    revalidatePath(`/dashboard/products/${productId}`);
+  });
+}
+
+/** Replace all description blocks for a product owned by the active company. */
+export async function saveDescriptionBlocks(
+  productId: string,
+  blocks: Array<{ type: string; sortOrder: number; content: unknown }>,
+): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireActiveContext();
+    assertCanManage(ctx.role);
+    const product = await db.product.findFirst({
+      where: { id: productId, manufacturer: { companyId: ctx.company.id } },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundError("Product not found in this company.");
+    const ALLOWED_BLOCK_TYPES = new Set(["text", "banner", "image_grid", "video"]);
+    await db.$transaction(async (tx) => {
+      await tx.productDescriptionBlock.deleteMany({ where: { productId: product.id } });
+      const valid = blocks.filter((b) => ALLOWED_BLOCK_TYPES.has(b.type));
+      if (valid.length > 0) {
+        await tx.productDescriptionBlock.createMany({
+          data: valid.map((b, i) => ({
+            productId: product.id,
+            type: b.type,
+            sortOrder: b.sortOrder ?? i,
+            content: b.content as Prisma.InputJsonValue,
+          })),
+        });
+      }
+    });
+    revalidatePath(`/dashboard/products/${productId}`);
+  });
+}
+
+/** Replace all FAQs for a product owned by the active company. */
+export async function saveProductFaqs(
+  productId: string,
+  faqs: Array<{ question: string; answer: string }>,
+): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireActiveContext();
+    assertCanManage(ctx.role);
+    const product = await db.product.findFirst({
+      where: { id: productId, manufacturer: { companyId: ctx.company.id } },
+      select: { id: true },
+    });
+    if (!product) throw new NotFoundError("Product not found in this company.");
+    await db.$transaction(async (tx) => {
+      await tx.productFaq.deleteMany({ where: { productId: product.id } });
+      const valid = faqs.filter((f) => f.question.trim() && f.answer.trim());
+      if (valid.length > 0) {
+        await tx.productFaq.createMany({
+          data: valid.map((f, i) => ({
+            productId: product.id,
+            question: f.question.trim().slice(0, 500),
+            answer: f.answer.trim().slice(0, 2000),
+            sortOrder: i,
+          })),
+        });
+      }
+    });
+    revalidatePath(`/dashboard/products/${productId}`);
+  });
+}
+
 /** Delete a product image owned by the active company. */
 export async function deleteProductImage(formData: FormData): Promise<ActionResult> {
   return run(async () => {
