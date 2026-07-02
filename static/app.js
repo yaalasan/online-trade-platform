@@ -1177,6 +1177,39 @@ function flattenCategories(categories) {
   return categories.flatMap(category => category.items.map(item => ({ ...item, category: category.name })));
 }
 
+function productCardHtml(product) {
+  return `
+    <article class="product-card">
+      <button class="product-image" data-product-id="${product.id}" aria-label="${escapeHtml(t('cardViewDetails'))}">
+        <img src="${escapeHtml(product.image_url || '')}" alt="${escapeHtml(product.name)}" loading="lazy" />
+      </button>
+      <div class="product-body">
+        <div class="product-title-row">
+          <button class="product-title" data-product-id="${product.id}">${escapeHtml(product.name)}</button>
+          <div class="card-pills">
+            <span class="status-pill ${product.verified ? 'good' : 'warn'}">${escapeHtml(product.verified ? t('pillVerified') : t('pillReview'))}</span>
+            ${product.translated ? `<span class="status-pill translated-badge">${escapeHtml(t('aiTranslatedBadge'))}</span>` : ''}
+          </div>
+        </div>
+        <p>${escapeHtml(product.description)}</p>
+        <strong class="price">${escapeHtml(product.price)}</strong>
+        <dl class="spec-grid">
+          <div><dt>${escapeHtml(t('specMoq'))}</dt><dd>${escapeHtml(product.moq || t('specAsk'))}</dd></div>
+          <div><dt>${escapeHtml(t('specLeadTime'))}</dt><dd>${escapeHtml(product.lead_time || t('specAsk'))}</dd></div>
+          <div><dt>${escapeHtml(t('specCapacity'))}</dt><dd>${escapeHtml(product.capacity || t('specAsk'))}</dd></div>
+        </dl>
+        <div class="supplier-line">
+          <span>${escapeHtml(product.supplier)}</span>
+          <small>${escapeHtml(product.location)}</small>
+        </div>
+        <div class="card-actions">
+          <button class="primary quote-button" data-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
+          <button class="detail-button" data-product-id="${product.id}">${escapeHtml(t('cardViewDetails'))}</button>
+        </div>
+      </div>
+    </article>`;
+}
+
 function renderProductSkeleton() {
   return Array.from({ length: 4 }, () => `
     <article class="product-card shimmer-card" aria-hidden="true">
@@ -1203,45 +1236,35 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
 
   try {
     const data = await apiFetch(`/api/marketplace${params.toString() ? `?${params}` : ''}`);
-    const products = flattenCategories(data.categories || []);
-    if (!products.length) {
+    const categories = data.categories || [];
+
+    if (!categories.length || categories.every(c => !c.items.length)) {
       marketplaceGrid.innerHTML = `<p class="empty-state">${escapeHtml(t('marketplaceEmpty'))}</p>`;
+      marketplaceGrid.className = 'marketplace-sections';
       return;
     }
 
-    marketplaceGrid.innerHTML = products.map(product => `
-      <article class="product-card">
-        <button class="product-image" data-product-id="${product.id}" aria-label="${escapeHtml(t('cardViewDetails'))}">
-          <img src="${escapeHtml(product.image_url || '')}" alt="${escapeHtml(product.name)}" loading="lazy" />
-        </button>
-        <div class="product-body">
-          <div class="product-title-row">
-            <button class="product-title" data-product-id="${product.id}">${escapeHtml(product.name)}</button>
-            <div class="card-pills">
-              <span class="status-pill ${product.verified ? 'good' : 'warn'}">${escapeHtml(product.verified ? t('pillVerified') : t('pillReview'))}</span>
-              ${product.translated ? `<span class="status-pill translated-badge">${escapeHtml(t('aiTranslatedBadge'))}</span>` : ''}
+    if (activeCategory || lastMarketplaceQuery) {
+      // Filtered view: flat grid
+      const products = flattenCategories(categories);
+      marketplaceGrid.className = 'product-grid';
+      marketplaceGrid.innerHTML = products.map(productCardHtml).join('');
+    } else {
+      // Browse view: one section per category, capped at 4 cards + "View all" link
+      marketplaceGrid.className = 'marketplace-sections';
+      marketplaceGrid.innerHTML = categories.map(cat => {
+        const preview = cat.items.slice(0, 4);
+        const hasMore = cat.items.length > 4;
+        return `
+          <section class="cat-section" aria-label="${escapeHtml(cat.name)}">
+            <div class="cat-section-header">
+              <h3>${escapeHtml(cat.name)}</h3>
+              ${hasMore ? `<button class="cat-view-all" data-category="${escapeHtml(cat.name)}">${cat.items.length} products &rsaquo;</button>` : ''}
             </div>
-          </div>
-          <p>${escapeHtml(product.description)}</p>
-          <strong class="price">${escapeHtml(product.price)}</strong>
-          <dl class="spec-grid">
-            <div><dt>${escapeHtml(t('specMoq'))}</dt><dd>${escapeHtml(product.moq || t('specAsk'))}</dd></div>
-            <div><dt>${escapeHtml(t('specLeadTime'))}</dt><dd>${escapeHtml(product.lead_time || t('specAsk'))}</dd></div>
-            <div><dt>${escapeHtml(t('specCapacity'))}</dt><dd>${escapeHtml(product.capacity || t('specAsk'))}</dd></div>
-          </dl>
-          <div class="supplier-line">
-            <span>${escapeHtml(product.supplier)}</span>
-            <small>${escapeHtml(product.location)}</small>
-          </div>
-          <div class="card-actions">
-            <button class="primary quote-button" data-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
-            <button class="detail-button" data-product-id="${product.id}">${escapeHtml(t('cardViewDetails'))}</button>
-          </div>
-        </div>
-      </article>
-    `).join('');
-
-    // categories reloaded at page init only
+            <div class="product-grid">${preview.map(productCardHtml).join('')}</div>
+          </section>`;
+      }).join('');
+    }
   } catch (error) {
     marketplaceGrid.innerHTML = `<p class="error">${escapeHtml(t('marketplaceError'))}</p>`;
   }
@@ -2189,6 +2212,7 @@ document.addEventListener('click', async event => {
   const categoryButton = event.target.closest('[data-category]');
   if (categoryButton) {
     activeCategory = categoryButton.dataset.category;
+    renderCategories();
     await loadMarketplace(lastMarketplaceQuery, activeCategory);
     scrollToId('marketplace');
     return;
