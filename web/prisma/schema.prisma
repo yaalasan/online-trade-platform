@@ -402,12 +402,21 @@ model Product {
   currency       String? // ISO-4217 alpha-3
   specifications Json? // [{ name, value }, ...]
 
+  // Packaging info (leadTimeDays covers leadTime text)
+  packageSize String?
+  grossWeight String?
+  port        String?
+
   status ProductStatus @default(DRAFT)
 
-  manufacturer Manufacturer      @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
-  images       ProductImage[]
-  categories   ProductCategory[]
-  inquiries    Inquiry[]
+  manufacturer      Manufacturer             @relation(fields: [manufacturerId], references: [id], onDelete: Cascade)
+  images            ProductImage[]
+  categories        ProductCategory[]
+  inquiries         Inquiry[]
+  variants          ProductVariant[]
+  priceTiers        ProductPriceTier[]
+  descriptionBlocks ProductDescriptionBlock[]
+  faqs              ProductFaq[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -432,6 +441,63 @@ model ProductImage {
   createdAt DateTime @default(now())
 
   @@index([productId, position])
+}
+
+model ProductVariant {
+  id        String @id @default(cuid())
+  productId String
+  name      String
+  options   Json   // string[]
+  sortOrder Int    @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, sortOrder])
+}
+
+model ProductPriceTier {
+  id        String  @id @default(cuid())
+  productId String
+  minQty    Int
+  maxQty    Int?
+  price     Decimal @db.Decimal(14, 2)
+  sortOrder Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, sortOrder])
+}
+
+model ProductDescriptionBlock {
+  id        String @id @default(cuid())
+  productId String
+  type      String // "text" | "banner" | "image_grid" | "video"
+  sortOrder Int    @default(0)
+  content   Json
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, sortOrder])
+}
+
+model ProductFaq {
+  id        String @id @default(cuid())
+  productId String
+  question  String
+  answer    String
+  sortOrder Int    @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, sortOrder])
 }
 
 /// Join row: a product is filed under N categories (shared taxonomy with suppliers).
