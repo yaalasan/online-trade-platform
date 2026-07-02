@@ -1,11 +1,11 @@
 import hashlib
 import hmac
 import os
-import re
 import secrets
 import sqlite3
 import threading
 from datetime import UTC, datetime, timedelta
+from html import escape as html_escape
 from pathlib import Path
 
 from flask import Flask, Response, g, jsonify, request, send_file, session
@@ -16,12 +16,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-
-ALLOWED_ORIGINS = {
-    "https://fastflow.global",
-    "https://www.fastflow.global",
-    "https://portal.fastflow.global",
-}
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
@@ -185,21 +179,20 @@ def fetch_portal_suppliers(query=""):
 
 
 def clean_str(data, key, default=""):
-    """Coerce a JSON field to a stripped string. Raw values are stored; the JS
-    render layer calls escapeHtml() before inserting into the DOM."""
+    """Coerce a JSON field to a stripped, HTML-safe string.
+
+    html_escape() is applied before any DB write so stored values are safe for
+    server-side rendering. The JS layer renders these values as text (not raw HTML),
+    so no double-encoding occurs in practice.
+    """
     value = data.get(key, default)
     if value is None:
         return default
     if not isinstance(value, str):
         value = str(value)
-    return value.strip()
+    return html_escape(value.strip())
 
 SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS schema_migrations (
-    name TEXT PRIMARY KEY,
-    applied_at TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -306,41 +299,6 @@ CREATE TABLE IF NOT EXISTS translations_cache (
     target_lang TEXT NOT NULL,
     translated_text TEXT NOT NULL,
     created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS product_specs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    label TEXT NOT NULL,
-    value TEXT NOT NULL,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(product_id) REFERENCES products(id)
-);
-
-CREATE TABLE IF NOT EXISTS product_inquiries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    supplier_id INTEGER,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    company TEXT NOT NULL DEFAULT '',
-    quantity TEXT NOT NULL DEFAULT '',
-    message TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(product_id) REFERENCES products(id)
-);
-
-CREATE TABLE IF NOT EXISTS product_media (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    type       TEXT NOT NULL DEFAULT 'image' CHECK(type IN ('image','video')),
-    url        TEXT NOT NULL,
-    thumb_url  TEXT NOT NULL DEFAULT '',
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    is_primary INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(product_id) REFERENCES products(id)
 );
 """
 
@@ -549,16 +507,6 @@ def _bg_translate_product(name, description):
         db.close()
 
 
-def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
-    """Background supplier notification. Email delivery not yet configured
-    (same console-mode pattern as SMS_PROVIDER=console in the portal).
-    Replace this stub with an SMTP/SendGrid call when the provider is wired."""
-    app.logger.info(
-        "product_inquiry#%s on product#%s → notify supplier#%s",
-        inquiry_id, product_id, supplier_id,
-    )
-
-
 def _apply_translations(products, target_lang, db):
     """Overlay cached translations onto a list of product dicts. Mutates copies in-place."""
     if not target_lang or target_lang not in ("en", "zh", "ru"):
@@ -624,51 +572,6 @@ def init_db():
     add_column_if_missing(db, "supplier_verifications", "supplier_id", "INTEGER")
     add_column_if_missing(db, "quotes", "target_price", "TEXT DEFAULT ''")
     add_column_if_missing(db, "quotes", "destination", "TEXT DEFAULT ''")
-
-    # Backfill product_media from the legacy image_url column (idempotent).
-    db.execute(
-        """
-        INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at)
-        SELECT id, 'image', image_url, image_url, 0, 1, created_at
-        FROM   products
-        WHERE  TRIM(COALESCE(image_url, '')) != ''
-          AND  id NOT IN (SELECT DISTINCT product_id FROM product_media)
-        """
-    )
-
-    # S2: one-off unescape of HTML-encoded data written by the old clean_str().
-    # Guarded by schema_migrations so it runs exactly once per database.
-    already_run = db.execute(
-        "SELECT 1 FROM schema_migrations WHERE name = 's2_unescape_html'"
-    ).fetchone()
-    if not already_run:
-        from html import unescape as html_unescape
-        for table, col in [
-            ("products",          "name"),
-            ("products",          "category"),
-            ("products",          "description"),
-            ("products",          "location"),
-            ("products",          "supplier"),
-            ("products",          "certifications"),
-            ("product_specs",     "label"),
-            ("product_specs",     "value"),
-            ("product_inquiries", "name"),
-            ("product_inquiries", "email"),
-            ("product_inquiries", "company"),
-            ("product_inquiries", "quantity"),
-            ("product_inquiries", "message"),
-            ("users",             "name"),
-            ("users",             "company"),
-        ]:
-            rows = db.execute(f"SELECT id, {col} FROM {table}").fetchall()
-            for row_id, raw in rows:
-                unescaped = html_unescape(raw) if raw else raw
-                if unescaped != raw:
-                    db.execute(f"UPDATE {table} SET {col}=? WHERE id=?", (unescaped, row_id))
-        db.execute(
-            "INSERT INTO schema_migrations (name, applied_at) VALUES ('s2_unescape_html', ?)",
-            (utc_now(),),
-        )
 
     existing_emails = {row[0] for row in db.execute("SELECT email FROM users").fetchall()}
     for user in SAMPLE_USERS:
@@ -767,15 +670,6 @@ def init_db():
         """
     )
 
-    # S4: log any products still lacking a supplier_id after backfill.
-    orphans = db.execute(
-        "SELECT id, supplier FROM products WHERE supplier_id IS NULL"
-    ).fetchall()
-    if orphans:
-        import logging
-        for row in orphans:
-            logging.warning("S4: product id=%s supplier=%r has no supplier_id — cannot be owned", row[0], row[1])
-
     db.commit()
     db.close()
 
@@ -820,15 +714,6 @@ def require_user():
     return user, None
 
 
-def _owns_product(user, product):
-    """Return True when the user may mutate this product (IDOR guard).
-    Ownership requires a numeric supplier_id match; the free-text company-name
-    branch has been removed to prevent IDOR via shared company names."""
-    if user["role"] == "admin":
-        return True
-    return product.get("supplier_id") == user["id"]
-
-
 def quote_scope_clause(user):
     if user["role"] == "buyer":
         return "q.buyer_id = ?", (user["id"],)
@@ -851,7 +736,7 @@ def user_can_access_quote(user, quote):
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
-
+0
 @app.before_request
 def ensure_csrf_token():
     if "csrf_token" not in session:
@@ -879,6 +764,7 @@ def apply_security_headers(response):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "img-src 'self' https: data:; "
+        "media-src 'self' https:; "
         "connect-src 'self'; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
@@ -1009,16 +895,8 @@ def api_me():
 
 
 @app.route("/api/translate", methods=["POST"])
-@limiter.limit("15 per minute")
+@limiter.limit("20 per minute")
 def api_translate():
-    # Same-origin guard: only serve requests from our own domains (or dev).
-    if IS_PRODUCTION:
-        origin = request.headers.get("Origin", "")
-        referer = request.headers.get("Referer", "")
-        source = origin or referer
-        if not any(source == o or source.startswith(o + "/") for o in ALLOWED_ORIGINS):
-            return jsonify({"error": "Forbidden."}), 403
-
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     target_lang = (data.get("target_lang") or "en").strip()
@@ -1100,25 +978,9 @@ def marketplace():
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
     products = db.execute(f"SELECT * FROM products {where} ORDER BY verified DESC, category, name", params).fetchall()
 
-    # Pull primary media URL for each product in one query.
-    product_ids = [row["id"] for row in products]
-    primary_media = {}
-    if product_ids:
-        placeholders = ",".join("?" * len(product_ids))
-        media_rows = db.execute(
-            f"SELECT product_id, url FROM product_media WHERE product_id IN ({placeholders}) "
-            f"AND is_primary = 1 ORDER BY sort_order ASC",
-            product_ids,
-        ).fetchall()
-        for mr in media_rows:
-            if mr["product_id"] not in primary_media:
-                primary_media[mr["product_id"]] = mr["url"]
-
     categories = {}
     for row in products:
         product = row_to_dict(row)
-        # Prefer product_media primary URL; fall back to legacy image_url.
-        product["image_url"] = primary_media.get(product["id"]) or product.get("image_url", "")
         categories.setdefault(product["category"], []).append(product)
 
     # Merge in live products published from the supplier portal (best-effort).
@@ -1177,8 +1039,8 @@ def my_products():
         rows = db.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
     else:
         rows = db.execute(
-            "SELECT * FROM products WHERE supplier_id = ? ORDER BY created_at DESC",
-            (user["id"],),
+            "SELECT * FROM products WHERE supplier_id = ? OR supplier = ? ORDER BY created_at DESC",
+            (user["id"], user["company"]),
         ).fetchall()
     return jsonify({"products": [row_to_dict(r) for r in rows]})
 
@@ -1195,253 +1057,28 @@ def update_product(product_id):
     if not row:
         return jsonify({"error": "Product not found."}), 404
     product = row_to_dict(row)
-    if user["role"] != "admin" and not _owns_product(user, product):
+    if user["role"] != "admin" and product.get("supplier_id") != user["id"] and product.get("supplier") != user["company"]:
         return jsonify({"error": "Not your product."}), 403
 
     data = request.get_json(silent=True) or {}
-    editable = ["category", "name", "location", "description", "price", "moq", "lead_time", "capacity", "certifications"]
+    editable = ["category", "name", "location", "description", "price", "moq", "lead_time", "capacity", "certifications", "image_url"]
     updates = {f: clean_str(data, f) for f in editable if data.get(f) is not None}
-
-    media_list = data.get("media") if isinstance(data.get("media"), list) else None
-    if not updates and media_list is None:
+    if not updates:
         return jsonify({"error": "No fields to update."}), 400
 
-    if updates:
-        set_clause = ", ".join(f"{f} = ?" for f in updates)
-        db.execute(f"UPDATE products SET {set_clause} WHERE id = ?", [*updates.values(), product_id])
-    if media_list is not None and len(media_list) <= _MAX_MEDIA:
-        _save_media(db, product_id, media_list, utc_now())
+    set_clause = ", ".join(f"{f} = ?" for f in updates)
+    db.execute(f"UPDATE products SET {set_clause} WHERE id = ?", [*updates.values(), product_id])
     log_audit("updated", "product", product_id, f"{user['company']} updated {product.get('name')}")
     db.commit()
     return jsonify({"ok": True})
 
 
-# ---- Specs limits -------------------------------------------------------
-_MAX_SPECS           = 100
-_MAX_SPEC_LABEL_LEN  = 200
-_MAX_SPEC_VALUE_LEN  = 500
-
-@app.route("/api/products/<int:product_id>/specs", methods=["PUT"])
-@limiter.limit("20 per minute")
-def save_product_specs(product_id):
-    user, error = require_user()
-    if error:
-        return error
-
-    db = get_db()
-    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
-    if not row:
-        return jsonify({"error": "Product not found."}), 404
-    product = row_to_dict(row)
-    if not _owns_product(user, product):
-        return jsonify({"error": "Not your product."}), 403
-
-    data = request.get_json(silent=True) or {}
-    specs = data.get("specs")
-    if not isinstance(specs, list):
-        return jsonify({"error": "specs must be an array."}), 400
-    if len(specs) > _MAX_SPECS:
-        return jsonify({"error": f"Too many specs (max {_MAX_SPECS})."}), 400
-
-    validated = []
-    for i, item in enumerate(specs):
-        if not isinstance(item, dict):
-            return jsonify({"error": f"specs[{i}] must be an object."}), 400
-        # Validate on raw values, then escape.
-        raw_label = str(item.get("label", "")).strip()
-        raw_value = str(item.get("value", "")).strip()
-        if not raw_label:
-            return jsonify({"error": f"specs[{i}].label is required."}), 400
-        if len(raw_label) > _MAX_SPEC_LABEL_LEN:
-            return jsonify({"error": f"specs[{i}].label too long (max {_MAX_SPEC_LABEL_LEN})."}), 400
-        if len(raw_value) > _MAX_SPEC_VALUE_LEN:
-            return jsonify({"error": f"specs[{i}].value too long (max {_MAX_SPEC_VALUE_LEN})."}), 400
-        validated.append({
-            "label": raw_label,
-            "value": raw_value,
-            "sort_order": i,  # derived from array position, client value ignored
-        })
-
-    now = utc_now()
-    # Transactional replace: delete-then-reinsert under the same implicit transaction.
-    db.execute("DELETE FROM product_specs WHERE product_id = ?", (product_id,))
-    saved = []
-    for spec in validated:
-        cursor = db.execute(
-            "INSERT INTO product_specs (product_id, label, value, sort_order, created_at) VALUES (?, ?, ?, ?, ?)",
-            (product_id, spec["label"], spec["value"], spec["sort_order"], now),
-        )
-        saved.append({**spec, "id": cursor.lastrowid, "product_id": product_id})
-    log_audit("updated", "product_specs", product_id,
-              f"{len(saved)} specs saved by {user['company']}")
-    db.commit()
-    return jsonify({"specs": saved})
-
-
-_MAX_MEDIA       = 20
-_MAX_MEDIA_URL   = 2000
-_ALLOWED_MEDIA_TYPES = {"image", "video"}
-
-
-def _get_media(db, product_id):
-    rows = db.execute(
-        "SELECT id, type, url, thumb_url, sort_order, is_primary FROM product_media "
-        "WHERE product_id = ? ORDER BY sort_order ASC",
-        (product_id,),
-    ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def _save_media(db, product_id, media_list, now):
-    """Replace all media for a product. Returns the saved rows."""
-    db.execute("DELETE FROM product_media WHERE product_id = ?", (product_id,))
-    saved = []
-    has_primary = False
-    for i, item in enumerate(media_list):
-        kind = str(item.get("type", "image")).strip().lower()
-        if kind not in _ALLOWED_MEDIA_TYPES:
-            kind = "image"
-        url = str(item.get("url", "")).strip()
-        if not url:
-            continue
-        if len(url) > _MAX_MEDIA_URL:
-            continue
-        thumb = str(item.get("thumb_url", url)).strip() or url
-        is_primary = 1 if (item.get("is_primary") and not has_primary) else 0
-        if is_primary:
-            has_primary = True
-        cursor = db.execute(
-            "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (product_id, kind, url, thumb, i, is_primary, now),
-        )
-        saved.append({"id": cursor.lastrowid, "product_id": product_id, "type": kind,
-                      "url": url, "thumb_url": thumb, "sort_order": i, "is_primary": is_primary})
-    # If caller sent rows but none were marked primary, promote first one.
-    if saved and not has_primary:
-        db.execute("UPDATE product_media SET is_primary=1 WHERE id=?", (saved[0]["id"],))
-        saved[0]["is_primary"] = 1
-    return saved
-
-
-@app.route("/api/products/<int:product_id>/media", methods=["PUT"])
-@limiter.limit("20 per minute")
-def save_product_media(product_id):
-    user, error = require_user()
-    if error:
-        return error
-    db = get_db()
-    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
-    if not row:
-        return jsonify({"error": "Product not found."}), 404
-    if not _owns_product(user, row_to_dict(row)):
-        return jsonify({"error": "Not your product."}), 403
-
-    data = request.get_json(silent=True) or {}
-    media_list = data.get("media")
-    if not isinstance(media_list, list):
-        return jsonify({"error": "media must be an array."}), 400
-    if len(media_list) > _MAX_MEDIA:
-        return jsonify({"error": f"Too many media items (max {_MAX_MEDIA})."}), 400
-
-    now = utc_now()
-    saved = _save_media(db, product_id, media_list, now)
-    log_audit("updated", "product_media", product_id,
-              f"{len(saved)} media rows saved by {user['company']}")
-    db.commit()
-    return jsonify({"media": saved})
-
-
-# ---- Inquiry validation constants ---------------------------------------
-_EMAIL_RE        = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-_QUANTITY_RE     = re.compile(r"^[\d,.\s]+$")
-_MIN_MSG_LEN     = 20
-_MAX_MSG_LEN     = 4000
-_MAX_NAME_LEN    = 200
-_MAX_COMPANY_LEN = 200
-_MAX_QTY_LEN     = 100
-
-@app.route("/api/products/<int:product_id>/inquiry", methods=["POST"])
-@limiter.limit("5 per hour")
-def product_inquiry(product_id):
-    db = get_db()
-    row = db.execute("SELECT id, supplier_id FROM products WHERE id = ?", (product_id,)).fetchone()
-    if not row:
-        return jsonify({"error": "Product not found."}), 404
-    product = row_to_dict(row)
-
-    data = request.get_json(silent=True) or {}
-
-    # Honeypot: bots fill the hidden "website" field; legitimate forms leave it empty.
-    if data.get("website", ""):
-        return jsonify({"status": "success"}), 200
-
-    # Extract and validate on raw strings before sanitizing.
-    raw_name     = str(data.get("name",     "")).strip()
-    raw_email    = str(data.get("email",    "")).strip().lower()
-    raw_company  = str(data.get("company",  "")).strip()
-    raw_quantity = str(data.get("quantity", "")).strip()
-    raw_message  = str(data.get("message",  "")).strip()
-
-    errors = {}
-    if not raw_name or len(raw_name) > _MAX_NAME_LEN:
-        errors["name"] = "Required (max 200 characters)."
-    if not raw_email or not _EMAIL_RE.match(raw_email):
-        errors["email"] = "Valid email address required."
-    if len(raw_company) > _MAX_COMPANY_LEN:
-        errors["company"] = f"Max {_MAX_COMPANY_LEN} characters."
-    if raw_quantity and len(raw_quantity) > _MAX_QTY_LEN:
-        errors["quantity"] = f"Max {_MAX_QTY_LEN} characters."
-    if raw_quantity and not _QUANTITY_RE.match(raw_quantity):
-        errors["quantity"] = "Quantity must be numeric."
-    if len(raw_message) < _MIN_MSG_LEN:
-        errors["message"] = f"Message must be at least {_MIN_MSG_LEN} characters."
-    if len(raw_message) > _MAX_MSG_LEN:
-        errors["message"] = f"Message must be {_MAX_MSG_LEN} characters or fewer."
-    if errors:
-        return jsonify({"error": "Validation failed.", "fields": errors}), 400
-
-    name     = raw_name
-    email    = raw_email
-    company  = raw_company
-    quantity = raw_quantity
-    message  = raw_message
-
-    cursor = db.execute(
-        """INSERT INTO product_inquiries
-           (product_id, supplier_id, name, email, company, quantity, message, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (product_id, product.get("supplier_id"), name, email, company, quantity, message, utc_now()),
-    )
-    inquiry_id = cursor.lastrowid
-    log_audit("created", "product_inquiry", product_id,
-              f"inquiry from {email}", actor_id=None)
-    db.commit()
-
-    if product.get("supplier_id"):
-        threading.Thread(
-            target=_notify_supplier_inquiry,
-            args=(product_id, product["supplier_id"], inquiry_id),
-            daemon=True,
-        ).start()
-
-    return jsonify({"status": "success"}), 200
-
-
 @app.route("/api/products/<int:product_id>")
 def product_detail(product_id):
-    db = get_db()
-    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    row = get_db().execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
     if not row:
         return jsonify({"error": "Product not found."}), 404
-    product = row_to_dict(row)
-    spec_rows = db.execute(
-        "SELECT label, value FROM product_specs WHERE product_id = ? ORDER BY sort_order ASC",
-        (product_id,),
-    ).fetchall()
-    product["specs"] = [{"label": r["label"], "value": r["value"]} for r in spec_rows]
-    product["media"] = _get_media(db, product_id)
-    return jsonify({"product": product})
+    return jsonify({"product": row_to_dict(row)})
 
 
 @app.route("/api/products/<product_id>")
@@ -1531,20 +1168,8 @@ def create_product():
         ),
     )
     log_audit("created", "product", cursor.lastrowid, f"{supplier} listed {fields['name']}")
-    product_id = cursor.lastrowid
-
-    # Persist media rows if provided; otherwise fall back to legacy image_url field.
-    media_list = data.get("media") if isinstance(data.get("media"), list) else None
-    if media_list is not None and len(media_list) <= _MAX_MEDIA:
-        _save_media(db, product_id, media_list, utc_now())
-    elif clean_str(data, "image_url"):
-        db.execute(
-            "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
-            "VALUES (?, 'image', ?, ?, 0, 1, ?)",
-            (product_id, clean_str(data, "image_url"), clean_str(data, "image_url"), utc_now()),
-        )
-
     db.commit()
+    product_id = cursor.lastrowid
 
     # Pre-translate name + description to all 3 languages in the background so
     # marketplace requests with ?target_lang= get instant cache hits.
