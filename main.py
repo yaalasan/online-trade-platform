@@ -879,6 +879,7 @@ def apply_security_headers(response):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "img-src 'self' https: data:; "
+        "media-src 'self' https:; "
         "connect-src 'self'; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
