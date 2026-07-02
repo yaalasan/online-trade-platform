@@ -3,9 +3,9 @@
 - [x] S2  double-escape-fix+migration  # clean_str:181 strips only; specs/inquiry write paths raw; schema_migrations guard + html_unescape loop in init_db:633
 - [x] S3  translate-abuse-close        # main.py:1005 ALLOWED_ORIGINS same-origin guard; 15/min limit; cache already present
 - [x] S4  idor-drop-companyname-fallback # _owns_product:822 numeric-only; my-products query:1175; update_product:1192; orphan log added
-- [ ] O1  portal-next-chown
-- [ ] O2  dead-r2-upload-remove-or-activate
-- [ ] O3  portal-inquiry-uuid-fix
+- [ ] O1  portal-next-chown             # MANUAL: sudo chown -R fastflow:fastflow /opt/fastflow/web/.next && sudo systemctl restart fastflow-portal (run on VPS after each build)
+- [x] O2  dead-r2-upload-remove-or-activate # removed R2 blueprint block from main.py; deleted web/src/components/product/MediaUploader.tsx (unimported)
+- [x] O3  portal-inquiry-uuid-fix           # inquiry/route.ts: UUID→Prisma db.inquiry.create; integer→Flask proxy
 - [ ] L1  hero-fabricated-stats
 - [ ] L2  hero-copy+ai-spam
 - [ ] L3  team-section
