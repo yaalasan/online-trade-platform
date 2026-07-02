@@ -1,6 +1,6 @@
 # Fastflow Fix Progress  ([x]=done+verified, [ ]=todo; add evidence when marking done)
-- [ ] S1  csrf-enforce-flask
-- [ ] S2  double-escape-fix+migration
+- [x] S1  csrf-enforce-flask          # main.py:844 @before_request hook + app.js:1044 X-CSRF-Token header — already wired
+- [x] S2  double-escape-fix+migration  # clean_str:181 strips only; specs/inquiry write paths raw; schema_migrations guard + html_unescape loop in init_db:633
 - [ ] S3  translate-abuse-close
 - [ ] S4  idor-drop-companyname-fallback
 - [ ] O1  portal-next-chown

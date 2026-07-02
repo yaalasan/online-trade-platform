@@ -6,7 +6,6 @@ import secrets
 import sqlite3
 import threading
 from datetime import UTC, datetime, timedelta
-from html import escape as html_escape
 from pathlib import Path
 
 from flask import Flask, Response, g, jsonify, request, send_file, session
@@ -180,20 +179,21 @@ def fetch_portal_suppliers(query=""):
 
 
 def clean_str(data, key, default=""):
-    """Coerce a JSON field to a stripped, HTML-safe string.
-
-    html_escape() is applied before any DB write so stored values are safe for
-    server-side rendering. The JS layer renders these values as text (not raw HTML),
-    so no double-encoding occurs in practice.
-    """
+    """Coerce a JSON field to a stripped string. Raw values are stored; the JS
+    render layer calls escapeHtml() before inserting into the DOM."""
     value = data.get(key, default)
     if value is None:
         return default
     if not isinstance(value, str):
         value = str(value)
-    return html_escape(value.strip())
+    return value.strip()
 
 SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    name TEXT PRIMARY KEY,
+    applied_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -629,6 +629,40 @@ def init_db():
           AND  id NOT IN (SELECT DISTINCT product_id FROM product_media)
         """
     )
+
+    # S2: one-off unescape of HTML-encoded data written by the old clean_str().
+    # Guarded by schema_migrations so it runs exactly once per database.
+    already_run = db.execute(
+        "SELECT 1 FROM schema_migrations WHERE name = 's2_unescape_html'"
+    ).fetchone()
+    if not already_run:
+        from html import unescape as html_unescape
+        for table, col in [
+            ("products",          "name"),
+            ("products",          "category"),
+            ("products",          "description"),
+            ("products",          "location"),
+            ("products",          "supplier"),
+            ("products",          "certifications"),
+            ("product_specs",     "label"),
+            ("product_specs",     "value"),
+            ("product_inquiries", "name"),
+            ("product_inquiries", "email"),
+            ("product_inquiries", "company"),
+            ("product_inquiries", "quantity"),
+            ("product_inquiries", "message"),
+            ("users",             "name"),
+            ("users",             "company"),
+        ]:
+            rows = db.execute(f"SELECT id, {col} FROM {table}").fetchall()
+            for row_id, raw in rows:
+                unescaped = html_unescape(raw) if raw else raw
+                if unescaped != raw:
+                    db.execute(f"UPDATE {table} SET {col}=? WHERE id=?", (unescaped, row_id))
+        db.execute(
+            "INSERT INTO schema_migrations (name, applied_at) VALUES ('s2_unescape_html', ?)",
+            (utc_now(),),
+        )
 
     existing_emails = {row[0] for row in db.execute("SELECT email FROM users").fetchall()}
     for user in SAMPLE_USERS:
@@ -1198,8 +1232,8 @@ def save_product_specs(product_id):
         if len(raw_value) > _MAX_SPEC_VALUE_LEN:
             return jsonify({"error": f"specs[{i}].value too long (max {_MAX_SPEC_VALUE_LEN})."}), 400
         validated.append({
-            "label": html_escape(raw_label),
-            "value": html_escape(raw_value),
+            "label": raw_label,
+            "value": raw_value,
             "sort_order": i,  # derived from array position, client value ignored
         })
 
@@ -1342,12 +1376,11 @@ def product_inquiry(product_id):
     if errors:
         return jsonify({"error": "Validation failed.", "fields": errors}), 400
 
-    # Sanitize after validation passes.
-    name     = html_escape(raw_name)
-    email    = html_escape(raw_email)
-    company  = html_escape(raw_company)
-    quantity = html_escape(raw_quantity)
-    message  = html_escape(raw_message)
+    name     = raw_name
+    email    = raw_email
+    company  = raw_company
+    quantity = raw_quantity
+    message  = raw_message
 
     cursor = db.execute(
         """INSERT INTO product_inquiries
