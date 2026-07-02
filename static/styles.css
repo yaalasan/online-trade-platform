@@ -1150,6 +1150,10 @@ dl { margin: 0; }
 }
 .wide { grid-column: 1 / -1; }
 
+.media-editor { display: flex; flex-direction: column; gap: .35rem; }
+.media-row { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.media-row .media-url { min-width: 0; }
+
 .inline-form {
   display: grid;
   gap: .55rem;
