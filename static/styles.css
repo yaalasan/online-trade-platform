@@ -749,6 +749,46 @@ main {
   gap: 1rem;
 }
 
+.marketplace-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.cat-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cat-section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.cat-section-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cat-view-all {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--brand);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cat-view-all:hover {
+  text-decoration: underline;
+}
+
 .product-card {
   background: var(--white);
   border: 1px solid var(--border);
