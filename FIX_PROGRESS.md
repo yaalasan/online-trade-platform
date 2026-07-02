@@ -6,10 +6,10 @@
 - [ ] O1  portal-next-chown             # MANUAL: sudo chown -R fastflow:fastflow /opt/fastflow/web/.next && sudo systemctl restart fastflow-portal (run on VPS after each build)
 - [x] O2  dead-r2-upload-remove-or-activate # removed R2 blueprint block from main.py; deleted web/src/components/product/MediaUploader.tsx (unimported)
 - [x] O3  portal-inquiry-uuid-fix           # inquiry/route.ts: UUID→Prisma db.inquiry.create; integer→Flask proxy
-- [ ] L1  hero-fabricated-stats
-- [ ] L2  hero-copy+ai-spam
-- [ ] L3  team-section
-- [ ] L4  testimonials
+- [x] L1  hero-fabricated-stats        # index.html: .hero-stats block removed
+- [x] L2  hero-copy+ai-spam            # index.html: 2 AI mentions remain (translation); hero/advantage/howStep2/contact/footer/services copy rewritten; EN i18n strings updated in app.js
+- [x] L3  team-section                 # index.html: team section removed (was empty)
+- [x] L4  testimonials                 # index.html: testimonials section removed (unattributed)
 - [ ] B1  portal-schema-gaps
 - [x] B2  buyer-gallery-render        # app.js galleryHtml():1250, openProductDetail:1316, thumb click wiring:1372; styles.css .pd-gallery-wrap/.pd-thumb-rail
 - [ ] M1  portal-multimedia-uploader
