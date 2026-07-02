@@ -10,8 +10,8 @@
 - [x] L2  hero-copy+ai-spam            # index.html: 2 AI mentions remain (translation); hero/advantage/howStep2/contact/footer/services copy rewritten; EN i18n strings updated in app.js
 - [x] L3  team-section                 # index.html: team section removed (was empty)
 - [x] L4  testimonials                 # index.html: testimonials section removed (unattributed)
-- [ ] B1  portal-schema-gaps
+- [x] B1  portal-schema-gaps  # schema.prisma + 0009 migration; server actions saveProductVariants/PriceTiers/Packaging/DescriptionBlocks/Faqs; page.tsx include + mapping
 - [x] B2  buyer-gallery-render        # app.js galleryHtml():1250, openProductDetail:1316, thumb click wiring:1372; styles.css .pd-gallery-wrap/.pd-thumb-rail
-- [ ] M1  portal-multimedia-uploader
+- [x] M1  portal-multimedia-uploader  # product-detail-client.tsx: hidden file input + handleUploadMedia → uploadProductImage server action; upload/error state shown inline
 - [x] M2  flask-product_media-input  # main.py:328 schema, :622 backfill, :1229 _get_media, :1238 _save_media; app.js mediaEditorHtml+collectMedia; styles.css .media-editor
-- [ ] M3  marketplace-homepage-browse
+- [x] M3  marketplace-homepage-browse  # app.js: browse→category sections (4 cards + view-all), filter/search→flat grid; styles.css .cat-section/.cat-view-all
