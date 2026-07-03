@@ -48,6 +48,7 @@ const translations = {
     heroSupplierBtn: 'Join Free as Supplier',
     heroConsultBtn: 'Online Consultation',
     heroHighlights: 'Verified suppliers · Multilingual browsing · Escrow-backed orders',
+    heroShowcaseBadge: '🌐 Global Sourcing Platform',
     searchProducts: 'Products',
     searchSuppliers: 'Suppliers',
     searchPlaceholder: 'Search products, suppliers, certifications...',
@@ -359,6 +360,7 @@ const translations = {
     heroSupplierBtn: '国内供应商：免费入驻',
     heroConsultBtn: '在线咨询',
     heroHighlights: 'AI撮合、多语种支持、风控合规、全流程服务。',
+    heroShowcaseBadge: '🌐 全球采购平台',
     searchProducts: '产品',
     searchSuppliers: '供应商',
     searchPlaceholder: '搜索产品、供应商、认证...',
@@ -670,6 +672,7 @@ const translations = {
     heroSupplierBtn: 'Зарегистрироваться поставщику',
     heroConsultBtn: 'Онлайн-консультация',
     heroHighlights: 'ИИ-сопоставление, мультиязычие, контроль рисков и полный цикл услуг.',
+    heroShowcaseBadge: '🌐 Глобальная платформа закупок',
     searchProducts: 'Товары',
     searchSuppliers: 'Поставщики',
     searchPlaceholder: 'Искать товары, поставщиков, сертификаты...',
@@ -968,6 +971,36 @@ function t(key) {
   return (translations[currentLang] && translations[currentLang][key]) || translations.en[key] || key;
 }
 
+// Category names live in the database (free text, English), so they can't go
+// through data-i18n. Known names are mapped per locale; unknown ones fall back
+// to the stored string.
+const CATEGORY_NAMES = {
+  zh: {
+    'Raw Materials': '原材料',
+    'Packaging': '包装',
+    'Components': '零部件',
+    'Machinery': '机械设备',
+    'Home & Kitchen': '家居厨房',
+    'Electronics': '电子产品',
+    'Textiles & Apparel': '纺织服装',
+    'Consumer Goods': '消费品',
+  },
+  ru: {
+    'Raw Materials': 'Сырьё',
+    'Packaging': 'Упаковка',
+    'Components': 'Комплектующие',
+    'Machinery': 'Оборудование',
+    'Home & Kitchen': 'Дом и кухня',
+    'Electronics': 'Электроника',
+    'Textiles & Apparel': 'Текстиль и одежда',
+    'Consumer Goods': 'Потребительские товары',
+  }
+};
+
+function tCategory(name) {
+  return (CATEGORY_NAMES[currentLang] && CATEGORY_NAMES[currentLang][name]) || name;
+}
+
 const QUOTE_STATUSES = ['requested', 'reviewing', 'quoted', 'sample_requested', 'accepted', 'closed'];
 const QUOTE_STATUS_KEYS = {
   requested: 'statusRequested',
@@ -1156,7 +1189,7 @@ function renderCategories() {
     <button class="${activeCategory ? '' : 'active'}" data-category="">${escapeHtml(t('categoriesAll'))}</button>
     ${cachedCategories.map(category => `
       <button class="${activeCategory === category.name ? 'active' : ''}" data-category="${escapeHtml(category.name)}">
-        <span>${escapeHtml(category.name)}</span>
+        <span>${escapeHtml(tCategory(category.name))}</span>
         <small>${category.product_count} ${t('categoryProducts')}</small>
       </button>
     `).join('')}
@@ -1230,7 +1263,9 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
   if (lastMarketplaceQuery) params.set('q', lastMarketplaceQuery);
   if (activeCategory) params.set('category', activeCategory);
   // Request server-side translation from cache when UI is not in Chinese.
-  if (currentLang && currentLang !== 'zh') params.set('target_lang', currentLang);
+  // Ask the backend to overlay cached translations for the active language.
+  // All three locales are valid targets — products may be entered in any language.
+  if (currentLang) params.set('target_lang', currentLang);
 
   marketplaceGrid.innerHTML = renderProductSkeleton();
 
@@ -1256,10 +1291,10 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
         const preview = cat.items.slice(0, 4);
         const hasMore = cat.items.length > 4;
         return `
-          <section class="cat-section" aria-label="${escapeHtml(cat.name)}">
+          <section class="cat-section" aria-label="${escapeHtml(tCategory(cat.name))}">
             <div class="cat-section-header">
-              <h3>${escapeHtml(cat.name)}</h3>
-              ${hasMore ? `<button class="cat-view-all" data-category="${escapeHtml(cat.name)}">${cat.items.length} products &rsaquo;</button>` : ''}
+              <h3>${escapeHtml(tCategory(cat.name))}</h3>
+              ${hasMore ? `<button class="cat-view-all" data-category="${escapeHtml(cat.name)}">${cat.items.length} ${escapeHtml(t('categoryProducts'))} &rsaquo;</button>` : ''}
             </div>
             <div class="product-grid">${preview.map(productCardHtml).join('')}</div>
           </section>`;
@@ -1346,7 +1381,7 @@ async function openProductDetail(productId) {
       <div class="pd-hero">
         ${galleryHtml(product.media || [], product.image_url, product.name)}
         <div class="pd-buy">
-          <span class="pd-eyebrow">${escapeHtml(product.category || '')}</span>
+          <span class="pd-eyebrow">${escapeHtml(tCategory(product.category || ''))}</span>
           <h2 class="pd-title">${escapeHtml(product.name)}</h2>
           <div class="pd-pricebox">
             <div class="pd-price">${escapeHtml(product.price || '—')}</div>
@@ -1905,7 +1940,7 @@ async function renderProductForm() {
         <article class="record-card">
           <div>
             <strong>${escapeHtml(p.name)}</strong>
-            <p>${escapeHtml(p.category)} · ${escapeHtml(p.supplier)}</p>
+            <p>${escapeHtml(tCategory(p.category))} · ${escapeHtml(p.supplier)}</p>
           </div>
           <dl class="record-meta">
             <div><dt>${escapeHtml(t('pfPrice'))}</dt><dd>${escapeHtml(p.price)}</dd></div>
@@ -1984,7 +2019,7 @@ async function renderAdminPanel() {
         <article class="record-card">
           <div>
             <strong>${escapeHtml(p.name)}</strong>
-            <p>${escapeHtml(p.supplier)} · ${escapeHtml(p.category)}</p>
+            <p>${escapeHtml(p.supplier)} · ${escapeHtml(tCategory(p.category))}</p>
           </div>
           <dl class="record-meta">
             <div><dt>${escapeHtml(t('pfPrice'))}</dt><dd>${escapeHtml(p.price)}</dd></div>

@@ -89,13 +89,13 @@ def _portal_get(path):
         return None
 
 
-def _portal_post(path, payload):
+def _portal_post(path, payload, headers=None):
     try:
         body = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             f"{PORTAL_API_URL}{path}",
             data=body,
-            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            headers={"Content-Type": "application/json", "Accept": "application/json", **(headers or {})},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=PORTAL_TIMEOUT) as resp:
@@ -557,6 +557,28 @@ def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
         "product_inquiry#%s on product#%s → notify supplier#%s",
         inquiry_id, product_id, supplier_id,
     )
+
+
+def _forward_lead_to_portal(payload):
+    """Best-effort forward of a marketplace lead (contact form, product inquiry,
+    RFQ) to the portal broker queue, so staff have a single inbox. Runs in a
+    daemon thread and never blocks or fails the originating request — the local
+    DB row remains the source of truth if the portal is unreachable.
+
+    The visitor's IP is passed along so the portal rate-limits per client
+    rather than lumping every forwarded lead under the server's own IP.
+    Must be called from a request context (reads request.remote_addr)."""
+    client_ip = request.remote_addr or ""
+
+    def _send():
+        headers = {"X-Forwarded-For": client_ip} if client_ip else None
+        status, _ = _portal_post("/api/public/inquiries", payload, headers=headers)
+        if status != 201:
+            app.logger.warning(
+                "portal lead forward failed (kind=%s, status=%s)",
+                payload.get("kind"), status,
+            )
+    threading.Thread(target=_send, daemon=True).start()
 
 
 def _apply_translations(products, target_lang, db):
@@ -1366,7 +1388,7 @@ _MAX_QTY_LEN     = 100
 @limiter.limit("5 per hour")
 def product_inquiry(product_id):
     db = get_db()
-    row = db.execute("SELECT id, supplier_id FROM products WHERE id = ?", (product_id,)).fetchone()
+    row = db.execute("SELECT id, name, supplier_id FROM products WHERE id = ?", (product_id,)).fetchone()
     if not row:
         return jsonify({"error": "Product not found."}), 404
     product = row_to_dict(row)
@@ -1425,6 +1447,16 @@ def product_inquiry(product_id):
             args=(product_id, product["supplier_id"], inquiry_id),
             daemon=True,
         ).start()
+
+    _forward_lead_to_portal({
+        "kind": "PRODUCT",
+        "productNeeded": (product.get("name") or "")[:200],
+        "quantity": quantity[:120],
+        "message": message[:3000],
+        "contactName": name[:120],
+        "contactEmail": email,
+        "contactCompany": company[:160],
+    })
 
     return jsonify({"status": "success"}), 200
 
@@ -1580,7 +1612,7 @@ def quotes():
         if not product_id or not quantity:
             return jsonify({"error": "Product and quantity are required."}), 400
 
-        product = db.execute("SELECT id, supplier FROM products WHERE id = ?", (product_id,)).fetchone()
+        product = db.execute("SELECT id, name, supplier FROM products WHERE id = ?", (product_id,)).fetchone()
         if not product:
             return jsonify({"error": "Product not found."}), 404
 
@@ -1598,6 +1630,24 @@ def quotes():
         )
         log_audit("created", "rfq", quote_id, f"RFQ sent to {product['supplier']}")
         db.commit()
+
+        details = [f"Marketplace RFQ #{quote_id} for \"{product['name']}\" (supplier: {product['supplier']})."]
+        if target_price:
+            details.append(f"Target price: {target_price}.")
+        if destination:
+            details.append(f"Destination: {destination}.")
+        if notes:
+            details.append(notes)
+        _forward_lead_to_portal({
+            "kind": "RFQ",
+            "productNeeded": (product["name"] or "")[:200],
+            "quantity": quantity[:120],
+            "message": " ".join(details)[:3000],
+            "contactName": (user.get("name") or "")[:120],
+            "contactEmail": user.get("email") or "",
+            "contactCompany": (user.get("company") or "")[:160],
+        })
+
         quote = db.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)).fetchone()
         return jsonify({"quote": row_to_dict(quote)})
 
@@ -1831,6 +1881,28 @@ def verifications():
     return jsonify({"verifications": [row_to_dict(row) for row in rows]})
 
 
+@app.route("/api/admin/inquiries")
+def admin_list_inquiries():
+    """Product-inquiry leads captured by the marketplace. New leads are also
+    forwarded to the portal broker queue; this endpoint covers history and
+    serves as the fallback inbox when the portal is unreachable."""
+    user, error = require_user()
+    if error:
+        return error
+    if user["role"] != "admin":
+        return jsonify({"error": "Admin only."}), 403
+
+    rows = get_db().execute(
+        """
+        SELECT i.*, p.name AS product_name, p.supplier AS product_supplier
+        FROM product_inquiries i
+        LEFT JOIN products p ON i.product_id = p.id
+        ORDER BY i.created_at DESC
+        """
+    ).fetchall()
+    return jsonify({"inquiries": [row_to_dict(row) for row in rows]})
+
+
 @app.route("/api/admin/suppliers", methods=["POST"])
 def admin_create_supplier():
     user, error = require_user()
@@ -1884,12 +1956,12 @@ def contact():
     get_db().commit()
 
     # Forward the buyer's sourcing request to the portal broker queue (best-effort).
-    _portal_post("/api/public/inquiries", {
+    _forward_lead_to_portal({
         "kind": "GENERAL",
-        "contactName": fields["name"],
+        "contactName": fields["name"][:120],
         "contactEmail": fields["email"],
-        "contactCompany": fields["company"],
-        "message": fields["message"],
+        "contactCompany": fields["company"][:160],
+        "message": fields["message"][:3000],
     })
 
     return jsonify({"status": "success", "message": "Request received and logged for sourcing review."})
