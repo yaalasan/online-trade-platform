@@ -1296,8 +1296,16 @@ function galleryHtml(media, fallbackUrl, alt) {
         </button>`).join('')}</div>`
     : '';
 
+  const arrows = items.length > 1
+    ? `<button class="pd-arrow pd-arrow-prev" id="pd-arrow-prev" aria-label="Previous">&#8249;</button>
+       <button class="pd-arrow pd-arrow-next" id="pd-arrow-next" aria-label="Next">&#8250;</button>`
+    : '';
+
   return `<div class="pd-gallery-wrap">
-    <div class="pd-main-stage" id="pd-main-stage">${stageInner(primary)}</div>
+    <div class="pd-main-stage" id="pd-main-stage">
+      ${stageInner(primary)}
+      ${arrows}
+    </div>
     ${thumbRail}
   </div>`;
 }
@@ -1391,19 +1399,40 @@ async function openProductDetail(productId) {
     </div>
   `, { wide: true });
 
-  // Wire gallery thumbnail clicks
+  // Wire gallery: thumbnails + prev/next arrows share one index
   const thumbRail = document.getElementById('pd-thumb-rail');
   const mainStage = document.getElementById('pd-main-stage');
-  if (thumbRail && mainStage) {
-    thumbRail.addEventListener('click', e => {
-      const btn = e.target.closest('.pd-thumb');
-      if (!btn) return;
-      const { url, type } = btn.dataset;
-      mainStage.innerHTML = type === 'video'
-        ? `<video src="${escapeHtml(url)}" controls class="pd-main-video" autoplay></video>`
-        : `<img src="${escapeHtml(url)}" alt="" class="pd-main-img" />`;
-      thumbRail.querySelectorAll('.pd-thumb').forEach(b => b.classList.toggle('active', b === btn));
-    });
+  if (mainStage) {
+    const mediaItems = product.media && product.media.length
+      ? product.media
+      : (product.image_url ? [{ type: 'image', url: product.image_url, thumb_url: product.image_url }] : []);
+    const thumbBtns = thumbRail ? Array.from(thumbRail.querySelectorAll('.pd-thumb')) : [];
+    let idx = thumbBtns.findIndex(b => b.classList.contains('active'));
+    if (idx < 0) idx = 0;
+
+    function goTo(i) {
+      idx = (i + mediaItems.length) % mediaItems.length;
+      const item = mediaItems[idx];
+      // Swap stage content but keep arrow buttons
+      const arrows = mainStage.querySelectorAll('.pd-arrow');
+      mainStage.innerHTML = item.type === 'video'
+        ? `<video src="${escapeHtml(item.url)}" controls class="pd-main-video" autoplay></video>`
+        : `<img src="${escapeHtml(item.url)}" alt="" class="pd-main-img" />`;
+      arrows.forEach(a => mainStage.appendChild(a));
+      thumbBtns.forEach((b, j) => b.classList.toggle('active', j === idx));
+      if (thumbBtns[idx]) thumbBtns[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+
+    if (thumbRail) {
+      thumbRail.addEventListener('click', e => {
+        const btn = e.target.closest('.pd-thumb');
+        if (!btn) return;
+        goTo(thumbBtns.indexOf(btn));
+      });
+    }
+
+    document.getElementById('pd-arrow-prev')?.addEventListener('click', () => goTo(idx - 1));
+    document.getElementById('pd-arrow-next')?.addEventListener('click', () => goTo(idx + 1));
   }
 
   // Wire up the inquiry form
