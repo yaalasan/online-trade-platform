@@ -692,6 +692,14 @@ def init_db():
             (utc_now(),),
         )
 
+    # Demo seed data (accounts with known passwords + sample catalog) must NEVER
+    # be created in production — it would leave a public admin/buyer/supplier
+    # login open to the world. Only seed in dev/demo environments.
+    if IS_PRODUCTION:
+        db.commit()
+        db.close()
+        return
+
     existing_emails = {row[0] for row in db.execute("SELECT email FROM users").fetchall()}
     for user in SAMPLE_USERS:
         if user["email"] not in existing_emails:
@@ -1691,6 +1699,21 @@ def update_quote_status(quote_id):
         return jsonify({"error": "Quote not found."}), 404
     if not user_can_access_quote(user, quote):
         return jsonify({"error": "You cannot update this quote."}), 403
+
+    # Role-gated transitions. Suppliers drive the negotiation states (reviewing/
+    # quoted); the buyer accepts a quote. Without this, a buyer could unilaterally
+    # mark their own RFQ "accepted" and open an order + escrow with no supplier.
+    if user["role"] != "admin":
+        supplier_statuses = {"reviewing", "quoted", "sample_requested", "closed"}
+        buyer_statuses = {"accepted", "sample_requested", "closed"}
+        if user["role"] == "supplier" and status not in supplier_statuses:
+            return jsonify({"error": "Suppliers cannot set that status."}), 403
+        if user["role"] == "buyer":
+            if status not in buyer_statuses:
+                return jsonify({"error": "Buyers cannot set that status."}), 403
+            # A buyer may only accept a quote the supplier has actually quoted.
+            if status == "accepted" and quote["status"] != "quoted":
+                return jsonify({"error": "This RFQ has not been quoted yet."}), 400
 
     db.execute("UPDATE quotes SET status = ? WHERE id = ?", (status, quote_id))
     db.execute(
