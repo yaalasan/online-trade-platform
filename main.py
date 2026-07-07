@@ -465,8 +465,31 @@ def _open_translation_db():
     return conn
 
 
+# Internal language codes (en/zh/ru) → Google Translate codes. Google uses
+# "zh-CN" for Simplified Chinese; the others match.
+_GOOGLE_LANG = {"en": "en", "zh": "zh-CN", "ru": "ru"}
+
+
+def _translate_free(text, target_lang):
+    """Translate via deep-translator's free Google endpoint (no API key).
+    Source language is auto-detected, so same-language text passes through.
+    Returns the original text on any failure so callers never break."""
+    if not text:
+        return text
+    google_target = _GOOGLE_LANG.get(target_lang)
+    if not google_target:
+        return text
+    try:
+        from deep_translator import GoogleTranslator  # lazy import
+        result = GoogleTranslator(source="auto", target=google_target).translate(text)
+        return result or text
+    except Exception:
+        return text
+
+
 def _translate_via_claude(text, target_lang):
-    """Call Claude API. Returns translated text, or original on error."""
+    """Optional paid fallback: Claude API. Only used when CLAUDE_API_KEY is set.
+    Returns translated text, or original on error."""
     if not CLAUDE_API_KEY or not text:
         return text
     try:
@@ -488,6 +511,18 @@ def _translate_via_claude(text, target_lang):
         return msg.content[0].text.strip()
     except Exception:
         return text
+
+
+def _machine_translate(text, target_lang):
+    """Primary translation entry point: free engine, with the paid Claude path
+    as an opt-in fallback when configured. Used behind the SQLite cache so each
+    string is only ever translated once."""
+    translated = _translate_free(text, target_lang)
+    # If the free engine failed (returned the input unchanged) and a paid key is
+    # available, try Claude as a backstop for higher-value fields.
+    if translated == text and CLAUDE_API_KEY:
+        return _translate_via_claude(text, target_lang)
+    return translated
 
 
 def _cache_key(text, target_lang):
@@ -525,7 +560,7 @@ def translate_text_cached(text, target_lang):
         cached = get_cached_translation(text, target_lang, db)
         if cached is not None:
             return cached
-        translated = _translate_via_claude(text, target_lang)
+        translated = _machine_translate(text, target_lang)
         _store_translation(text, target_lang, translated, db)
         db.commit()
         return translated
@@ -533,20 +568,26 @@ def translate_text_cached(text, target_lang):
         db.close()
 
 
-def _bg_translate_product(name, description):
-    """Pre-translate product fields to EN/ZH/RU. Runs in a daemon thread."""
+def _bg_translate_texts(texts):
+    """Pre-translate arbitrary user-facing strings to EN/ZH/RU and cache them.
+    Runs in a daemon thread; each string is translated once per language."""
     db = _open_translation_db()
     try:
         for lang in ("en", "zh", "ru"):
-            for text in (name, description):
+            for text in texts:
                 if text and get_cached_translation(text, lang, db) is None:
-                    translated = _translate_via_claude(text, lang)
+                    translated = _machine_translate(text, lang)
                     _store_translation(text, lang, translated, db)
         db.commit()
     except Exception:
         pass
     finally:
         db.close()
+
+
+def _bg_translate_product(name, description, category=""):
+    """Pre-translate product name/description/category to EN/ZH/RU."""
+    _bg_translate_texts([name, description, category])
 
 
 def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
@@ -579,6 +620,13 @@ def _forward_lead_to_portal(payload):
                 payload.get("kind"), status,
             )
     threading.Thread(target=_send, daemon=True).start()
+
+
+def _translated_category(name, target_lang, db):
+    """Cached translation for a category name, falling back to the original."""
+    if not target_lang or target_lang not in ("en", "zh", "ru"):
+        return name
+    return get_cached_translation(name, target_lang, db) or name
 
 
 def _apply_translations(products, target_lang, db):
@@ -1065,10 +1113,7 @@ def api_translate():
     if cached is not None:
         return jsonify({"translated": cached, "cached": True})
 
-    if not CLAUDE_API_KEY:
-        return jsonify({"translated": text, "cached": False})
-
-    translated = _translate_via_claude(text, target_lang)
+    translated = _machine_translate(text, target_lang)
     _store_translation(text, target_lang, translated, db)
     db.commit()
     return jsonify({"translated": translated, "cached": False})
@@ -1165,12 +1210,23 @@ def marketplace():
             for name, items in categories.items()
         }
 
-    return jsonify({"categories": [{"name": name, "items": items} for name, items in categories.items()]})
+    return jsonify({"categories": [
+        {
+            "name": name,
+            "display_name": _translated_category(name, target_lang, db),
+            "items": items,
+        }
+        for name, items in categories.items()
+    ]})
 
 
 @app.route("/api/categories")
 def categories():
-    rows = get_db().execute(
+    target_lang = request.args.get("target_lang", "").strip()
+    if target_lang not in ("en", "zh", "ru"):
+        target_lang = ""
+    db = get_db()
+    rows = db.execute(
         """
         SELECT category AS name, COUNT(*) AS product_count,
                SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) AS verified_count
@@ -1193,6 +1249,8 @@ def categories():
         bucket["verified_count"] = (bucket.get("verified_count") or 0) + (1 if prow["verified"] else 0)
 
     cats.sort(key=lambda c: (-(c.get("product_count") or 0), c["name"]))
+    for c in cats:
+        c["display_name"] = _translated_category(c["name"], target_lang, db)
     return jsonify({"categories": cats})
 
 
@@ -1587,14 +1645,14 @@ def create_product():
 
     db.commit()
 
-    # Pre-translate name + description to all 3 languages in the background so
-    # marketplace requests with ?target_lang= get instant cache hits.
-    if CLAUDE_API_KEY:
-        t_name = fields["name"]
-        t_desc = fields["description"]
-        threading.Thread(
-            target=_bg_translate_product, args=(t_name, t_desc), daemon=True
-        ).start()
+    # Pre-translate name + description + category to all 3 languages in the
+    # background (free engine) so marketplace requests with ?target_lang= get
+    # instant cache hits.
+    threading.Thread(
+        target=_bg_translate_product,
+        args=(fields["name"], fields["description"], fields["category"]),
+        daemon=True,
+    ).start()
 
     return jsonify({"product_id": product_id})
 
@@ -1902,6 +1960,29 @@ def verifications():
     else:
         rows = db.execute("SELECT * FROM supplier_verifications ORDER BY updated_at DESC").fetchall()
     return jsonify({"verifications": [row_to_dict(row) for row in rows]})
+
+
+@app.route("/api/admin/translate-backfill", methods=["POST"])
+def admin_translate_backfill():
+    """One-time (idempotent) translation of all existing product names,
+    descriptions, and categories into EN/ZH/RU. Cached strings are skipped, so
+    it's safe to re-run. Work happens in a background thread; the cache fills in
+    over the next minute or two."""
+    user, error = require_user()
+    if error:
+        return error
+    if user["role"] != "admin":
+        return jsonify({"error": "Admin only."}), 403
+
+    rows = get_db().execute("SELECT DISTINCT name, description, category FROM products").fetchall()
+    texts = set()
+    for r in rows:
+        for value in (r["name"], r["description"], r["category"]):
+            if value and value.strip():
+                texts.add(value.strip())
+
+    threading.Thread(target=_bg_translate_texts, args=(list(texts),), daemon=True).start()
+    return jsonify({"status": "started", "strings": len(texts), "languages": ["en", "zh", "ru"]})
 
 
 @app.route("/api/admin/inquiries")

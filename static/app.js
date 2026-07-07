@@ -472,7 +472,7 @@ const translations = {
     dashboardEyebrow: '账户',
     dashboardTitle: '我的 Fastflow',
     auditEyebrow: '运营',
-    auditTitle: '最新审计记录',
+    auditTitle: '最新审核记录',
     footerCopyright: '©2026 Fastflow',
     footerDescription: 'AI赋能外贸撮合、咨询与跨境订单全流程服务。',
     footerPrivacy: '隐私政策',
@@ -997,8 +997,15 @@ const CATEGORY_NAMES = {
   }
 };
 
-function tCategory(name) {
-  return (CATEGORY_NAMES[currentLang] && CATEGORY_NAMES[currentLang][name]) || name;
+// Translate a category name for display. Priority:
+//   1. the static CATEGORY_NAMES map (curated, accurate for common presets)
+//   2. backend-provided display_name (dynamic, covers user-typed categories)
+//   3. the original English name
+function tCategory(name, displayName) {
+  const curated = CATEGORY_NAMES[currentLang] && CATEGORY_NAMES[currentLang][name];
+  if (curated) return curated;
+  if (displayName && displayName !== name) return displayName;
+  return name;
 }
 
 const QUOTE_STATUSES = ['requested', 'reviewing', 'quoted', 'sample_requested', 'accepted', 'closed'];
@@ -1189,7 +1196,7 @@ function renderCategories() {
     <button class="${activeCategory ? '' : 'active'}" data-category="">${escapeHtml(t('categoriesAll'))}</button>
     ${cachedCategories.map(category => `
       <button class="${activeCategory === category.name ? 'active' : ''}" data-category="${escapeHtml(category.name)}">
-        <span>${escapeHtml(tCategory(category.name))}</span>
+        <span>${escapeHtml(tCategory(category.name, category.display_name))}</span>
         <small>${category.product_count} ${t('categoryProducts')}</small>
       </button>
     `).join('')}
@@ -1198,7 +1205,8 @@ function renderCategories() {
 
 async function loadCategories() {
   try {
-    const data = await apiFetch('/api/categories');
+    const qs = currentLang ? `?target_lang=${encodeURIComponent(currentLang)}` : '';
+    const data = await apiFetch(`/api/categories${qs}`);
     cachedCategories = data.categories;
     renderCategories();
   } catch (error) {
@@ -1291,9 +1299,9 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
         const preview = cat.items.slice(0, 4);
         const hasMore = cat.items.length > 4;
         return `
-          <section class="cat-section" aria-label="${escapeHtml(tCategory(cat.name))}">
+          <section class="cat-section" aria-label="${escapeHtml(tCategory(cat.name, cat.display_name))}">
             <div class="cat-section-header">
-              <h3>${escapeHtml(tCategory(cat.name))}</h3>
+              <h3>${escapeHtml(tCategory(cat.name, cat.display_name))}</h3>
               ${hasMore ? `<button class="cat-view-all" data-category="${escapeHtml(cat.name)}">${cat.items.length} ${escapeHtml(t('categoryProducts'))} &rsaquo;</button>` : ''}
             </div>
             <div class="product-grid">${preview.map(productCardHtml).join('')}</div>
