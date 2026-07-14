@@ -326,15 +326,16 @@ const translations = {
     pfMyListings: 'My listings',
     pfEditBtn: 'Edit',
     adminAddSupplierTitle: 'Add manufacturer account',
-    adminAddSupplierSub: 'Create a supplier login on behalf of a manufacturer',
+    adminAddSupplierSub: 'Register a manufacturer — managed by your team, no supplier login',
     adminSupplierName: 'Contact name',
     adminSupplierCompany: 'Company name',
-    adminSupplierEmail: 'Email (optional — only to give the supplier a login)',
-    adminSupplierPassword: 'Temporary password (optional)',
-    adminSupplierSubmit: 'Create account',
-    adminSupplierCreated: 'Supplier account created.',
+    adminSupplierEmail: 'Contact email (shown on product pages)',
+    adminSupplierPhone: 'Contact phone',
+    adminSupplierSubmit: 'Register manufacturer',
+    adminSupplierCreated: 'Manufacturer registered.',
     adminAddProductTitle: 'Add product on behalf of supplier',
-    adminProductSupplier: 'Supplier company name',
+    adminProductSupplier: 'Manufacturer',
+    adminProductSupplierPick: 'Select a registered manufacturer…',
     rfqSubmitted: 'RFQ submitted. Check My Fastflow.',
     aiTranslatedBadge: 'AI Translated',
     rfqTranslating: 'Translating your message to Chinese...',
@@ -638,15 +639,16 @@ const translations = {
     pfMyListings: '我的产品',
     pfEditBtn: '编辑',
     adminAddSupplierTitle: '添加制造商账户',
-    adminAddSupplierSub: '代制造商创建供应商登录账号',
+    adminAddSupplierSub: '登记制造商——由您的团队管理，供应商无需登录',
     adminSupplierName: '联系人姓名',
     adminSupplierCompany: '公司名称',
-    adminSupplierEmail: '电子邮箱（可选——仅在需要给供应商登录账号时填写）',
-    adminSupplierPassword: '临时密码（可选）',
-    adminSupplierSubmit: '创建账户',
-    adminSupplierCreated: '供应商账户已创建。',
+    adminSupplierEmail: '联系邮箱（显示在产品页面）',
+    adminSupplierPhone: '联系电话',
+    adminSupplierSubmit: '登记制造商',
+    adminSupplierCreated: '制造商已登记。',
     adminAddProductTitle: '代供应商添加产品',
-    adminProductSupplier: '供应商公司名称',
+    adminProductSupplier: '制造商',
+    adminProductSupplierPick: '选择已登记的制造商…',
     rfqSubmitted: '询盘已提交，请查看”我的 Fastflow”。',
     aiTranslatedBadge: 'AI已翻译',
     rfqTranslating: '正在翻译您的消息...',
@@ -950,15 +952,16 @@ const translations = {
     pfMyListings: 'Мои товары',
     pfEditBtn: 'Изменить',
     adminAddSupplierTitle: 'Добавить производителя',
-    adminAddSupplierSub: 'Создать аккаунт поставщика от имени производителя',
+    adminAddSupplierSub: 'Зарегистрировать производителя — управляется вашей командой, без логина поставщика',
     adminSupplierName: 'Имя контакта',
     adminSupplierCompany: 'Название компании',
-    adminSupplierEmail: 'Email (необязательно — только чтобы дать поставщику логин)',
-    adminSupplierPassword: 'Временный пароль (необязательно)',
-    adminSupplierSubmit: 'Создать аккаунт',
-    adminSupplierCreated: 'Аккаунт поставщика создан.',
+    adminSupplierEmail: 'Контактный email (виден на странице продукта)',
+    adminSupplierPhone: 'Контактный телефон',
+    adminSupplierSubmit: 'Зарегистрировать производителя',
+    adminSupplierCreated: 'Производитель зарегистрирован.',
     adminAddProductTitle: 'Добавить продукт от поставщика',
-    adminProductSupplier: 'Название компании поставщика',
+    adminProductSupplier: 'Производитель',
+    adminProductSupplierPick: 'Выберите зарегистрированного производителя…',
     rfqSubmitted: 'Запрос отправлен. Проверьте «Мой Fastflow».',
     aiTranslatedBadge: 'AI перевёл',
     rfqTranslating: 'Переводим ваше сообщение на китайский...',
@@ -1410,6 +1413,12 @@ async function openProductDetail(productId) {
         <div>
           <div class="pd-sname">${escapeHtml(product.supplier || '')}</div>
           <div class="pd-smeta">${escapeHtml(product.location || '')}</div>
+          ${product.supplier_contact_email || product.supplier_contact_phone ? `
+          <div class="pd-smeta">
+            ${product.supplier_contact_email ? `<a href="mailto:${escapeHtml(product.supplier_contact_email)}">${escapeHtml(product.supplier_contact_email)}</a>` : ''}
+            ${product.supplier_contact_email && product.supplier_contact_phone ? ' · ' : ''}
+            ${product.supplier_contact_phone ? escapeHtml(product.supplier_contact_phone) : ''}
+          </div>` : ''}
         </div>
         <div class="pd-spacer"></div>
         ${isVerified ? '<span class="pd-badge pd-verified">✓ Verified supplier</span>' : ''}
@@ -1987,20 +1996,31 @@ async function renderAdminPanel() {
     listings = data.products || [];
   } catch (_) {}
 
+  let registry = [];
+  try {
+    const data = await apiFetch('/api/admin/suppliers');
+    registry = data.suppliers || [];
+  } catch (_) {}
+
   container.innerHTML = `
     <div class="workspace-header"><h3>${escapeHtml(t('adminAddSupplierTitle'))}</h3><span>${escapeHtml(t('adminAddSupplierSub'))}</span></div>
     <form id="admin-supplier-form" class="data-form two-column">
       <label>${escapeHtml(t('adminSupplierName'))}<input name="name" placeholder="Jane Smith" required /></label>
       <label>${escapeHtml(t('adminSupplierCompany'))}<input name="company" placeholder="Acme Manufacturing Co." required /></label>
-      <label>${escapeHtml(t('adminSupplierEmail'))}<input type="email" name="email" placeholder="contact@acme.com" /></label>
-      <label>${escapeHtml(t('adminSupplierPassword'))}<input type="password" name="password" minlength="8" placeholder="min 8 chars" /></label>
+      <label>${escapeHtml(t('adminSupplierEmail'))}<input name="contact_email" type="email" placeholder="sales@yourteam.com" /></label>
+      <label>${escapeHtml(t('adminSupplierPhone'))}<input name="contact_phone" placeholder="+86 138 0000 0000" /></label>
       <button type="submit" class="primary">${escapeHtml(t('adminSupplierSubmit'))}</button>
     </form>
     <div id="admin-supplier-feedback" class="feedback"></div>
 
     <div class="workspace-header" style="margin-top:2rem"><h3>${escapeHtml(t('adminAddProductTitle'))}</h3></div>
     <form id="admin-product-form" class="data-form two-column" data-id="">
-      <label class="wide">${escapeHtml(t('adminProductSupplier'))}<input name="supplier" placeholder="Acme Manufacturing Co." required /></label>
+      <label class="wide">${escapeHtml(t('adminProductSupplier'))}
+        <select name="supplier_id" required>
+          <option value="">${escapeHtml(t('adminProductSupplierPick'))}</option>
+          ${registry.map(s => `<option value="${s.id}">${escapeHtml(s.company)}</option>`).join('')}
+        </select>
+      </label>
       <label>${escapeHtml(t('pfCategory'))}<input name="category" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
       <label>${escapeHtml(t('pfName'))}<input name="name" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
       <label>${escapeHtml(t('pfLocation'))}<input name="location" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
@@ -2051,9 +2071,16 @@ async function renderAdminPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      feedback.textContent = `${t('adminSupplierCreated')} ID: ${result.supplier_id} — ${result.company}${result.email ? ` (${result.email})` : ''}`;
+      feedback.textContent = `${t('adminSupplierCreated')} ID: ${result.supplier_id} — ${result.company}${result.contact_email ? ` (${result.contact_email})` : ''}`;
       feedback.className = 'feedback success';
       event.target.reset();
+      const supplierSelect = document.querySelector('#admin-product-form [name="supplier_id"]');
+      if (supplierSelect) {
+        const option = document.createElement('option');
+        option.value = result.supplier_id;
+        option.textContent = result.company;
+        supplierSelect.appendChild(option);
+      }
       await Promise.all([loadOverview(), loadSuppliers()]);
     } catch (error) {
       feedback.textContent = error.message;
@@ -2073,7 +2100,7 @@ async function renderAdminPanel() {
     adminProductForm.dataset.id = '';
     adminSubmitBtn.textContent = t('pfSubmit');
     adminCancelBtn.style.display = 'none';
-    adminProductForm.querySelector('[name="supplier"]').removeAttribute('readonly');
+    adminProductForm.querySelector('[name="supplier_id"]').removeAttribute('disabled');
     const mediaEditor = adminProductForm.querySelector('.media-editor');
     if (mediaEditor) mediaEditor.querySelector('#media-rows').innerHTML = mediaRowHtml({ type: 'image', url: '', is_primary: true }, 0);
   });
@@ -2081,6 +2108,7 @@ async function renderAdminPanel() {
   adminProductForm.addEventListener('submit', async event => {
     event.preventDefault();
     const payload = Object.fromEntries(new FormData(adminProductForm).entries());
+    if (payload.supplier_id) payload.supplier_id = parseInt(payload.supplier_id, 10);
     payload.media = collectMedia(adminProductForm.querySelector('.media-editor'));
     const id = adminProductForm.dataset.id;
     try {
@@ -2109,8 +2137,10 @@ async function renderAdminPanel() {
         const el = form.querySelector(`[name="${f}"]`);
         if (el) el.value = product[f] || '';
       });
-      const supplierEl = form.querySelector('[name="supplier"]');
-      if (supplierEl) { supplierEl.value = product.supplier || ''; supplierEl.setAttribute('readonly', true); }
+      // The pin is fixed once created — show it but keep the select disabled
+      // (disabled fields are excluded from FormData, and PATCH ignores supplier anyway).
+      const supplierEl = form.querySelector('[name="supplier_id"]');
+      if (supplierEl) { supplierEl.value = String(product.supplier_id || ''); supplierEl.setAttribute('disabled', true); }
       form.dataset.id = product.id;
       adminSubmitBtn.textContent = t('pfEditSubmit');
       adminCancelBtn.style.display = '';

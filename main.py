@@ -720,6 +720,10 @@ def init_db():
     add_column_if_missing(db, "supplier_verifications", "supplier_id", "INTEGER")
     add_column_if_missing(db, "quotes", "target_price", "TEXT DEFAULT ''")
     add_column_if_missing(db, "quotes", "destination", "TEXT DEFAULT ''")
+    # Contact info for broker-managed manufacturer accounts. Plain data, not a
+    # credential — the same email/phone may back any number of companies.
+    add_column_if_missing(db, "users", "contact_email", "TEXT DEFAULT ''")
+    add_column_if_missing(db, "users", "contact_phone", "TEXT DEFAULT ''")
 
     # Backfill product_media from the legacy image_url column (idempotent).
     db.execute(
@@ -1567,6 +1571,17 @@ def product_detail(product_id):
     ).fetchall()
     product["specs"] = [{"label": r["label"], "value": r["value"]} for r in spec_rows]
     product["media"] = _get_media(db, product_id)
+    # Public contact info of the owning manufacturer (broker-managed registry).
+    product["supplier_contact_email"] = ""
+    product["supplier_contact_phone"] = ""
+    if product.get("supplier_id"):
+        owner = db.execute(
+            "SELECT contact_email, contact_phone FROM users WHERE id = ?",
+            (product["supplier_id"],),
+        ).fetchone()
+        if owner:
+            product["supplier_contact_email"] = owner["contact_email"] or ""
+            product["supplier_contact_phone"] = owner["contact_phone"] or ""
     return jsonify({"product": product})
 
 
@@ -1631,8 +1646,24 @@ def create_product():
     if missing:
         return jsonify({"error": "Missing product fields.", "missing": missing}), 400
 
-    supplier = clean_str(data, "supplier", user["company"]) if user["role"] == "admin" else user["company"]
     db = get_db()
+    if user["role"] == "admin":
+        # Admins list products on behalf of registered manufacturers — the product
+        # must be pinned to a registry entry, not to the admin's own account.
+        supplier_id = data.get("supplier_id")
+        if not isinstance(supplier_id, int):
+            return jsonify({"error": "Pick the manufacturer this product belongs to."}), 400
+        owner = db.execute(
+            "SELECT id, company FROM users WHERE id = ? AND role = 'supplier'",
+            (supplier_id,),
+        ).fetchone()
+        if not owner:
+            return jsonify({"error": "Unknown manufacturer. Register the company first."}), 400
+        supplier = owner["company"]
+        owner_id = owner["id"]
+    else:
+        supplier = user["company"]
+        owner_id = user["id"]
     cursor = db.execute(
         """
         INSERT INTO products
@@ -1643,7 +1674,7 @@ def create_product():
             fields["category"],
             fields["name"],
             supplier,
-            user["id"],
+            owner_id,
             fields["location"],
             fields["description"],
             fields["price"],
@@ -2034,38 +2065,39 @@ def admin_list_inquiries():
     return jsonify({"inquiries": [row_to_dict(row) for row in rows]})
 
 
-@app.route("/api/admin/suppliers", methods=["POST"])
-def admin_create_supplier():
+@app.route("/api/admin/suppliers", methods=["GET", "POST"])
+def admin_suppliers():
+    """Broker-managed manufacturer registry. These accounts have no login
+    (email NULL, empty hash) — the admin manages their catalog. contact_email /
+    contact_phone are plain contact info and may repeat across companies."""
     user, error = require_user()
     if error:
         return error
     if user["role"] != "admin":
         return jsonify({"error": "Admin only."}), 403
 
+    db = get_db()
+    if request.method == "GET":
+        rows = db.execute(
+            """
+            SELECT id, name, company, contact_email, contact_phone, created_at
+            FROM users WHERE role = 'supplier' ORDER BY company COLLATE NOCASE ASC
+            """
+        ).fetchall()
+        return jsonify({"suppliers": [row_to_dict(row) for row in rows]})
+
     data = request.get_json(silent=True) or {}
     name = clean_str(data, "name")
-    email = clean_str(data, "email").lower()
     company = clean_str(data, "company")
-    password = data.get("password", "")
-    if not isinstance(password, str):
-        password = ""
+    contact_email = clean_str(data, "contact_email").lower()
+    contact_phone = clean_str(data, "contact_phone")
 
     if not name or not company:
-        return jsonify({"error": "name and company are required."}), 400
+        return jsonify({"error": "Contact name and company are required."}), 400
+    if contact_email and not _EMAIL_RE.match(contact_email):
+        return jsonify({"error": "Contact email is not a valid email address."}), 400
 
-    db = get_db()
-    # Email/password are optional: a broker-managed company has no login of its
-    # own, so one admin can register any number of manufacturers without burning
-    # a unique email per company. Provide both only to hand the manufacturer a
-    # real login — then the email must be unused.
-    if email:
-        if len(password) < 8:
-            return jsonify({"error": "Password must be at least 8 characters when creating a login."}), 400
-        if db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
-            return jsonify({"error": "Email is already registered."}), 400
-    elif password:
-        return jsonify({"error": "An email is required when setting a password."}), 400
-
+    # Company name stays unique — it is the anchor products are pinned to.
     if db.execute(
         "SELECT id FROM users WHERE LOWER(company) = LOWER(?) AND role IN ('supplier', 'admin')",
         (company,),
@@ -2073,12 +2105,20 @@ def admin_create_supplier():
         return jsonify({"error": "A supplier with that company name already exists."}), 400
 
     cursor = db.execute(
-        "INSERT INTO users (name, email, password_hash, company, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (name, email or None, generate_password_hash(password) if email else "", company, "supplier", utc_now()),
+        """
+        INSERT INTO users (name, email, password_hash, company, role, contact_email, contact_phone, created_at)
+        VALUES (?, NULL, '', ?, 'supplier', ?, ?, ?)
+        """,
+        (name, company, contact_email, contact_phone, utc_now()),
     )
-    log_audit("created", "user", cursor.lastrowid, f"admin created supplier account for {company}", cursor.lastrowid)
+    log_audit("created", "user", cursor.lastrowid, f"admin registered manufacturer {company}", cursor.lastrowid)
     db.commit()
-    return jsonify({"supplier_id": cursor.lastrowid, "company": company, "email": email or None})
+    return jsonify({
+        "supplier_id": cursor.lastrowid,
+        "company": company,
+        "contact_email": contact_email,
+        "contact_phone": contact_phone,
+    })
 
 
 @app.route("/api/contact", methods=["POST"])
