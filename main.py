@@ -203,7 +203,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT UNIQUE,
     password_hash TEXT NOT NULL,
     company TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('buyer', 'supplier', 'admin')),
@@ -680,10 +680,36 @@ def migrate_users_role_constraint(db):
     )
 
 
+def migrate_users_email_nullable(db):
+    # Broker-managed supplier accounts have no login of their own, so email must
+    # allow NULL. UNIQUE still applies to real emails (SQLite permits repeated NULLs).
+    row = db.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").fetchone()
+    if not row or "email TEXT NOT NULL" not in row[0]:
+        return
+    db.executescript(
+        """
+        ALTER TABLE users RENAME TO users_legacy;
+        CREATE TABLE users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE,
+            password_hash TEXT NOT NULL,
+            company TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('buyer', 'supplier', 'admin')),
+            created_at TEXT NOT NULL
+        );
+        INSERT INTO users (id, name, email, password_hash, company, role, created_at)
+        SELECT id, name, email, password_hash, company, role, created_at FROM users_legacy;
+        DROP TABLE users_legacy;
+        """
+    )
+
+
 def init_db():
     db = sqlite3.connect(DB_PATH)
     db.executescript(SCHEMA_SQL)
     migrate_users_role_constraint(db)
+    migrate_users_email_nullable(db)
     add_column_if_missing(db, "products", "moq", "TEXT DEFAULT ''")
     add_column_if_missing(db, "products", "lead_time", "TEXT DEFAULT ''")
     add_column_if_missing(db, "products", "capacity", "TEXT DEFAULT ''")
@@ -1058,7 +1084,8 @@ def login():
 
     db = get_db()
     row = db.execute("SELECT id, password_hash FROM users WHERE email = ?", (email,)).fetchone()
-    if not row or not check_password_hash(row["password_hash"], password):
+    # Broker-managed accounts have an empty hash — they can never log in.
+    if not row or not row["password_hash"] or not check_password_hash(row["password_hash"], password):
         return jsonify({"error": "Invalid email or password."}), 401
 
     session.permanent = True
@@ -2023,14 +2050,22 @@ def admin_create_supplier():
     if not isinstance(password, str):
         password = ""
 
-    if not name or not email or not company or not password:
-        return jsonify({"error": "name, email, company and password are required."}), 400
-    if len(password) < 8:
-        return jsonify({"error": "Password must be at least 8 characters."}), 400
+    if not name or not company:
+        return jsonify({"error": "name and company are required."}), 400
 
     db = get_db()
-    if db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
-        return jsonify({"error": "Email is already registered."}), 400
+    # Email/password are optional: a broker-managed company has no login of its
+    # own, so one admin can register any number of manufacturers without burning
+    # a unique email per company. Provide both only to hand the manufacturer a
+    # real login — then the email must be unused.
+    if email:
+        if len(password) < 8:
+            return jsonify({"error": "Password must be at least 8 characters when creating a login."}), 400
+        if db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
+            return jsonify({"error": "Email is already registered."}), 400
+    elif password:
+        return jsonify({"error": "An email is required when setting a password."}), 400
+
     if db.execute(
         "SELECT id FROM users WHERE LOWER(company) = LOWER(?) AND role IN ('supplier', 'admin')",
         (company,),
@@ -2039,11 +2074,11 @@ def admin_create_supplier():
 
     cursor = db.execute(
         "INSERT INTO users (name, email, password_hash, company, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (name, email, generate_password_hash(password), company, "supplier", utc_now()),
+        (name, email or None, generate_password_hash(password) if email else "", company, "supplier", utc_now()),
     )
     log_audit("created", "user", cursor.lastrowid, f"admin created supplier account for {company}", cursor.lastrowid)
     db.commit()
-    return jsonify({"supplier_id": cursor.lastrowid, "company": company, "email": email})
+    return jsonify({"supplier_id": cursor.lastrowid, "company": company, "email": email or None})
 
 
 @app.route("/api/contact", methods=["POST"])

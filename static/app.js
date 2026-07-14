@@ -329,8 +329,8 @@ const translations = {
     adminAddSupplierSub: 'Create a supplier login on behalf of a manufacturer',
     adminSupplierName: 'Contact name',
     adminSupplierCompany: 'Company name',
-    adminSupplierEmail: 'Email',
-    adminSupplierPassword: 'Temporary password',
+    adminSupplierEmail: 'Email (optional — only to give the supplier a login)',
+    adminSupplierPassword: 'Temporary password (optional)',
     adminSupplierSubmit: 'Create account',
     adminSupplierCreated: 'Supplier account created.',
     adminAddProductTitle: 'Add product on behalf of supplier',
@@ -641,8 +641,8 @@ const translations = {
     adminAddSupplierSub: '代制造商创建供应商登录账号',
     adminSupplierName: '联系人姓名',
     adminSupplierCompany: '公司名称',
-    adminSupplierEmail: '电子邮箱',
-    adminSupplierPassword: '临时密码',
+    adminSupplierEmail: '电子邮箱（可选——仅在需要给供应商登录账号时填写）',
+    adminSupplierPassword: '临时密码（可选）',
     adminSupplierSubmit: '创建账户',
     adminSupplierCreated: '供应商账户已创建。',
     adminAddProductTitle: '代供应商添加产品',
@@ -953,8 +953,8 @@ const translations = {
     adminAddSupplierSub: 'Создать аккаунт поставщика от имени производителя',
     adminSupplierName: 'Имя контакта',
     adminSupplierCompany: 'Название компании',
-    adminSupplierEmail: 'Email',
-    adminSupplierPassword: 'Временный пароль',
+    adminSupplierEmail: 'Email (необязательно — только чтобы дать поставщику логин)',
+    adminSupplierPassword: 'Временный пароль (необязательно)',
     adminSupplierSubmit: 'Создать аккаунт',
     adminSupplierCreated: 'Аккаунт поставщика создан.',
     adminAddProductTitle: 'Добавить продукт от поставщика',
@@ -1992,8 +1992,8 @@ async function renderAdminPanel() {
     <form id="admin-supplier-form" class="data-form two-column">
       <label>${escapeHtml(t('adminSupplierName'))}<input name="name" placeholder="Jane Smith" required /></label>
       <label>${escapeHtml(t('adminSupplierCompany'))}<input name="company" placeholder="Acme Manufacturing Co." required /></label>
-      <label>${escapeHtml(t('adminSupplierEmail'))}<input type="email" name="email" placeholder="contact@acme.com" required /></label>
-      <label>${escapeHtml(t('adminSupplierPassword'))}<input type="password" name="password" minlength="8" placeholder="min 8 chars" required /></label>
+      <label>${escapeHtml(t('adminSupplierEmail'))}<input type="email" name="email" placeholder="contact@acme.com" /></label>
+      <label>${escapeHtml(t('adminSupplierPassword'))}<input type="password" name="password" minlength="8" placeholder="min 8 chars" /></label>
       <button type="submit" class="primary">${escapeHtml(t('adminSupplierSubmit'))}</button>
     </form>
     <div id="admin-supplier-feedback" class="feedback"></div>
@@ -2051,7 +2051,7 @@ async function renderAdminPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      feedback.textContent = `${t('adminSupplierCreated')} ID: ${result.supplier_id} — ${result.company} (${result.email})`;
+      feedback.textContent = `${t('adminSupplierCreated')} ID: ${result.supplier_id} — ${result.company}${result.email ? ` (${result.email})` : ''}`;
       feedback.className = 'feedback success';
       event.target.reset();
       await Promise.all([loadOverview(), loadSuppliers()]);
