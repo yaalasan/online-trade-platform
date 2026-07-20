@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Fastflow connects global buyers with verified Chinese manufacturers. Multilingual product pages, escrow-backed orders, and hands-on sourcing support." />
+  <meta name="description" content="Fastflow connects global buyers with vetted Chinese manufacturers. Multilingual product pages and hands-on sourcing support." />
   <title>Fastflow — Source from Verified Chinese Factories</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
@@ -17,7 +18,7 @@
 =============================== -->
 <header class="site-header">
   <div class="utility-bar">
-    <span class="utility-slogan" data-i18n="utilitySlogan">Verified Chinese suppliers · Escrow-backed orders · Hands-on sourcing support</span>
+    <span class="utility-slogan" data-i18n="utilitySlogan">Vetted Chinese suppliers · Multilingual product pages · Hands-on sourcing support</span>
     <div class="utility-controls">
       <div class="utility-links">
         <button class="text-button" data-scroll-target="about" data-i18n="navAbout">About</button>
@@ -77,7 +78,7 @@
           <input id="hero-search-query" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search products, suppliers, certifications..." />
           <button type="submit" class="primary" data-i18n="searchButton">Search</button>
         </form>
-        <div class="hero-highlights" data-i18n="heroHighlights">Verified suppliers · Multilingual browsing · Escrow-backed orders</div>
+        <div class="hero-highlights" data-i18n="heroHighlights">Vetted suppliers · Multilingual browsing · Hands-on sourcing support</div>
       </div>
       <div class="hero-actions">
         <button class="primary" data-scroll-target="marketplace" data-i18n="heroBuyerBtn">Find suppliers</button>
@@ -87,7 +88,7 @@
     </div>
     <div class="hero-right">
       <div class="hero-showcase">
-        <img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=900&q=80" alt="Global trade logistics" loading="eager" />
+        <img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=900&q=80" alt="Global trade logistics" loading="eager" fetchpriority="high" decoding="async" />
         <div class="hero-showcase-overlay">
           <span class="hero-showcase-badge" data-i18n="heroShowcaseBadge">🌐 Global Sourcing Platform</span>
         </div>
@@ -220,7 +221,7 @@
           <li data-i18n="suppliersList4">Compliance guidance, document templates, and risk alerts</li>
         </ul>
         <p class="service-sub" data-i18n="suppliersSub">Register free, get multilingual product pages, receive targeted inquiries, and gain compliance guidance.</p>
-        <button class="secondary" data-scroll-target="contact" data-i18n="heroSupplierBtn">Join Free as Supplier</button>
+        <button class="secondary" data-scroll-target="contact" data-i18n="heroSupplierBtn">Become a supplier — contact us</button>
       </article>
     </div>
   </section>
@@ -299,10 +300,10 @@
         <p data-i18n="aboutCopy2">Adhering to Integrity, Professionalism, Efficiency and Compliance, we match reliable sources for buyers and help domestic factories expand globally with consulting and risk-control support.</p>
       </div>
       <div class="about-trust">
-        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem1">Verified suppliers only</span></div>
-        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem2">Secure escrow payments</span></div>
-        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem3">Full-process risk control</span></div>
-        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem4">Multilingual support 24/7</span></div>
+        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem1">Suppliers vetted by our team</span></div>
+        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem2">Hands-on support on every order</span></div>
+        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem3">Compliance and document guidance</span></div>
+        <div class="trust-item"><span class="trust-icon">✓</span><span data-i18n="trustItem4">Support in English, Chinese & Russian</span></div>
       </div>
     </div>
   </section>
@@ -342,7 +343,7 @@
     <div class="faq-grid">
       <article>
         <h4 data-i18n="faqSafetyQ">How does the platform secure transactions?</h4>
-        <p data-i18n="faqSafetyA">We verify both parties and hold payment in escrow — funds release only after delivery is confirmed.</p>
+        <p data-i18n="faqSafetyA">We vet suppliers before listing them and our team stays involved in every deal — from quote to delivery.</p>
       </article>
       <article>
         <h4 data-i18n="faqFeesQ">Is registration free?</h4>
@@ -354,7 +355,7 @@
       </article>
       <article>
         <h4 data-i18n="faqLangQ">Which languages are supported?</h4>
-        <p data-i18n="faqLangA">We support English, Spanish, French, Arabic and more with real-time AI translation.</p>
+        <p data-i18n="faqLangA">The platform is available in English, Chinese, and Russian. Product listings are translated automatically.</p>
       </article>
       <article>
         <h4 data-i18n="faqMultiQ">Can products be shown in multiple languages?</h4>
@@ -362,7 +363,7 @@
       </article>
       <article>
         <h4 data-i18n="faqAssignQ">How are inquiries assigned?</h4>
-        <p data-i18n="faqAssignA">Inquiries are routed to the best-matched suppliers based on category, capacity, and pricing.</p>
+        <p data-i18n="faqAssignA">Our team reviews each inquiry and forwards it to the manufacturer best suited to your requirements.</p>
       </article>
     </div>
   </section>
@@ -421,14 +422,8 @@
 =============================== -->
 <footer>
   <div class="footer-brand">
-    <strong data-i18n="footerCopyright">©2026 Fastflow</strong>
+    <strong>© <span id="footer-year">2026</span> Fastflow</strong>
     <span data-i18n="footerDescription">Trade mediation, sourcing consulting, and full-process cross-border support.</span>
-  </div>
-  <div class="footer-links">
-    <button class="text-button" data-i18n="footerPrivacy">Privacy Policy</button>
-    <button class="text-button" data-i18n="footerAgreement">User Agreement</button>
-    <button class="text-button" data-i18n="footerDisclaimer">Disclaimer</button>
-    <button class="text-button" data-i18n="footerSitemap">Sitemap</button>
   </div>
 </footer>
 

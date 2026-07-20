@@ -79,6 +79,23 @@ PORTAL_API_URL = os.environ.get("PORTAL_API_URL", "http://localhost:3000").rstri
 PORTAL_URL = os.environ.get("PORTAL_URL", PORTAL_API_URL)
 PORTAL_TIMEOUT = float(os.environ.get("PORTAL_TIMEOUT", "2.5"))
 
+# Category taxonomy: parent -> subcategories. Products store the subcategory
+# name; filtering by the parent matches the parent itself plus all its subs.
+# Mirrored in static/app.js (CATEGORY_TREE) for the category rail dropdown.
+CATEGORY_GROUPS = {
+    "Machinery": [
+        "Agricultural Machinery",
+        "Metalworking Machinery",
+        "Construction Machinery",
+        "Industrial Machinery",
+    ],
+}
+
+
+def expand_category_filter(category):
+    """Return the list of category names a filter value should match."""
+    return [category, *CATEGORY_GROUPS.get(category, [])]
+
 
 def _portal_get(path):
     try:
@@ -1202,8 +1219,9 @@ def marketplace():
         )
         params.extend([like, like, like, like, like, like])
     if category:
-        filters.append("category = ?")
-        params.append(category)
+        names = expand_category_filter(category)
+        filters.append(f"category IN ({','.join('?' * len(names))})")
+        params.extend(names)
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
     products = db.execute(f"SELECT * FROM products {where} ORDER BY verified DESC, category, name", params).fetchall()
 
@@ -1230,7 +1248,7 @@ def marketplace():
 
     # Merge in live products published from the supplier portal (best-effort).
     for prow in fetch_portal_products(query=query):
-        if category and prow["category"] != category:
+        if category and prow["category"] not in expand_category_filter(category):
             continue
         categories.setdefault(prow["category"], []).append(prow)
 

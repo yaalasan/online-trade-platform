@@ -256,7 +256,7 @@ label {
   padding: 0;
   background: transparent;
   font-size: 1.5rem;
-  font-weight: 900;
+  font-weight: var(--fw-black);
   color: var(--brand);
   border-radius: 0;
   letter-spacing: -.03em;
@@ -370,6 +370,54 @@ label {
   box-shadow: none;
 }
 
+/* Grouped category pill with subcategory dropdown */
+.cat-group { flex: none; }
+
+.cat-group-btn .cat-caret {
+  font-size: .65em;
+  margin-left: .3rem;
+  opacity: .7;
+}
+
+.cat-dropdown {
+  position: fixed; /* escapes the rail's overflow clipping; JS sets top/left */
+  z-index: 200;
+  min-width: 240px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  padding: .35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cat-dropdown.hidden { display: none; }
+
+.category-rail .cat-dropdown button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 8px;
+  padding: .55rem .75rem;
+  background: none;
+  color: var(--ink-2);
+}
+
+.category-rail .cat-dropdown button:hover,
+.category-rail .cat-dropdown button.active {
+  background: var(--brand-light);
+  color: var(--brand);
+  border: none;
+}
+
+.cat-dropdown button small { color: var(--ink-3); }
+
 /* ---------- Main Content ---------- */
 main {
   max-width: var(--max-w);
@@ -426,7 +474,7 @@ main {
 
 .hero-copy h1 {
   font-size: var(--fs-hero);
-  font-weight: 900;
+  font-weight: var(--fw-black);
   line-height: 1.08;
   color: var(--ink);
   letter-spacing: -.03em;
@@ -574,7 +622,7 @@ main {
 .stat-card strong {
   display: block;
   font-size: 1.875rem;
-  font-weight: 900;
+  font-weight: var(--fw-black);
   color: var(--brand);
   margin-bottom: .3rem;
   letter-spacing: -.02em;
@@ -811,6 +859,19 @@ main {
   background: var(--bg-2);
   cursor: pointer;
 }
+
+.product-image .img-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #E8EEF3, #D5DFE8);
+  color: #7A8A96;
+  font-size: 2rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: .05em;
+}
 .product-image img {
   width: 100%;
   height: 100%;
@@ -949,7 +1010,7 @@ dl { margin: 0; }
   border-radius: var(--radius-sm);
   background: var(--ink);
   color: var(--white);
-  font-weight: 900;
+  font-weight: var(--fw-black);
   font-size: var(--fs-md);
   flex: none;
   letter-spacing: -.02em;
@@ -1008,7 +1069,7 @@ dl { margin: 0; }
   border-radius: 50%;
   background: var(--green-bg);
   color: var(--green);
-  font-weight: 900;
+  font-weight: var(--fw-black);
   font-size: var(--fs-sm);
   flex: none;
 }
@@ -1430,7 +1491,7 @@ footer {
 .step-num {
   display: block;
   font-size: 2.75rem;
-  font-weight: 900;
+  font-weight: var(--fw-black);
   line-height: 1;
   color: var(--brand);
   margin-bottom: .55rem;
@@ -1455,100 +1516,6 @@ footer {
   border-radius: 2px;
   flex: none;
 }
-
-/* ---------- Testimonials ---------- */
-.testimonials-section {
-  background: linear-gradient(135deg, #fff8f5 0%, var(--white) 100%);
-  border-radius: var(--radius-xl);
-  border: 1px solid #f0d8d0;
-  padding: 2.5rem;
-  margin-bottom: 3rem;
-}
-.testimonials-section .section-heading { margin-bottom: 1.75rem; }
-
-.testimonials-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.testimonial-card {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1.75rem;
-  box-shadow: var(--shadow-sm);
-  border-top: 3px solid var(--brand);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin: 0;
-  transition: box-shadow .25s, transform .25s;
-}
-.testimonial-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
-
-.testimonial-quote-icon {
-  font-size: 2.5rem;
-  line-height: .8;
-  color: var(--brand);
-  font-family: Georgia, serif;
-  font-weight: 900;
-  opacity: .5;
-}
-
-.testimonial-card p {
-  font-size: var(--fs-base);
-  color: var(--ink-2);
-  font-style: italic;
-  line-height: 1.7;
-  flex: 1;
-}
-
-.testimonial-card footer {
-  display: flex;
-  flex-direction: column;
-  gap: .2rem;
-  padding-top: .85rem;
-  border-top: 1px solid var(--border);
-}
-.testimonial-card footer strong {
-  font-size: var(--fs-base);
-  font-weight: var(--fw-bold);
-  color: var(--ink);
-}
-.testimonial-card footer span { font-size: var(--fs-sm); color: var(--ink-3); }
-
-/* ===================== TEAM ===================== */
-.team-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 2rem;
-  margin-top: 2rem;
-}
-.team-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: .75rem;
-}
-.team-avatar {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: var(--bg-2);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: var(--fw-bold);
-  color: var(--ink-3);
-}
-.team-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.team-card strong { font-size: var(--fs-base); color: var(--ink); font-weight: var(--fw-bold); }
-.team-card span { font-size: var(--fs-sm); color: var(--ink-3); }
-.team-card p { font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.55; }
 
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 1180px) {
@@ -1582,7 +1549,6 @@ footer {
   .service-cards { grid-template-columns: repeat(3, 1fr); }
   .how-steps { grid-template-columns: 1fr; }
   .how-connector { display: none; }
-  .testimonials-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -1610,7 +1576,16 @@ footer {
   .supplier-meta { grid-template-columns: repeat(2, 1fr); }
   footer { flex-direction: column; align-items: flex-start; }
   .data-form.two-column { grid-template-columns: 1fr; }
-  .testimonials-section { padding: 1.5rem; }
   .step-num { font-size: 2.25rem; }
   .how-step .step-content { padding: 1rem 1.25rem 1.35rem; }
+}
+
+@media (max-width: 480px) {
+  .product-grid { grid-template-columns: 1fr; }
+  .service-cards { grid-template-columns: 1fr; }
+  .stats-strip { grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .nav-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .nav-actions .portal-link { display: none; }
+  .hero-actions { flex-direction: column; align-items: stretch; }
+  .hero-actions .text-button { align-self: center; }
 }

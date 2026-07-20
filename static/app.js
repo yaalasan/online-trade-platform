@@ -30,12 +30,11 @@ let currentLang = 'en';
 
 const translations = {
   en: {
-    utilitySlogan: 'Verified Chinese suppliers · Escrow-backed orders · Hands-on sourcing support',
+    utilitySlogan: 'Vetted Chinese suppliers · Multilingual product pages · Hands-on sourcing support',
     navAbout: 'About',
     navContact: 'Contact',
     navAboutUs: 'About Us',
     navMembership: 'Membership',
-    navAiFunctions: 'AI Functions',
     navFaq: 'FAQ',
     authSignIn: 'Sign in',
     authJoinFree: 'Join Free',
@@ -45,22 +44,14 @@ const translations = {
     heroTitle: 'Source from verified Chinese factories — without the guesswork',
     heroSubtitle: 'Tell us what you need. Get matched with vetted suppliers in days, then let us handle quotes, compliance, and shipping.',
     heroBuyerBtn: 'Find suppliers',
-    heroSupplierBtn: 'Join Free as Supplier',
+    heroSupplierBtn: 'Become a supplier — contact us',
     heroConsultBtn: 'Online Consultation',
-    heroHighlights: 'Verified suppliers · Multilingual browsing · Escrow-backed orders',
+    heroHighlights: 'Vetted suppliers · Multilingual browsing · Hands-on sourcing support',
     heroShowcaseBadge: '🌐 Global Sourcing Platform',
     searchProducts: 'Products',
     searchSuppliers: 'Suppliers',
     searchPlaceholder: 'Search products, suppliers, certifications...',
     searchButton: 'Search',
-    statsCountries: 'Serving 30+ Countries & Regions',
-    statsCountriesSub: 'Serving 30+ countries and regions',
-    statsFactories: '500+ Cooperated Factories',
-    statsFactoriesSub: '500+ cooperated factories',
-    statsOrders: '12,000+ Completed Orders',
-    statsOrdersSub: '12,000+ completed orders',
-    statsExperience: '15+ Years of Industry Experience',
-    statsExperienceSub: '15+ years of industry experience',
     advantageEyebrow: 'Platform advantages',
     advantageTitle: 'Four things that make sourcing simpler',
     featureMatchTitle: 'Supplier matching',
@@ -118,32 +109,20 @@ const translations = {
     supplierRegistrationPricing: 'Service fees apply only to successful order brokerage, with no hidden charges.',
     buyerServiceTitle: 'Buyer Service',
     buyerServiceCopy: 'Post requests and find suppliers for FREE forever; fees only apply to custom audits, dedicated consultants and expedited documents.',
-    aiFunctionsEyebrow: 'AI Functions',
-    aiFunctionsTitle: 'AI tooling for intelligent matching and risk management',
-    aiFunctionMatch: 'Intelligent matching',
-    aiFunctionMatchSub: 'Match buyers and suppliers using big data algorithms.',
-    aiFunctionChat: 'Multilingual AI Chatbot',
-    aiFunctionChatSub: '24/7 auto-reply with multilingual support.',
-    aiFunctionDocs: 'Smart document system',
-    aiFunctionDocsSub: 'Generate standard trade documents with one click.',
-    aiFunctionRisk: 'Risk control system',
-    aiFunctionRiskSub: 'Verify qualification and assess transaction risks in real time.',
-    teamEyebrow: 'Our Team',
-    teamTitle: 'The people behind Fastflow',
     faqEyebrow: 'FAQ',
     faqTitle: 'Frequently asked questions',
     faqSafetyQ: 'How does the platform secure transactions?',
-    faqSafetyA: 'We verify both parties and hold payment in escrow — funds release only after delivery is confirmed.',
+    faqSafetyA: 'We vet suppliers before listing them and our team stays involved in every deal — from quote to delivery.',
     faqFeesQ: 'Is there a fee to join the platform?',
     faqFeesA: 'Basic registration is free. Fees apply only for promotion, premium membership and value-added services.',
     faqPostQ: 'Can I post purchasing requests?',
     faqPostA: 'Yes, post purchasing requests for free after registration and we\'ll match you with suitable suppliers.',
     faqLangQ: 'What languages does the platform support?',
-    faqLangA: 'We support English, Spanish, French, Arabic and more with real-time AI translation.',
+    faqLangA: 'The platform is available in English, Chinese, and Russian. Product listings are translated automatically.',
     faqMultiQ: 'Can products be displayed in multiple languages?',
     faqMultiA: 'Yes, product names, descriptions, and specifications are automatically translated into multiple languages.',
     faqAssignQ: 'How are inquiries assigned?',
-    faqAssignA: 'Inquiries are routed to the best-matched suppliers based on category, capacity, and pricing.',
+    faqAssignA: 'Our team reviews each inquiry and forwards it to the manufacturer best suited to your requirements.',
     contactEyebrow: 'Contact Us',
     contactTitle: 'Ready to source from China? Let\'s talk.',
     contactLine1: 'Online support | Email | Phone | Address',
@@ -161,12 +140,7 @@ const translations = {
     dashboardTitle: 'My Fastflow',
     auditEyebrow: 'Operations',
     auditTitle: 'Recent audit trail',
-    footerCopyright: '©2026 Fastflow',
     footerDescription: 'Trade mediation, sourcing consulting, and full-process cross-border support.',
-    footerPrivacy: 'Privacy Policy',
-    footerAgreement: 'User Agreement',
-    footerDisclaimer: 'Disclaimer',
-    footerSitemap: 'Sitemap',
     quoteHeader: 'Request quote',
     quoteLabelQuantity: 'Quantity',
     quoteQuantityPlaceholder: 'e.g. 5,000 units',
@@ -193,10 +167,10 @@ const translations = {
     authBuyerRequiredDesc: 'Supplier and admin accounts can manage listings and RFQs, but only buyers can send new quote requests.',
     authClose: 'Close',
     noAuditEvents: 'No audit events yet.',
-    trustItem1: 'Verified suppliers only',
-    trustItem2: 'Secure escrow payments',
-    trustItem3: 'Full-process risk control',
-    trustItem4: 'Multilingual support 24/7',
+    trustItem1: 'Suppliers vetted by our team',
+    trustItem2: 'Hands-on support on every order',
+    trustItem3: 'Compliance and document guidance',
+    trustItem4: 'Support in English, Chinese & Russian',
     howEyebrow: 'How It Works',
     howTitle: 'Three steps to global trade',
     howStep1Num: '01',
@@ -208,17 +182,6 @@ const translations = {
     howStep3Num: '03',
     howStep3Title: 'Connect & Trade',
     howStep3Copy: 'Communicate, exchange RFQs, negotiate terms, and complete trades with full compliance and logistics support.',
-    testimonialsEyebrow: 'Testimonials',
-    testimonialsTitle: 'Trusted by global traders',
-    testimonial1Quote: 'Fastflow connected us with 3 verified Chinese factories in 48 hours — the AI matching saved weeks of manual sourcing work.',
-    testimonial1Name: 'James Kowalski',
-    testimonial1Company: 'Procurement Manager, MechParts EU · Poland',
-    testimonial2Quote: 'As an exporter in Shenzhen, we gained 12 new overseas buyers in our first quarter. The multilingual support and AI translation are excellent.',
-    testimonial2Name: 'Zhang Wei',
-    testimonial2Company: 'Export Manager, Delta Precision Works · Shenzhen',
-    testimonial3Quote: 'The compliance and document support eliminated our main bottleneck. Our sourcing cycle shortened by 40% within two months.',
-    testimonial3Name: 'Aisha Kolenova',
-    testimonial3Company: 'Supply Chain Director, TradeCo CIS · Russia',
     dashboardTabRfqs: 'RFQs',
     dashboardTabOrders: 'Orders',
     dashboardTabVerification: 'Verification',
@@ -228,11 +191,11 @@ const translations = {
     dashboardRfqThread: 'RFQ Thread',
     dashboardRfqThreadEmpty: 'Select an RFQ to open the thread.',
     categoriesAll: 'All Categories',
+    catAllMachinery: 'All Machinery',
     categoryProducts: 'products',
     systemActor: 'System',
     metricOrdersLabel: 'orders',
     pillVerified: 'Verified',
-    pillReview: 'Review',
     specMoq: 'MOQ',
     specLeadTime: 'Lead time',
     specCapacity: 'Capacity',
@@ -249,6 +212,32 @@ const translations = {
     detailCertifications: 'Certifications',
     detailPending: 'Pending',
     productUnavailable: 'Product unavailable',
+    pdLoading: 'Loading…',
+    pdMinOrder: 'Min. order',
+    pdTrustVetted: 'Manufacturer vetted by our team',
+    pdTrustInspection: 'Pre-shipment inspection available',
+    pdTrustSupport: 'Hands-on support from quote to delivery',
+    pdVerifiedBadge: 'Verified supplier',
+    pdSpecs: 'Specifications',
+    pdInquiryTitle: 'Send inquiry',
+    pdFieldName: 'Your name',
+    pdFieldNamePh: 'Full name',
+    pdFieldEmail: 'Company email',
+    pdFieldEmailPh: 'you@company.com',
+    pdFieldCompany: 'Company',
+    pdFieldCompanyPh: 'Company name',
+    pdFieldQty: 'Target quantity',
+    pdFieldQtyPh: 'e.g. 200',
+    pdFieldMessage: 'Message',
+    pdFieldMessagePh: 'Requirements, target price, destination port… (20–4000 characters)',
+    pdSend: 'Send inquiry',
+    pdSending: 'Sending…',
+    pdErrName: 'Please enter your name.',
+    pdErrEmail: 'Enter a valid email address.',
+    pdErrMessage: 'Message must be at least 20 characters.',
+    pdErrSend: 'Could not send inquiry. Please try again.',
+    pdErrNetwork: 'Network error. Please try again.',
+    pdSent: 'Inquiry sent! Our team will be in touch shortly.',
     supplierProducts: 'Products',
     supplierCategories: 'Categories',
     supplierCertifications: 'Certifications',
@@ -300,7 +289,7 @@ const translations = {
     productFormTitle: 'Add product listing',
     productFormSub: 'Supplier listings enter verification review',
     pfCategory: 'Category',
-    pfCategoryPh: 'Machinery, Packaging, Components',
+    pfCategoryPh: 'e.g. Agricultural Machinery — pick from the list',
     pfName: 'Name',
     pfNamePh: 'Product title',
     pfLocation: 'Location',
@@ -320,6 +309,7 @@ const translations = {
     pfDescription: 'Description',
     pfDescriptionPh: 'Materials, specs, packaging, use cases',
     pfSubmit: 'Add listing',
+    pfMediaLabel: 'Photos & video',
     pfEditTitle: 'Edit product',
     pfEditSubmit: 'Save changes',
     pfCancelEdit: 'Cancel',
@@ -343,45 +333,36 @@ const translations = {
     translationPending: 'Auto-translating...'
   },
   zh: {
-    utilitySlogan: 'AI驱动采购、合规和全球供应商撮合',
+    utilitySlogan: '严选中国供应商 · 多语种产品页面 · 全程采购支持',
     navAbout: '关于',
     navContact: '联系我们',
     navAboutUs: '关于我们',
     navMembership: '入驻规则',
-    navAiFunctions: 'AI功能',
     navFaq: '常见问答',
     authSignIn: '登录',
     authJoinFree: '免费入驻',
     navPortal: '供应商门户',
     heroListCompany: '登记您的公司',
-    heroEyebrow: 'AI驱动 · 一站式外贸撮合与咨询服务',
-    heroTitle: '智能匹配全球供需 · 多语种实时沟通 · 全流程风控护航',
-    heroSubtitle: 'AI驱动的一站式外贸撮合与咨询服务——智能全球采购、实时翻译与合规支持。',
+    heroEyebrow: '跨境采购，交给我们',
+    heroTitle: '严选中国工厂直采——告别盲选',
+    heroSubtitle: '告诉我们您的需求，几天内为您匹配严选供应商，报价、合规与物流全程由我们处理。',
     heroBuyerBtn: '海外买家：立即找货源',
-    heroSupplierBtn: '国内供应商：免费入驻',
+    heroSupplierBtn: '供应商入驻：联系我们',
     heroConsultBtn: '在线咨询',
-    heroHighlights: 'AI撮合、多语种支持、风控合规、全流程服务。',
+    heroHighlights: '严选供应商 · 多语种浏览 · 全程采购支持',
     heroShowcaseBadge: '🌐 全球采购平台',
     searchProducts: '产品',
     searchSuppliers: '供应商',
     searchPlaceholder: '搜索产品、供应商、认证...',
     searchButton: '搜索',
-    statsCountries: '服务全球30+国家和地区',
-    statsCountriesSub: '服务全球30+国家和地区',
-    statsFactories: '合作工厂500+家',
-    statsFactoriesSub: '合作工厂500+家',
-    statsOrders: '累计撮合订单12,000+笔',
-    statsOrdersSub: '累计撮合订单12,000+笔',
-    statsExperience: '行业服务经验15+年',
-    statsExperienceSub: '行业服务经验15+年',
     advantageEyebrow: '平台优势',
-    advantageTitle: '四大AI优势，驱动全球外贸',
-    featureMatchTitle: 'AI智能精准匹配',
-    featureMatchCopy: '依托智能算法，根据品类、产能、报价、认证、交期等维度筛选最优合作方，快速达成合作。',
-    featureCommTitle: '7×24小时多语种沟通',
-    featureCommCopy: '支持英语、西班牙语、法语、阿拉伯语等主流语种，AI实时翻译，打破语言与时区壁垒。',
-    featureRiskTitle: '全流程合规风控',
-    featureRiskCopy: 'AI核验资质、交易评级、履约监控，覆盖报关、结汇、物流、合同各环节。',
+    advantageTitle: '让采购更简单的四大优势',
+    featureMatchTitle: '供应商匹配',
+    featureMatchCopy: '告诉我们您的需求——我们在严选工厂网络中为您对接各品类的合格供应商。',
+    featureCommTitle: '多语种浏览',
+    featureCommCopy: '产品页面自动翻译为英语、中文和俄语，用您的语言浏览与沟通。',
+    featureRiskTitle: '贸易合规保障',
+    featureRiskCopy: '供应商审核、出货前验货与报关单证支持——确保货物如约到达。',
     featureConsultTitle: '全链条外贸咨询',
     featureConsultCopy: '政策解读、市场调研、关税咨询、验厂质检、单证制作，一站式解决外贸问题。',
     statsProducts: '可采购产品',
@@ -391,17 +372,17 @@ const translations = {
     servicesEyebrow: '服务场景',
     servicesTitle: '采购商与供应商一站式服务',
     buyersSectionTitle: '采购商服务',
-    buyersList1: '发布采购需求，AI自动推送优质供应商',
+    buyersList1: '发布采购需求，为您匹配合格供应商',
     buyersList2: '在线比价、资质查看、成交记录查询',
     buyersList3: '一站式物流、报关、结算配套服务',
     buyersList4: '专属顾问协助谈判与履约',
-    buyersSub: '发布采购需求，AI自动推荐供应商，支持物流、报关和结算服务。',
+    buyersSub: '发布采购需求，比较严选供应商报价，享受物流、报关与结算支持。',
     suppliersSectionTitle: '供应商服务',
     suppliersList1: '免费入驻，直面全球采购商',
-    suppliersList2: 'AI多语种翻译，海外曝光引流',
+    suppliersList2: '多语种产品页面，海外曝光引流',
     suppliersList3: '精准分发询盘，提升接单效率',
     suppliersList4: '合规指导、单证模板、风险预警',
-    suppliersSub: '免费注册，AI翻译产品信息，接收精准询盘并获得合规支持。',
+    suppliersSub: '免费注册，产品信息多语种展示，接收精准询盘并获得合规支持。',
     serviceListEyebrow: '核心服务',
     serviceListTitle: '增值服务模块',
     serviceMatch: '外贸撮合',
@@ -409,7 +390,7 @@ const translations = {
     serviceCompliance: '合规咨询',
     serviceComplianceSub: '进出口政策、关税、退税、认证服务。',
     serviceDocument: '单证服务',
-    serviceDocumentSub: 'AI自动生成合同、PI、装箱单、报关资料。',
+    serviceDocumentSub: '合同、PI、装箱单、报关资料——由我们为您准备与审核。',
     serviceInspection: '验厂与质检',
     serviceInspectionSub: '实地验厂、出货质检、第三方品控。',
     serviceLogistics: '物流方案',
@@ -420,45 +401,33 @@ const translations = {
     suppliersTitle: '供应商网络',
     supplierSearchPlaceholder: '搜索供应商、地点、认证...',
     aboutEyebrow: '关于我们',
-    aboutTitle: 'AI与贸易经验，连接全球买家与供应商',
-    aboutCopy1: '我们是一家综合跨境外贸服务平台，融合AI技术与传统经验，搭建海内外供需桥梁。',
+    aboutTitle: '以贸易经验连接全球买家与严选供应商',
+    aboutCopy1: '我们是跨境采购服务平台，凭借贸易经验与供应商审核体系，连接全球买家与中国制造商。',
     aboutCopy2: '秉持诚信、专业、高效、合规，为海外采购商匹配靠谱货源，为国内工厂开拓全球市场。',
     membershipEyebrow: '入驻规则',
     membershipTitle: '灵活入驻，透明收费',
     supplierRegistrationTitle: '供应商入驻',
     supplierRegistrationReq: '要求：合法营业执照、生产/供货资质，产品符合进出口标准。',
-    supplierRegistrationPlans: '基础版免费入驻，进阶版享受AI优先匹配、首页曝光、流量扶持。',
+    supplierRegistrationPlans: '基础版免费入驻，进阶版享受优先展示、首页曝光与流量扶持。',
     supplierRegistrationPricing: '撮合服务费仅针对成交订单，拒绝隐形消费。',
     buyerServiceTitle: '采购商服务',
     buyerServiceCopy: '发布需求、查找供应商永久免费，仅对定制验厂、专属顾问、加急单证等增值服务收费。',
-    aiFunctionsEyebrow: 'AI功能',
-    aiFunctionsTitle: '智能匹配与风控工具',
-    aiFunctionMatch: '智能匹配',
-    aiFunctionMatchSub: '大数据算法匹配买卖双方。',
-    aiFunctionChat: '多语种客服',
-    aiFunctionChatSub: '7×24小时自动应答，支持多语言。',
-    aiFunctionDocs: '智能单证',
-    aiFunctionDocsSub: '一键生成标准外贸单据。',
-    aiFunctionRisk: '风控系统',
-    aiFunctionRiskSub: 'AI核验资质，实时评估风险。',
-    teamEyebrow: '我们的团队',
-    teamTitle: 'Fastflow背后的人',
     faqEyebrow: '常见问答',
     faqTitle: '常见问题',
     faqSafetyQ: '平台如何保障交易安全？',
-    faqSafetyA: '平台搭载AI风控系统，核验双方资质并提供交易担保与合同监管。',
+    faqSafetyA: '供应商上架前经我们团队审核，交易全程有团队跟进——从报价到交付。',
     faqFeesQ: '入驻平台需要收费吗？',
     faqFeesA: '基础入驻免费，付费仅针对推广、高级会员和增值服务。',
     faqPostQ: '可以发布采购需求吗？',
-    faqPostA: '可以，注册后免费发布，AI会自动推荐合适供应商。',
+    faqPostA: '可以，注册后免费发布，我们会为您匹配合适的供应商。',
     faqLangQ: '支持哪些语种沟通？',
-    faqLangA: '支持英语、西班牙语、法语、阿拉伯语等主流语种，AI实时翻译。',
+    faqLangA: '平台支持英语、中文和俄语，产品信息自动翻译。',
     faqMultiQ: '产品可以做多语种展示吗？',
-    faqMultiA: '可以，AI自动翻译产品名称、详情和参数。',
+    faqMultiA: '可以，产品名称、详情和参数会自动翻译。',
     faqAssignQ: '询盘如何分配？',
-    faqAssignA: 'AI根据品类、产能、报价等条件智能分发询盘。',
+    faqAssignA: '我们的团队会审核每条询盘，并转发给最合适的制造商。',
     contactEyebrow: '联系我们',
-    contactTitle: '开启AI外贸撮合之旅',
+    contactTitle: '准备从中国采购？联系我们。',
     contactLine1: '在线客服 | 企业邮箱 | 联系电话 | 办公地址',
     contactLine2: '支持多语种咨询，欢迎海内外客户合作。',
     contactLabelName: '姓名',
@@ -474,12 +443,7 @@ const translations = {
     dashboardTitle: '我的 Fastflow',
     auditEyebrow: '运营',
     auditTitle: '最新审核记录',
-    footerCopyright: '©2026 Fastflow',
-    footerDescription: 'AI赋能外贸撮合、咨询与跨境订单全流程服务。',
-    footerPrivacy: '隐私政策',
-    footerAgreement: '用户协议',
-    footerDisclaimer: '免责声明',
-    footerSitemap: '网站地图',
+    footerDescription: '外贸撮合、采购咨询与跨境订单全流程服务。',
     quoteHeader: '请求报价',
     quoteLabelQuantity: '数量',
     quoteQuantityPlaceholder: '例如 5,000 件',
@@ -506,32 +470,21 @@ const translations = {
     authBuyerRequiredDesc: '供应商和管理账号可以管理商品和询盘，但只有买家可以发送新询盘。',
     authClose: '关闭',
     noAuditEvents: '暂无审计记录。',
-    trustItem1: '仅限认证供应商',
-    trustItem2: '安全资金托管支付',
-    trustItem3: '全流程风险管控',
-    trustItem4: '7×24小时多语种服务',
+    trustItem1: '供应商经我们团队严选',
+    trustItem2: '每笔订单全程跟进',
+    trustItem3: '合规与单证指导',
+    trustItem4: '英语、中文、俄语支持',
     howEyebrow: '服务流程',
     howTitle: '三步开启全球贸易',
     howStep1Num: '01',
     howStep1Title: '注册发布',
     howStep1Copy: '免费创建买家或供应商账号，几分钟内发布产品或采购需求。',
     howStep2Num: '02',
-    howStep2Title: 'AI智能匹配',
-    howStep2Copy: 'AI引擎分析您的需求，即时匹配认证买家或合格供应商。',
+    howStep2Title: '获取匹配',
+    howStep2Copy: '我们审核您的需求，通常在24–48小时内为您对接合格供应商或买家。',
     howStep3Num: '03',
     howStep3Title: '对接成交',
     howStep3Copy: '直接沟通、交换询盘、谈判条款，并在全程合规与物流支持下完成交易。',
-    testimonialsEyebrow: '客户评价',
-    testimonialsTitle: '全球贸易商的信任之选',
-    testimonial1Quote: 'Fastflow在48小时内为我们匹配了3家经过认证的中国工厂——AI匹配节省了数周的人工寻源工作。',
-    testimonial1Name: 'James Kowalski',
-    testimonial1Company: '采购经理，MechParts EU · 波兰',
-    testimonial2Quote: '作为深圳的出口商，我们在平台第一个季度就获得了12个新的海外买家。多语种支持和AI翻译非常出色。',
-    testimonial2Name: '张伟',
-    testimonial2Company: '出口经理，达尔特精密制造 · 深圳',
-    testimonial3Quote: '合规与单证支持消除了我们的主要瓶颈，两个月内采购周期缩短了40%。',
-    testimonial3Name: 'Aisha Kolenova',
-    testimonial3Company: '供应链总监，TradeCo CIS · 俄罗斯',
     dashboardTabRfqs: '询盘',
     dashboardTabOrders: '订单',
     dashboardTabVerification: '资质认证',
@@ -541,11 +494,11 @@ const translations = {
     dashboardRfqThread: '询盘会话',
     dashboardRfqThreadEmpty: '选择询盘查看对话。',
     categoriesAll: '全部品类',
+    catAllMachinery: '全部机械设备',
     categoryProducts: '件产品',
     systemActor: '系统',
     metricOrdersLabel: '个订单',
     pillVerified: '已认证',
-    pillReview: '审核中',
     specMoq: '起订量',
     specLeadTime: '交期',
     specCapacity: '产能',
@@ -562,6 +515,32 @@ const translations = {
     detailCertifications: '认证',
     detailPending: '待定',
     productUnavailable: '产品不可用',
+    pdLoading: '加载中…',
+    pdMinOrder: '起订量',
+    pdTrustVetted: '制造商经我们团队审核',
+    pdTrustInspection: '可提供出货前验货',
+    pdTrustSupport: '从报价到交付全程支持',
+    pdVerifiedBadge: '认证供应商',
+    pdSpecs: '产品规格',
+    pdInquiryTitle: '发送询盘',
+    pdFieldName: '您的姓名',
+    pdFieldNamePh: '姓名',
+    pdFieldEmail: '公司邮箱',
+    pdFieldEmailPh: 'you@company.com',
+    pdFieldCompany: '公司',
+    pdFieldCompanyPh: '公司名称',
+    pdFieldQty: '目标数量',
+    pdFieldQtyPh: '例如 200',
+    pdFieldMessage: '留言内容',
+    pdFieldMessagePh: '需求、目标价、目的港…（20–4000字符）',
+    pdSend: '发送询盘',
+    pdSending: '发送中…',
+    pdErrName: '请输入您的姓名。',
+    pdErrEmail: '请输入有效的邮箱地址。',
+    pdErrMessage: '留言至少需要20个字符。',
+    pdErrSend: '发送失败，请重试。',
+    pdErrNetwork: '网络错误，请重试。',
+    pdSent: '询盘已发送！我们的团队会尽快与您联系。',
     supplierProducts: '产品数',
     supplierCategories: '品类',
     supplierCertifications: '认证',
@@ -613,7 +592,7 @@ const translations = {
     productFormTitle: '添加产品',
     productFormSub: '供应商发布的产品将进入认证审核',
     pfCategory: '品类',
-    pfCategoryPh: '机械、包装、零部件',
+    pfCategoryPh: '例如 Agricultural Machinery——请从列表选择',
     pfName: '名称',
     pfNamePh: '产品标题',
     pfLocation: '所在地',
@@ -633,6 +612,7 @@ const translations = {
     pfDescription: '描述',
     pfDescriptionPh: '材料、规格、包装、用途',
     pfSubmit: '添加产品',
+    pfMediaLabel: '图片与视频',
     pfEditTitle: '编辑产品',
     pfEditSubmit: '保存更改',
     pfCancelEdit: '取消',
@@ -656,45 +636,36 @@ const translations = {
     translationPending: '自动翻译中...'
   },
   ru: {
-    utilitySlogan: 'ИИ-поддержка закупок, комплаенса и глобального поиска поставщиков',
+    utilitySlogan: 'Проверенные китайские поставщики · Мультиязычные страницы товаров · Полное сопровождение закупок',
     navAbout: 'О нас',
     navContact: 'Контакты',
     navAboutUs: 'О нас',
     navMembership: 'Условия',
-    navAiFunctions: 'Функции ИИ',
     navFaq: 'Вопросы',
     authSignIn: 'Войти',
     authJoinFree: 'Бесплатная регистрация',
     navPortal: 'Портал поставщика',
     heroListCompany: 'Разместить компанию',
-    heroEyebrow: 'ИИ‑платформа для комплексного внешнеторгового посредничества',
-    heroTitle: 'Интеллектуальный глобальный поиск · Мультиязычная связь · Полный контроль рисков',
-    heroSubtitle: 'ИИ-управляемая платформа для внешнеторгового посредничества и консультаций — глобальный поиск, перевод в реальном времени и комплаенс.',
+    heroEyebrow: 'Трансграничные закупки — под ключ',
+    heroTitle: 'Закупайтесь у проверенных китайских фабрик — без догадок',
+    heroSubtitle: 'Расскажите, что вам нужно. За несколько дней подберём проверенных поставщиков и возьмём на себя расчёт цен, комплаенс и доставку.',
     heroBuyerBtn: 'Найти поставщиков',
-    heroSupplierBtn: 'Зарегистрироваться поставщику',
+    heroSupplierBtn: 'Стать поставщиком — свяжитесь с нами',
     heroConsultBtn: 'Онлайн-консультация',
-    heroHighlights: 'ИИ-сопоставление, мультиязычие, контроль рисков и полный цикл услуг.',
+    heroHighlights: 'Проверенные поставщики · Мультиязычный каталог · Полное сопровождение закупок',
     heroShowcaseBadge: '🌐 Глобальная платформа закупок',
     searchProducts: 'Товары',
     searchSuppliers: 'Поставщики',
     searchPlaceholder: 'Искать товары, поставщиков, сертификаты...',
     searchButton: 'Поиск',
-    statsCountries: 'Работаем в 30+ странах и регионах',
-    statsCountriesSub: 'Работаем в 30+ странах и регионах',
-    statsFactories: '500+ партнерских фабрик',
-    statsFactoriesSub: '500+ партнерских фабрик',
-    statsOrders: '12,000+ завершенных заказов',
-    statsOrdersSub: '12,000+ завершенных заказов',
-    statsExperience: 'Годы отраслевого опыта',
-    statsExperienceSub: 'Годы отраслевого опыта',
     advantageEyebrow: 'Преимущества платформы',
-    advantageTitle: 'Четыре AI-преимущества для глобальной торговли',
-    featureMatchTitle: 'ИИ интеллектуальное сопоставление',
-    featureMatchCopy: 'ИИ автоматически подбирает лучших партнеров по категории, мощности, цене, сертификатам и срокам.',
-    featureCommTitle: '24/7 мультиязычная связь',
-    featureCommCopy: 'Поддержка английского, испанского, французского, арабского и других языков с переводом в реальном времени.',
-    featureRiskTitle: 'Полный комплаенс и контроль рисков',
-    featureRiskCopy: 'ИИ проверяет квалификацию, оценивает риски и контролирует исполнение заказа на всех этапах.',
+    advantageTitle: 'Четыре вещи, которые упрощают закупки',
+    featureMatchTitle: 'Подбор поставщиков',
+    featureMatchCopy: 'Расскажите, что вам нужно — мы найдём подходящих производителей в нашей сети проверенных фабрик.',
+    featureCommTitle: 'Мультиязычный каталог',
+    featureCommCopy: 'Страницы товаров автоматически переводятся на английский, китайский и русский. Просматривайте и общайтесь на своём языке.',
+    featureRiskTitle: 'Торговый комплаенс',
+    featureRiskCopy: 'Проверка поставщиков, предотгрузочные инспекции и помощь с таможенными документами — чтобы товар прибыл таким, как заказан.',
     featureConsultTitle: 'Консультации по цепочке поставок',
     featureConsultCopy: 'Анализ политики, исследование рынка, тарифы, аудит, инспекции и подготовка документов.',
     statsProducts: 'Доступные товары',
@@ -704,17 +675,17 @@ const translations = {
     servicesEyebrow: 'Сценарии услуг',
     servicesTitle: 'Услуги для покупателей и поставщиков',
     buyersSectionTitle: 'Услуги для покупателей',
-    buyersList1: 'Размещайте запросы и получайте AI-подбор поставщиков',
+    buyersList1: 'Размещайте запросы — мы подберём подходящих поставщиков',
     buyersList2: 'Сравнивайте цены, проверяйте квалификацию и историю сделок',
     buyersList3: 'Логистика, таможня и оплата в одном окне',
     buyersList4: 'Персональный консультант для переговоров и исполнения заказа',
-    buyersSub: 'Размещайте запросы, получайте AI-рекомендации поставщиков и доступ к логистике и оплате.',
+    buyersSub: 'Размещайте запросы, сравнивайте предложения проверенных поставщиков и получайте поддержку по логистике, таможне и оплате.',
     suppliersSectionTitle: 'Услуги для поставщиков',
     suppliersList1: 'Бесплатная регистрация и доступ к глобальным покупателям',
-    suppliersList2: 'AI-перевод товаров и международная видимость',
+    suppliersList2: 'Мультиязычные страницы товаров и международная видимость',
     suppliersList3: 'Точные запросы для роста заказов',
     suppliersList4: 'Комплаенс, шаблоны документов и предупреждения о рисках',
-    suppliersSub: 'Регистрация бесплатно, AI-перевод, точная дистрибуция запросов и поддержка комплаенса.',
+    suppliersSub: 'Бесплатная регистрация, мультиязычные страницы товаров, целевые запросы и поддержка комплаенса.',
     serviceListEyebrow: 'Основные услуги',
     serviceListTitle: 'Дополнительные сервисы',
     serviceMatch: 'Посредничество в торговле',
@@ -722,7 +693,7 @@ const translations = {
     serviceCompliance: 'Консультации по комплаенсу',
     serviceComplianceSub: 'Политика импорта/экспорта, тарифы, возвраты и сертификаты.',
     serviceDocument: 'Документы',
-    serviceDocumentSub: 'ИИ генерирует контракты, PI, упаковочные листы и таможенные документы.',
+    serviceDocumentSub: 'Контракты, PI, упаковочные листы и таможенные документы — подготовим и проверим за вас.',
     serviceInspection: 'Аудит и QC',
     serviceInspectionSub: 'Аудит на месте, предпроверка и контроль качества.',
     serviceLogistics: 'Логистика',
@@ -733,45 +704,33 @@ const translations = {
     suppliersTitle: 'Сеть поставщиков',
     supplierSearchPlaceholder: 'Поиск поставщиков, мест, сертификатов...',
     aboutEyebrow: 'О нас',
-    aboutTitle: 'ИИ и торговый опыт объединяют покупателей и поставщиков',
-    aboutCopy1: 'Мы платформа для трансграничной торговли, объединяющая ИИ и опыт для связи покупателей и производителей.',
+    aboutTitle: 'Торговый опыт, соединяющий глобальных покупателей и проверенных поставщиков',
+    aboutCopy1: 'Мы — платформа трансграничных закупок, соединяющая покупателей с китайскими производителями благодаря торговому опыту и системе проверки поставщиков.',
     aboutCopy2: 'Мы соблюдаем честность, профессионализм, эффективность и комплаенс, помогая найти надежных поставщиков.',
     membershipEyebrow: 'Условия',
     membershipTitle: 'Гибкий вступительный процесс и прозрачные тарифы',
     supplierRegistrationTitle: 'Регистрация поставщика',
     supplierRegistrationReq: 'Требования: лицензия, квалификация, соответствие экспортным стандартам.',
-    supplierRegistrationPlans: 'Базовый план бесплатно, премиум дает приоритет AI, экспозицию и трафик.',
+    supplierRegistrationPlans: 'Базовый план — бесплатно; премиум даёт приоритетное размещение, экспозицию на главной и поддержку трафика.',
     supplierRegistrationPricing: 'Комиссия берется только за успешное посредничество, без скрытых платежей.',
     buyerServiceTitle: 'Сервис для покупателей',
     buyerServiceCopy: 'Размещение запросов и поиск поставщиков бесплатно; оплата только за кастомные аудиты, консультантов и ускоренные документы.',
-    aiFunctionsEyebrow: 'Функции ИИ',
-    aiFunctionsTitle: 'Инструменты ИИ для сопоставления и контроля рисков',
-    aiFunctionMatch: 'Интеллектуальное сопоставление',
-    aiFunctionMatchSub: 'Алгоритмы данных сопоставляют покупателей и поставщиков.',
-    aiFunctionChat: 'Мультиязычный чат-бот',
-    aiFunctionChatSub: 'Автоответ 24/7 с поддержкой нескольких языков.',
-    aiFunctionDocs: 'Умные документы',
-    aiFunctionDocsSub: 'Генерация стандартных торговых документов одним кликом.',
-    aiFunctionRisk: 'Система контроля рисков',
-    aiFunctionRiskSub: 'ИИ проверяет квалификацию и оценивает риски в реальном времени.',
-    teamEyebrow: 'Наша команда',
-    teamTitle: 'Люди за Fastflow',
     faqEyebrow: 'Вопросы',
     faqTitle: 'Часто задаваемые вопросы',
     faqSafetyQ: 'Как платформа обеспечивает безопасность сделок?',
-    faqSafetyA: 'Наша система ИИ проверяет квалификацию сторон и обеспечивает гарантию сделки и контроль контрактов.',
+    faqSafetyA: 'Мы проверяем поставщиков перед размещением, а наша команда сопровождает каждую сделку — от запроса цены до поставки.',
     faqFeesQ: 'Есть ли плата за регистрацию?',
     faqFeesA: 'Базовая регистрация бесплатна. Плата взимается только за продвижение, премиум и дополнительные сервисы.',
     faqPostQ: 'Можно ли разместить запрос на закупку?',
-    faqPostA: 'Да, после регистрации запросы размещаются бесплатно, а ИИ подбирает подходящих поставщиков.',
+    faqPostA: 'Да, после регистрации запросы размещаются бесплатно, и мы подберём подходящих поставщиков.',
     faqLangQ: 'Какие языки поддерживаются?',
-    faqLangA: 'Поддерживаются английский, испанский, французский, арабский и другие языки с мгновенным переводом.',
+    faqLangA: 'Платформа доступна на английском, китайском и русском. Информация о товарах переводится автоматически.',
     faqMultiQ: 'Можно ли отображать товары на нескольких языках?',
-    faqMultiA: 'Да, ИИ автоматически переводит названия, описания и спецификации товаров.',
+    faqMultiA: 'Да, названия, описания и спецификации товаров переводятся автоматически.',
     faqAssignQ: 'Как распределяются запросы?',
-    faqAssignA: 'ИИ распределяет запросы по категориям, мощности и ценам.',
+    faqAssignA: 'Наша команда рассматривает каждый запрос и передаёт его наиболее подходящему производителю.',
     contactEyebrow: 'Контакты',
-    contactTitle: 'Начните работу с AI в торговле',
+    contactTitle: 'Готовы закупать из Китая? Свяжитесь с нами.',
     contactLine1: 'Онлайн-поддержка | Email | Телефон | Адрес',
     contactLine2: 'Доступна мультиязычная поддержка. Добро пожаловать партнёры.',
     contactLabelName: 'Имя',
@@ -787,12 +746,7 @@ const translations = {
     dashboardTitle: 'Мой Fastflow',
     auditEyebrow: 'Операции',
     auditTitle: 'Последние аудиты',
-    footerCopyright: '©2026 Fastflow',
-    footerDescription: 'ИИ-посредничество, консультации и полный цикл кросс-граничных заказов.',
-    footerPrivacy: 'Политика конфиденциальности',
-    footerAgreement: 'Пользовательское соглашение',
-    footerDisclaimer: 'Отказ от ответственности',
-    footerSitemap: 'Карта сайта',
+    footerDescription: 'Торговое посредничество, консультации по закупкам и полное сопровождение трансграничных заказов.',
     quoteHeader: 'Запросить цену',
     quoteLabelQuantity: 'Количество',
     quoteQuantityPlaceholder: 'например 5 000 шт.',
@@ -819,32 +773,21 @@ const translations = {
     authBuyerRequiredDesc: 'Поставщики и администраторы могут управлять товарами, но только покупатели могут отправлять новые запросы.',
     authClose: 'Закрыть',
     noAuditEvents: 'Пока нет аудиторских событий.',
-    trustItem1: 'Только проверенные поставщики',
-    trustItem2: 'Безопасные эскроу-платежи',
-    trustItem3: 'Контроль рисков на всех этапах',
-    trustItem4: 'Мультиязычная поддержка 24/7',
+    trustItem1: 'Поставщики проверены нашей командой',
+    trustItem2: 'Сопровождение каждого заказа',
+    trustItem3: 'Помощь с комплаенсом и документами',
+    trustItem4: 'Поддержка на английском, китайском и русском',
     howEyebrow: 'Как это работает',
     howTitle: 'Три шага к глобальной торговле',
     howStep1Num: '01',
     howStep1Title: 'Регистрация',
     howStep1Copy: 'Создайте бесплатный аккаунт покупателя или поставщика и разместите товары или запросы за несколько минут.',
     howStep2Num: '02',
-    howStep2Title: 'Подбор ИИ',
-    howStep2Copy: 'Наш ИИ анализирует ваши требования и мгновенно связывает вас с проверенными партнёрами.',
+    howStep2Title: 'Подбор партнёров',
+    howStep2Copy: 'Мы изучаем ваши требования и обычно в течение 24–48 часов знакомим вас с подходящими поставщиками или покупателями.',
     howStep3Num: '03',
     howStep3Title: 'Сотрудничество',
     howStep3Copy: 'Общайтесь, обменивайтесь запросами, согласовывайте условия и завершайте сделки с полной поддержкой.',
-    testimonialsEyebrow: 'Отзывы',
-    testimonialsTitle: 'Доверие глобальных трейдеров',
-    testimonial1Quote: 'Fastflow подобрал нам 3 проверенные китайские фабрики за 48 часов — ИИ сэкономил недели поиска.',
-    testimonial1Name: 'James Kowalski',
-    testimonial1Company: 'Менеджер по закупкам, MechParts EU · Польша',
-    testimonial2Quote: 'Как экспортёр из Шэньчжэня, мы привлекли 12 новых зарубежных покупателей за первый квартал. Поддержка множества языков отличная.',
-    testimonial2Name: 'Чжан Вэй',
-    testimonial2Company: 'Менеджер экспорта, Delta Precision Works · Шэньчжэнь',
-    testimonial3Quote: 'Поддержка комплаенса и документов устранила наше главное узкое место. Цикл поставок сократился на 40% за два месяца.',
-    testimonial3Name: 'Айша Коленова',
-    testimonial3Company: 'Директор цепочки поставок, TradeCo CIS · Россия',
     dashboardTabRfqs: 'Запросы',
     dashboardTabOrders: 'Заказы',
     dashboardTabVerification: 'Верификация',
@@ -854,11 +797,11 @@ const translations = {
     dashboardRfqThread: 'Тред запроса',
     dashboardRfqThreadEmpty: 'Выберите запрос для просмотра треда.',
     categoriesAll: 'Все категории',
+    catAllMachinery: 'Всё оборудование',
     categoryProducts: 'товаров',
     systemActor: 'Система',
     metricOrdersLabel: 'заказов',
     pillVerified: 'Проверен',
-    pillReview: 'На проверке',
     specMoq: 'MOQ',
     specLeadTime: 'Срок',
     specCapacity: 'Мощность',
@@ -875,6 +818,32 @@ const translations = {
     detailCertifications: 'Сертификаты',
     detailPending: 'В ожидании',
     productUnavailable: 'Товар недоступен',
+    pdLoading: 'Загрузка…',
+    pdMinOrder: 'Мин. заказ',
+    pdTrustVetted: 'Производитель проверен нашей командой',
+    pdTrustInspection: 'Доступна предотгрузочная инспекция',
+    pdTrustSupport: 'Сопровождение от запроса цены до поставки',
+    pdVerifiedBadge: 'Проверенный поставщик',
+    pdSpecs: 'Характеристики',
+    pdInquiryTitle: 'Отправить запрос',
+    pdFieldName: 'Ваше имя',
+    pdFieldNamePh: 'Полное имя',
+    pdFieldEmail: 'Email компании',
+    pdFieldEmailPh: 'you@company.com',
+    pdFieldCompany: 'Компания',
+    pdFieldCompanyPh: 'Название компании',
+    pdFieldQty: 'Требуемое количество',
+    pdFieldQtyPh: 'например 200',
+    pdFieldMessage: 'Сообщение',
+    pdFieldMessagePh: 'Требования, целевая цена, порт назначения… (20–4000 символов)',
+    pdSend: 'Отправить запрос',
+    pdSending: 'Отправка…',
+    pdErrName: 'Пожалуйста, укажите имя.',
+    pdErrEmail: 'Введите корректный email.',
+    pdErrMessage: 'Сообщение должно содержать не менее 20 символов.',
+    pdErrSend: 'Не удалось отправить запрос. Попробуйте ещё раз.',
+    pdErrNetwork: 'Ошибка сети. Попробуйте ещё раз.',
+    pdSent: 'Запрос отправлен! Наша команда скоро свяжется с вами.',
     supplierProducts: 'Товары',
     supplierCategories: 'Категории',
     supplierCertifications: 'Сертификаты',
@@ -926,7 +895,7 @@ const translations = {
     productFormTitle: 'Добавить товар',
     productFormSub: 'Товары поставщиков проходят проверку',
     pfCategory: 'Категория',
-    pfCategoryPh: 'Машины, упаковка, компоненты',
+    pfCategoryPh: 'напр. Agricultural Machinery — выберите из списка',
     pfName: 'Название',
     pfNamePh: 'Название товара',
     pfLocation: 'Местоположение',
@@ -946,6 +915,7 @@ const translations = {
     pfDescription: 'Описание',
     pfDescriptionPh: 'Материалы, характеристики, упаковка, применение',
     pfSubmit: 'Добавить',
+    pfMediaLabel: 'Фото и видео',
     pfEditTitle: 'Редактировать товар',
     pfEditSubmit: 'Сохранить',
     pfCancelEdit: 'Отмена',
@@ -974,6 +944,30 @@ function t(key) {
   return (translations[currentLang] && translations[currentLang][key]) || translations.en[key] || key;
 }
 
+// Category taxonomy: parent -> subcategories. Products store the subcategory
+// name; the rail shows the parent as a dropdown. Mirrored in main.py
+// (CATEGORY_GROUPS) so filtering by the parent matches all its subs.
+const CATEGORY_TREE = {
+  'Machinery': [
+    'Agricultural Machinery',
+    'Metalworking Machinery',
+    'Construction Machinery',
+    'Industrial Machinery',
+  ],
+};
+
+// Canonical names suggested in the product-form category field.
+const CATEGORY_PRESETS = [
+  ...CATEGORY_TREE['Machinery'],
+  'Raw Materials',
+  'Packaging',
+  'Components',
+  'Home & Kitchen',
+  'Electronics',
+  'Textiles & Apparel',
+  'Consumer Goods',
+];
+
 // Category names live in the database (free text, English), so they can't go
 // through data-i18n. Known names are mapped per locale; unknown ones fall back
 // to the stored string.
@@ -983,6 +977,10 @@ const CATEGORY_NAMES = {
     'Packaging': '包装',
     'Components': '零部件',
     'Machinery': '机械设备',
+    'Agricultural Machinery': '农业机械',
+    'Metalworking Machinery': '金属加工机械',
+    'Construction Machinery': '工程机械',
+    'Industrial Machinery': '工业机械',
     'Home & Kitchen': '家居厨房',
     'Electronics': '电子产品',
     'Textiles & Apparel': '纺织服装',
@@ -993,6 +991,10 @@ const CATEGORY_NAMES = {
     'Packaging': 'Упаковка',
     'Components': 'Комплектующие',
     'Machinery': 'Оборудование',
+    'Agricultural Machinery': 'Сельскохозяйственная техника',
+    'Metalworking Machinery': 'Металлообрабатывающие станки',
+    'Construction Machinery': 'Строительная техника',
+    'Industrial Machinery': 'Промышленное оборудование',
     'Home & Kitchen': 'Дом и кухня',
     'Electronics': 'Электроника',
     'Textiles & Apparel': 'Текстиль и одежда',
@@ -1151,6 +1153,8 @@ function closeQuoteModal() {
 }
 
 async function init() {
+  const yearEl = document.getElementById('footer-year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
   try {
     const result = await apiFetch('/api/me');
     currentUser = result.authenticated ? result.user : null;
@@ -1195,15 +1199,59 @@ let cachedCategories = null;
 
 function renderCategories() {
   if (!cachedCategories) return;
+  const byName = Object.fromEntries(cachedCategories.map(c => [c.name, c]));
+  const subNames = new Set(Object.values(CATEGORY_TREE).flat());
+  const flat = cachedCategories.filter(c => !subNames.has(c.name) && !CATEGORY_TREE[c.name]);
+
+  const groupsHtml = Object.entries(CATEGORY_TREE).map(([parent, subs]) => {
+    const count = (byName[parent]?.product_count || 0)
+      + subs.reduce((sum, name) => sum + (byName[name]?.product_count || 0), 0);
+    const isActive = activeCategory === parent || subs.includes(activeCategory);
+    return `
+      <div class="cat-group">
+        <button class="cat-group-btn ${isActive ? 'active' : ''}" aria-haspopup="true" aria-expanded="false">
+          <span>${escapeHtml(tCategory(parent, byName[parent]?.display_name))}</span>
+          <small>${count} ${t('categoryProducts')}</small>
+          <span class="cat-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="cat-dropdown hidden">
+          <button class="${activeCategory === parent ? 'active' : ''}" data-category="${escapeHtml(parent)}">
+            <span>${escapeHtml(t('catAllMachinery'))}</span><small>${count}</small>
+          </button>
+          ${subs.map(sub => `
+            <button class="${activeCategory === sub ? 'active' : ''}" data-category="${escapeHtml(sub)}">
+              <span>${escapeHtml(tCategory(sub, byName[sub]?.display_name))}</span>
+              ${byName[sub]?.product_count ? `<small>${byName[sub].product_count}</small>` : ''}
+            </button>
+          `).join('')}
+        </div>
+      </div>`;
+  }).join('');
+
   categoryList.innerHTML = `
     <button class="${activeCategory ? '' : 'active'}" data-category="">${escapeHtml(t('categoriesAll'))}</button>
-    ${cachedCategories.map(category => `
+    ${groupsHtml}
+    ${flat.map(category => `
       <button class="${activeCategory === category.name ? 'active' : ''}" data-category="${escapeHtml(category.name)}">
         <span>${escapeHtml(tCategory(category.name, category.display_name))}</span>
         <small>${category.product_count} ${t('categoryProducts')}</small>
       </button>
     `).join('')}
   `;
+}
+
+// Datalist of canonical category names for product forms. Values are stored in
+// English; the label in parentheses shows the current-language name as a hint.
+function categoryPresetsDatalist() {
+  return `<datalist id="category-presets">${CATEGORY_PRESETS.map(name => {
+    const localized = tCategory(name);
+    return `<option value="${escapeHtml(name)}"${localized !== name ? ` label="${escapeHtml(localized)}"` : ''}></option>`;
+  }).join('')}</datalist>`;
+}
+
+function closeCategoryMenus() {
+  document.querySelectorAll('.cat-dropdown:not(.hidden)').forEach(menu => menu.classList.add('hidden'));
+  document.querySelectorAll('.cat-group-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
 }
 
 async function loadCategories() {
@@ -1225,13 +1273,15 @@ function productCardHtml(product) {
   return `
     <article class="product-card">
       <button class="product-image" data-product-id="${product.id}" aria-label="${escapeHtml(t('cardViewDetails'))}">
-        <img src="${escapeHtml(product.image_url || '')}" alt="${escapeHtml(product.name)}" loading="lazy" />
+        ${product.image_url
+          ? `<img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" />`
+          : `<span class="img-placeholder" aria-hidden="true">${escapeHtml((product.supplier || product.name || '?').slice(0, 2).toUpperCase())}</span>`}
       </button>
       <div class="product-body">
         <div class="product-title-row">
           <button class="product-title" data-product-id="${product.id}">${escapeHtml(product.name)}</button>
           <div class="card-pills">
-            <span class="status-pill ${product.verified ? 'good' : 'warn'}">${escapeHtml(product.verified ? t('pillVerified') : t('pillReview'))}</span>
+            ${product.verified ? `<span class="status-pill good">${escapeHtml(t('pillVerified'))}</span>` : ''}
             ${product.translated ? `<span class="status-pill translated-badge">${escapeHtml(t('aiTranslatedBadge'))}</span>` : ''}
           </div>
         </div>
@@ -1357,7 +1407,7 @@ function galleryHtml(media, fallbackUrl, alt) {
 }
 
 async function openProductDetail(productId) {
-  openModal('<div class="pd-loading" style="text-align:center;padding:60px 0;color:#6b7280">Loading…</div>', { wide: true });
+  openModal(`<div class="pd-loading" style="text-align:center;padding:60px 0;color:#6b7280">${escapeHtml(t('pdLoading'))}</div>`, { wide: true });
   let product;
   try {
     ({ product } = await apiFetch(`/api/products/${productId}`));
@@ -1396,14 +1446,14 @@ async function openProductDetail(productId) {
           <h2 class="pd-title">${escapeHtml(product.name)}</h2>
           <div class="pd-pricebox">
             <div class="pd-price">${escapeHtml(product.price || '—')}</div>
-            ${product.moq ? `<div class="pd-moq"><b>${escapeHtml(product.moq)}</b> Min. order</div>` : ''}
+            ${product.moq ? `<div class="pd-moq"><b>${escapeHtml(product.moq)}</b> ${escapeHtml(t('pdMinOrder'))}</div>` : ''}
           </div>
           <p class="pd-desc">${escapeHtml(product.description || '')}</p>
           <button class="primary pd-cta" data-quote-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
           <div class="pd-trust">
-            <div><span class="pd-tick">✓</span> Escrow — funds released only after delivery confirmed</div>
-            <div><span class="pd-tick">✓</span> Pre-shipment inspection available</div>
-            <div><span class="pd-tick">✓</span> Platform dispute resolution</div>
+            <div><span class="pd-tick">✓</span> ${escapeHtml(t('pdTrustVetted'))}</div>
+            <div><span class="pd-tick">✓</span> ${escapeHtml(t('pdTrustInspection'))}</div>
+            <div><span class="pd-tick">✓</span> ${escapeHtml(t('pdTrustSupport'))}</div>
           </div>
         </div>
       </div>
@@ -1421,30 +1471,30 @@ async function openProductDetail(productId) {
           </div>` : ''}
         </div>
         <div class="pd-spacer"></div>
-        ${isVerified ? '<span class="pd-badge pd-verified">✓ Verified supplier</span>' : ''}
+        ${isVerified ? `<span class="pd-badge pd-verified">✓ ${escapeHtml(t('pdVerifiedBadge'))}</span>` : ''}
         ${product.certifications ? `<span class="pd-badge pd-cert">${escapeHtml(product.certifications)}</span>` : ''}
       </div>
 
       <div class="pd-section">
-        <h3 class="pd-sh">Specifications</h3>
+        <h3 class="pd-sh">${escapeHtml(t('pdSpecs'))}</h3>
         <div class="pd-spectable">${specsHtml}</div>
       </div>
 
       <div class="pd-section" id="pd-inquiry-section">
-        <h3 class="pd-sh">Send inquiry</h3>
+        <h3 class="pd-sh">${escapeHtml(t('pdInquiryTitle'))}</h3>
         <div class="pd-formgrid" id="pd-form">
           <input type="text" name="website" style="display:none" aria-hidden="true" tabindex="-1" autocomplete="off" />
-          <div class="pd-field"><label>Your name</label><input id="pd-name" placeholder="Full name" /></div>
-          <div class="pd-field"><label>Company email</label><input id="pd-email" type="email" placeholder="you@company.com" /></div>
-          <div class="pd-field"><label>Company</label><input id="pd-company" placeholder="Company name" /></div>
-          <div class="pd-field"><label>Target quantity</label><input id="pd-qty" placeholder="e.g. 200" /></div>
+          <div class="pd-field"><label>${escapeHtml(t('pdFieldName'))}</label><input id="pd-name" placeholder="${escapeHtml(t('pdFieldNamePh'))}" /></div>
+          <div class="pd-field"><label>${escapeHtml(t('pdFieldEmail'))}</label><input id="pd-email" type="email" placeholder="${escapeHtml(t('pdFieldEmailPh'))}" /></div>
+          <div class="pd-field"><label>${escapeHtml(t('pdFieldCompany'))}</label><input id="pd-company" placeholder="${escapeHtml(t('pdFieldCompanyPh'))}" /></div>
+          <div class="pd-field"><label>${escapeHtml(t('pdFieldQty'))}</label><input id="pd-qty" placeholder="${escapeHtml(t('pdFieldQtyPh'))}" /></div>
           <div class="pd-field pd-full">
-            <label>Message</label>
-            <textarea id="pd-message" rows="4" placeholder="Requirements, target price, destination port… (20–4000 characters)"></textarea>
+            <label>${escapeHtml(t('pdFieldMessage'))}</label>
+            <textarea id="pd-message" rows="4" placeholder="${escapeHtml(t('pdFieldMessagePh'))}"></textarea>
           </div>
           <div class="pd-field pd-full pd-err hidden" id="pd-err"></div>
           <div class="pd-field pd-full">
-            <button class="primary pd-submit" data-product-id="${product.id}">Send inquiry</button>
+            <button class="primary pd-submit" data-product-id="${product.id}">${escapeHtml(t('pdSend'))}</button>
           </div>
         </div>
       </div>
@@ -1508,13 +1558,13 @@ async function submitProductInquiry(productId) {
   const message = document.getElementById('pd-message')?.value.trim() || '';
   const website = document.querySelector('#pd-form input[name="website"]')?.value || '';
 
-  if (!name) return showErr('Please enter your name.');
-  if (!/^\S+@\S+\.\S+$/.test(email)) return showErr('Enter a valid email address.');
-  if (message.length < 20) return showErr('Message must be at least 20 characters.');
+  if (!name) return showErr(t('pdErrName'));
+  if (!/^\S+@\S+\.\S+$/.test(email)) return showErr(t('pdErrEmail'));
+  if (message.length < 20) return showErr(t('pdErrMessage'));
 
   errEl.classList.add('hidden');
   const btn = document.querySelector('.pd-submit');
-  if (btn) { btn.textContent = 'Sending…'; btn.disabled = true; }
+  if (btn) { btn.textContent = t('pdSending'); btn.disabled = true; }
 
   try {
     const res = await fetch(`/api/products/${productId}/inquiry`, {
@@ -1525,17 +1575,17 @@ async function submitProductInquiry(productId) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      showErr(data.error || 'Could not send inquiry. Please try again.');
-      if (btn) { btn.textContent = 'Send inquiry'; btn.disabled = false; }
+      showErr(data.error || t('pdErrSend'));
+      if (btn) { btn.textContent = t('pdSend'); btn.disabled = false; }
       return;
     }
     const form = document.getElementById('pd-form');
     if (form) {
-      form.innerHTML = '<p style="color:#0C7B69;font-weight:600;padding:20px 0">✓ Inquiry sent! The supplier will be in touch shortly.</p>';
+      form.innerHTML = `<p style="color:#0C7B69;font-weight:600;padding:20px 0">✓ ${escapeHtml(t('pdSent'))}</p>`;
     }
   } catch {
-    showErr('Network error. Please try again.');
-    if (btn) { btn.textContent = 'Send inquiry'; btn.disabled = false; }
+    showErr(t('pdErrNetwork'));
+    if (btn) { btn.textContent = t('pdSend'); btn.disabled = false; }
   }
 }
 
@@ -1550,7 +1600,7 @@ async function loadSuppliers(query = '') {
         <div>
           <div class="supplier-head">
             <strong>${escapeHtml(supplier.company)}</strong>
-            <span class="status-pill ${supplier.verified ? 'good' : 'warn'}">${escapeHtml(supplier.verification_status)}</span>
+            ${supplier.verified ? `<span class="status-pill good">${escapeHtml(t('pillVerified'))}</span>` : ''}
           </div>
           <p>${escapeHtml(supplier.location || t('supplierLocationPending'))}</p>
           <dl class="supplier-meta">
@@ -1888,7 +1938,8 @@ function productFormHtml(product = null) {
     : (product?.image_url ? [{ type: 'image', url: product.image_url, is_primary: true }] : []);
   return `
     <form id="product-form" class="data-form two-column" data-id="${isEdit ? product.id : ''}">
-      <label>${escapeHtml(t('pfCategory'))}<input name="category" value="${v('category')}" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
+      <label>${escapeHtml(t('pfCategory'))}<input name="category" value="${v('category')}" list="category-presets" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
+      ${categoryPresetsDatalist()}
       <label>${escapeHtml(t('pfName'))}<input name="name" value="${v('name')}" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
       <label>${escapeHtml(t('pfLocation'))}<input name="location" value="${v('location')}" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
       <label>${escapeHtml(t('pfPrice'))}<input name="price" value="${v('price')}" placeholder="${escapeHtml(t('pfPricePh'))}" required /></label>
@@ -1897,7 +1948,7 @@ function productFormHtml(product = null) {
       <label>${escapeHtml(t('pfCapacity'))}<input name="capacity" value="${v('capacity')}" placeholder="${escapeHtml(t('pfCapacityPh'))}" /></label>
       <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" value="${v('certifications')}" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
       <div class="wide">
-        <div style="font-size:.85rem;color:#4A5A66;margin-bottom:.4rem">Photos &amp; video</div>
+        <div style="font-size:.85rem;color:#4A5A66;margin-bottom:.4rem">${escapeHtml(t('pfMediaLabel'))}</div>
         ${mediaEditorHtml(media)}
       </div>
       <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required>${v('description')}</textarea></label>
@@ -2021,7 +2072,8 @@ async function renderAdminPanel() {
           ${registry.map(s => `<option value="${s.id}">${escapeHtml(s.company)}</option>`).join('')}
         </select>
       </label>
-      <label>${escapeHtml(t('pfCategory'))}<input name="category" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
+      <label>${escapeHtml(t('pfCategory'))}<input name="category" list="category-presets" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
+      ${categoryPresetsDatalist()}
       <label>${escapeHtml(t('pfName'))}<input name="name" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
       <label>${escapeHtml(t('pfLocation'))}<input name="location" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
       <label>${escapeHtml(t('pfPrice'))}<input name="price" placeholder="${escapeHtml(t('pfPricePh'))}" required /></label>
@@ -2030,7 +2082,7 @@ async function renderAdminPanel() {
       <label>${escapeHtml(t('pfCapacity'))}<input name="capacity" placeholder="${escapeHtml(t('pfCapacityPh'))}" /></label>
       <label>${escapeHtml(t('pfCertifications'))}<input name="certifications" placeholder="${escapeHtml(t('pfCertificationsPh'))}" /></label>
       <div class="wide">
-        <div style="font-size:.85rem;color:#4A5A66;margin-bottom:.4rem">Photos &amp; video</div>
+        <div style="font-size:.85rem;color:#4A5A66;margin-bottom:.4rem">${escapeHtml(t('pfMediaLabel'))}</div>
         ${mediaEditorHtml([])}
       </div>
       <label class="wide">${escapeHtml(t('pfDescription'))}<textarea name="description" rows="4" placeholder="${escapeHtml(t('pfDescriptionPh'))}" required></textarea></label>
@@ -2304,7 +2356,28 @@ quoteForm?.addEventListener('submit', async event => {
   }
 });
 
+// The category dropdown is fixed-positioned, so close it when anything scrolls.
+window.addEventListener('scroll', closeCategoryMenus, { passive: true });
+document.getElementById('category-list')?.addEventListener('scroll', closeCategoryMenus, { passive: true });
+
 document.addEventListener('click', async event => {
+  const groupBtn = event.target.closest('.cat-group-btn');
+  if (groupBtn) {
+    const menu = groupBtn.parentElement.querySelector('.cat-dropdown');
+    const wasOpen = menu && !menu.classList.contains('hidden');
+    closeCategoryMenus();
+    if (menu && !wasOpen) {
+      // The rail clips overflow, so the menu is fixed-positioned under the pill.
+      const rect = groupBtn.getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 6}px`;
+      menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 248))}px`;
+      menu.classList.remove('hidden');
+      groupBtn.setAttribute('aria-expanded', 'true');
+    }
+    return;
+  }
+  closeCategoryMenus();
+
   const scrollTarget = event.target.closest('[data-scroll-target]');
   if (scrollTarget) {
     scrollToId(scrollTarget.dataset.scrollTarget);
