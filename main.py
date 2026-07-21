@@ -741,6 +741,9 @@ def init_db():
     # credential — the same email/phone may back any number of companies.
     add_column_if_missing(db, "users", "contact_email", "TEXT DEFAULT ''")
     add_column_if_missing(db, "users", "contact_phone", "TEXT DEFAULT ''")
+    # Alt text for media. Free text; suppliers may author a localized string,
+    # otherwise the frontend composes a localized "<name> — photo N" fallback.
+    add_column_if_missing(db, "product_media", "alt_text", "TEXT DEFAULT ''")
 
     # Backfill product_media from the legacy image_url column (idempotent).
     db.execute(
@@ -1423,7 +1426,7 @@ _ALLOWED_MEDIA_TYPES = {"image", "video"}
 
 def _get_media(db, product_id):
     rows = db.execute(
-        "SELECT id, type, url, thumb_url, sort_order, is_primary FROM product_media "
+        "SELECT id, type, url, thumb_url, alt_text, sort_order, is_primary FROM product_media "
         "WHERE product_id = ? ORDER BY sort_order ASC",
         (product_id,),
     ).fetchall()
@@ -1445,16 +1448,17 @@ def _save_media(db, product_id, media_list, now):
         if len(url) > _MAX_MEDIA_URL:
             continue
         thumb = str(item.get("thumb_url", url)).strip() or url
+        alt = str(item.get("alt_text", "")).strip()[:_MAX_MEDIA_URL]
         is_primary = 1 if (item.get("is_primary") and not has_primary) else 0
         if is_primary:
             has_primary = True
         cursor = db.execute(
-            "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (product_id, kind, url, thumb, i, is_primary, now),
+            "INSERT INTO product_media (product_id, type, url, thumb_url, alt_text, sort_order, is_primary, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (product_id, kind, url, thumb, alt, i, is_primary, now),
         )
         saved.append({"id": cursor.lastrowid, "product_id": product_id, "type": kind,
-                      "url": url, "thumb_url": thumb, "sort_order": i, "is_primary": is_primary})
+                      "url": url, "thumb_url": thumb, "alt_text": alt, "sort_order": i, "is_primary": is_primary})
     # If caller sent rows but none were marked primary, promote first one.
     if saved and not has_primary:
         db.execute("UPDATE product_media SET is_primary=1 WHERE id=?", (saved[0]["id"],))
