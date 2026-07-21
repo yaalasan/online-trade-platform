@@ -4,65 +4,16 @@
    Single source of truth: no duplicate rules.
    ============================================================ */
 
-/* ---------- Design Tokens ---------- */
+/* ---------- Layout tokens ----------
+   Design tokens (color, type, space, radius, shadow, motion) now live in
+   static/css/tokens.css, loaded before this file. Only structural layout
+   variables remain here. */
 :root {
-  /* Brand */
-  --brand:       #e8400c;
-  --brand-dark:  #c23208;
-  --brand-light: #fff1ec;
-
-  /* Text */
-  --ink:         #111827;
-  --ink-2:       #374151;
-  --ink-3:       #6b7280;
-
-  /* Surface */
-  --border:      #e5e7eb;
-  --border-2:    #d1d5db;
-  --bg:          #f9fafb;
-  --bg-2:        #f3f4f6;
-  --white:       #ffffff;
-
-  /* Status */
-  --green:       #059669;
-  --green-bg:    #d1fae5;
-  --amber:       #b45309;
-  --amber-bg:    #fef3c7;
-
-  /* Radius */
-  --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   16px;
-  --radius-xl:   24px;
-
-  /* Shadow */
-  --shadow-sm:   0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-  --shadow-md:   0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
-  --shadow-lg:   0 20px 48px rgba(0,0,0,.10), 0 4px 12px rgba(0,0,0,.06);
-
-  /* Layout */
   --nav-h:       60px;
   --util-h:      38px;
   --cat-h:       46px;
   --header-total: calc(var(--util-h) + var(--nav-h) + var(--cat-h));
   --max-w:       1320px;
-
-  /* ---- Typography Scale ---- */
-  --fs-micro:  .6875rem;   /* 11px — badges, tiny labels    */
-  --fs-sm:     .8125rem;   /* 13px — meta, secondary text   */
-  --fs-base:   .9375rem;   /* 15px — body copy              */
-  --fs-md:     1rem;       /* 16px — slightly elevated body */
-  --fs-lg:     1.0625rem;  /* 17px — card titles, h4        */
-  --fs-xl:     1.25rem;    /* 20px — h3                     */
-  --fs-2xl:    1.625rem;   /* 26px — h2                     */
-  --fs-hero:   clamp(2.125rem, 3.8vw, 3.125rem); /* h1    */
-
-  /* ---- Font Weights ---- */
-  --fw-regular: 400;
-  --fw-medium:  500;
-  --fw-semi:    600;
-  --fw-bold:    700;
-  --fw-black:   800;
 }
 
 /* ---------- Reset ---------- */
@@ -70,7 +21,7 @@
 html { scroll-behavior: smooth; font-size: 16px; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
   color: var(--ink);
   background: var(--bg);
   line-height: 1.65;
