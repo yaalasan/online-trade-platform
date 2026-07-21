@@ -213,6 +213,16 @@ const translations = {
     detailPending: 'Pending',
     productUnavailable: 'Product unavailable',
     pdLoading: 'Loading…',
+    galEmpty: 'No photos yet — ask the supplier for product images.',
+    galStageLabel: 'Product media. Use arrow keys to browse, Enter to enlarge.',
+    galThumbsLabel: 'Product media thumbnails',
+    galLightboxLabel: 'Product image viewer',
+    galPrev: 'Previous',
+    galNext: 'Next',
+    galZoomOpen: 'View full screen',
+    galImageUnavailable: 'Image unavailable',
+    galPhotoOf: '{name} — photo {n} of {m}',
+    galVideoOf: 'Product video {n} of {m}',
     pdMinOrder: 'Min. order',
     pdTrustVetted: 'Manufacturer vetted by our team',
     pdTrustInspection: 'Pre-shipment inspection available',
@@ -516,6 +526,16 @@ const translations = {
     detailPending: '待定',
     productUnavailable: '产品不可用',
     pdLoading: '加载中…',
+    galEmpty: '暂无照片 — 请向供应商索取产品图片。',
+    galStageLabel: '产品图片。使用方向键浏览，回车键放大。',
+    galThumbsLabel: '产品图片缩略图',
+    galLightboxLabel: '产品图片查看器',
+    galPrev: '上一张',
+    galNext: '下一张',
+    galZoomOpen: '全屏查看',
+    galImageUnavailable: '图片无法显示',
+    galPhotoOf: '{name} — 第 {n}/{m} 张照片',
+    galVideoOf: '产品视频 {n}/{m}',
     pdMinOrder: '起订量',
     pdTrustVetted: '制造商经我们团队审核',
     pdTrustInspection: '可提供出货前验货',
@@ -819,6 +839,16 @@ const translations = {
     detailPending: 'В ожидании',
     productUnavailable: 'Товар недоступен',
     pdLoading: 'Загрузка…',
+    galEmpty: 'Фото пока нет — запросите изображения у поставщика.',
+    galStageLabel: 'Медиа товара. Стрелки — листать, Enter — увеличить.',
+    galThumbsLabel: 'Миниатюры медиа товара',
+    galLightboxLabel: 'Просмотр изображений товара',
+    galPrev: 'Назад',
+    galNext: 'Вперёд',
+    galZoomOpen: 'Полный экран',
+    galImageUnavailable: 'Изображение недоступно',
+    galPhotoOf: '{name} — фото {n} из {m}',
+    galVideoOf: 'Видео товара {n} из {m}',
     pdMinOrder: 'Мин. заказ',
     pdTrustVetted: 'Производитель проверен нашей командой',
     pdTrustInspection: 'Доступна предотгрузочная инспекция',
@@ -1366,44 +1396,132 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
   }
 }
 
-function galleryHtml(media, fallbackUrl, alt) {
-  const items = media && media.length
-    ? media
-    : (fallbackUrl ? [{ type: 'image', url: fallbackUrl, thumb_url: fallbackUrl, is_primary: true }] : []);
+/* ============================================================
+   Product media gallery (Phase 2)
+   ============================================================ */
 
-  if (!items.length) {
-    return `<div class="pd-gallery pd-no-img"><span>${escapeHtml(alt)}</span></div>`;
+// Only images.unsplash.com supports on-the-fly resizing/format via query
+// params. For those we generate real responsive variants + WebP; any other
+// host falls back to the raw URL (no server-side pipeline exists — see ledger).
+function galIsResizable(url) {
+  return /(^|\/\/|\.)images\.unsplash\.com\//.test(url || '');
+}
+function galVariant(url, w) {
+  if (!galIsResizable(url)) return url;
+  try {
+    const u = new URL(url, window.location.origin);
+    u.searchParams.set('auto', 'format');   // Unsplash negotiates WebP/AVIF
+    u.searchParams.set('fit', 'crop');
+    u.searchParams.set('q', '75');
+    u.searchParams.set('w', String(w));
+    return u.toString();
+  } catch (_) { return url; }
+}
+function galThumbSrc(item) {
+  const u = item.thumb_url && item.thumb_url !== item.url ? item.thumb_url : item.url;
+  return galIsResizable(u) ? galVariant(u, 160) : u;
+}
+function galFullSrc(url) { return galIsResizable(url) ? galVariant(url, 2048) : url; }
+
+// srcset/sizes attributes for a stage <img>. Primary is eager+high priority.
+function galImgAttrs(url, eager) {
+  const load = eager ? 'fetchpriority="high"' : 'loading="lazy"';
+  if (!galIsResizable(url)) {
+    return `src="${escapeHtml(url)}" ${load} decoding="async"`;
+  }
+  const widths = [480, 800, 1280, 1600, 2048];
+  const srcset = widths.map(w => `${escapeHtml(galVariant(url, w))} ${w}w`).join(', ');
+  return `src="${escapeHtml(galVariant(url, 1280))}" srcset="${srcset}" ` +
+         `sizes="(max-width: 680px) 92vw, 520px" ${load} decoding="async"`;
+}
+
+// Localized alt: supplier-authored alt_text wins; else "<name> — photo N of M".
+function galAlt(item, product, idx, total) {
+  if (item.alt_text) return item.alt_text;
+  const key = item.type === 'video' ? 'galVideoOf' : 'galPhotoOf';
+  return t(key).replace('{name}', product.name || '')
+               .replace('{n}', idx + 1).replace('{m}', total);
+}
+
+// Default order: primary first, otherwise the supplier's sort_order (already
+// applied by the API). Stable — semantic role ordering (full-shot → detail →
+// cert) needs per-media role metadata we don't yet capture (see ledger 2.6).
+function galOrder(media, fallbackUrl) {
+  let arr = (media && media.length) ? media.slice() : [];
+  if (!arr.length && fallbackUrl) {
+    arr = [{ type: 'image', url: fallbackUrl, thumb_url: fallbackUrl, is_primary: 1 }];
+  }
+  const p = arr.findIndex(m => m.is_primary);
+  if (p > 0) { const [primary] = arr.splice(p, 1); arr.unshift(primary); }
+  return arr;
+}
+
+function galStageInner(item, idx, total, product, eager) {
+  const alt = escapeHtml(galAlt(item, product, idx, total));
+  if (item.type === 'video') {
+    // Inline, controls, never autoplays with sound.
+    return `<video class="gal-media gal-video" src="${escapeHtml(item.url)}" controls ` +
+           `playsinline preload="metadata" aria-label="${alt}"></video>`;
+  }
+  return `<img class="gal-media gal-img" ${galImgAttrs(item.url, eager)} alt="${alt}" ` +
+         `data-full="${escapeHtml(galFullSrc(item.url))}" ` +
+         `onerror="galImgFail(this)" />`;
+}
+
+// Replace a failed image with a graceful tile that preserves layout.
+function galImgFail(img) {
+  img.onerror = null;
+  const tile = document.createElement('div');
+  tile.className = 'gal-fail';
+  tile.innerHTML = `<span aria-hidden="true">⚠</span><p>${escapeHtml(t('galImageUnavailable'))}</p>`;
+  img.replaceWith(tile);
+}
+
+function galleryHtml(media, fallbackUrl, product) {
+  const items = galOrder(media, fallbackUrl);
+  const total = items.length;
+
+  if (!total) {
+    const mark = escapeHtml((product.supplier || product.name || '?').slice(0, 2).toUpperCase());
+    return `<div class="gal gal--empty">
+      <div class="gal-empty">
+        <span class="gal-empty-mark" aria-hidden="true">${mark}</span>
+        <p>${escapeHtml(t('galEmpty'))}</p>
+      </div>
+    </div>`;
   }
 
-  const primary = items.find(m => m.is_primary) || items[0];
+  const active = items[0];
+  const multi = total > 1;
 
-  const stageInner = (item) => item.type === 'video'
-    ? `<video src="${escapeHtml(item.url)}" controls class="pd-main-video" preload="metadata"></video>`
-    : `<img src="${escapeHtml(item.url)}" alt="${escapeHtml(alt)}" class="pd-main-img" />`;
+  const nav = multi ? `
+    <button class="gal-nav gal-prev" id="gal-prev" type="button" aria-label="${escapeHtml(t('galPrev'))}" disabled>‹</button>
+    <button class="gal-nav gal-next" id="gal-next" type="button" aria-label="${escapeHtml(t('galNext'))}">›</button>
+    <div class="gal-counter" id="gal-counter" aria-hidden="true">1 / ${total}</div>` : '';
 
-  const thumbRail = items.length > 1
-    ? `<div class="pd-thumb-rail" id="pd-thumb-rail">${items.map(m =>
-        `<button class="pd-thumb${m === primary ? ' active' : ''}" type="button"
-          data-url="${escapeHtml(m.url)}" data-type="${escapeHtml(m.type || 'image')}"
-          aria-label="${escapeHtml(m.type === 'video' ? 'Video' : 'Image')}">
+  const expand = active.type !== 'video'
+    ? `<button class="gal-expand" id="gal-expand" type="button" aria-label="${escapeHtml(t('galZoomOpen'))}">⤢</button>`
+    : '';
+
+  const stage = `<div class="gal-stage" id="gal-stage" tabindex="0" role="group"
+      aria-roledescription="carousel" aria-label="${escapeHtml(t('galStageLabel'))}">
+      <div class="gal-stage-inner" id="gal-stage-inner">${galStageInner(active, 0, total, product, true)}</div>
+      <div class="gal-lens" id="gal-lens" aria-hidden="true"></div>
+      ${nav}${expand}
+    </div>`;
+
+  const rail = multi ? `<div class="gal-rail" id="gal-rail" role="tablist" aria-label="${escapeHtml(t('galThumbsLabel'))}">
+      ${items.map((m, i) => `<button class="gal-thumb${i === 0 ? ' is-active' : ''}" type="button" role="tab"
+          aria-selected="${i === 0 ? 'true' : 'false'}" data-idx="${i}"
+          aria-label="${escapeHtml(galAlt(m, product, i, total))}">
           ${m.type === 'video'
-            ? `<div class="pd-thumb-play">▶</div>`
-            : `<img src="${escapeHtml(m.thumb_url || m.url)}" alt="" loading="lazy" />`}
-        </button>`).join('')}</div>`
-    : '';
+            ? `<span class="gal-thumb-play" aria-hidden="true">▶</span>`
+            : `<img src="${escapeHtml(galThumbSrc(m))}" alt="" loading="lazy" decoding="async" width="72" height="72" />`}
+          <span class="gal-thumb-ring" aria-hidden="true"></span>
+        </button>`).join('')}
+    </div>` : '';
 
-  const arrows = items.length > 1
-    ? `<button class="pd-arrow pd-arrow-prev" id="pd-arrow-prev" aria-label="Previous">&#8249;</button>
-       <button class="pd-arrow pd-arrow-next" id="pd-arrow-next" aria-label="Next">&#8250;</button>`
-    : '';
-
-  return `<div class="pd-gallery-wrap">
-    <div class="pd-main-stage" id="pd-main-stage">
-      ${stageInner(primary)}
-      ${arrows}
-    </div>
-    ${thumbRail}
-  </div>`;
+  return `<div class="gal" data-count="${total}">${stage}${rail}</div>`;
 }
 
 async function openProductDetail(productId) {
@@ -1440,7 +1558,7 @@ async function openProductDetail(productId) {
   openModal(`
     <div class="pd">
       <div class="pd-hero">
-        ${galleryHtml(product.media || [], product.image_url, product.name)}
+        ${galleryHtml(product.media || [], product.image_url, product)}
         <div class="pd-buy">
           <span class="pd-eyebrow">${escapeHtml(tCategory(product.category || ''))}</span>
           <h2 class="pd-title">${escapeHtml(product.name)}</h2>
@@ -1501,47 +1619,64 @@ async function openProductDetail(productId) {
     </div>
   `, { wide: true });
 
-  // Wire gallery: thumbnails + prev/next arrows share one index
-  const thumbRail = document.getElementById('pd-thumb-rail');
-  const mainStage = document.getElementById('pd-main-stage');
-  if (mainStage) {
-    const mediaItems = product.media && product.media.length
-      ? product.media
-      : (product.image_url ? [{ type: 'image', url: product.image_url, thumb_url: product.image_url }] : []);
-    const thumbBtns = thumbRail ? Array.from(thumbRail.querySelectorAll('.pd-thumb')) : [];
-    let idx = thumbBtns.findIndex(b => b.classList.contains('active'));
-    if (idx < 0) idx = 0;
-
-    function goTo(i) {
-      idx = (i + mediaItems.length) % mediaItems.length;
-      const item = mediaItems[idx];
-      // Swap stage content but keep arrow buttons
-      const arrows = mainStage.querySelectorAll('.pd-arrow');
-      mainStage.innerHTML = item.type === 'video'
-        ? `<video src="${escapeHtml(item.url)}" controls class="pd-main-video" autoplay></video>`
-        : `<img src="${escapeHtml(item.url)}" alt="" class="pd-main-img" />`;
-      arrows.forEach(a => mainStage.appendChild(a));
-      thumbBtns.forEach((b, j) => b.classList.toggle('active', j === idx));
-      if (thumbBtns[idx]) thumbBtns[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-
-    if (thumbRail) {
-      thumbRail.addEventListener('click', e => {
-        const btn = e.target.closest('.pd-thumb');
-        if (!btn) return;
-        goTo(thumbBtns.indexOf(btn));
-      });
-    }
-
-    document.getElementById('pd-arrow-prev')?.addEventListener('click', () => goTo(idx - 1));
-    document.getElementById('pd-arrow-next')?.addEventListener('click', () => goTo(idx + 1));
-  }
+  wireGallery(product);
 
   // Wire up the inquiry form
   const submitBtn = document.querySelector('.pd-submit');
   if (submitBtn) {
     submitBtn.addEventListener('click', () => submitProductInquiry(product.id));
   }
+}
+
+// Gallery controller: thumbnail/stage sync, disable-at-ends nav, keyboard.
+// (Lightbox + hover-magnify + video handling added in 2.3.)
+function wireGallery(product) {
+  const gal = document.querySelector('.gal');
+  if (!gal || gal.classList.contains('gal--empty')) return;
+  const media = galOrder(product.media || [], product.image_url);
+  const total = media.length;
+  const stage = document.getElementById('gal-stage');
+  const inner = document.getElementById('gal-stage-inner');
+  const rail = document.getElementById('gal-rail');
+  const counter = document.getElementById('gal-counter');
+  const prev = document.getElementById('gal-prev');
+  const next = document.getElementById('gal-next');
+  const thumbs = rail ? Array.from(rail.querySelectorAll('.gal-thumb')) : [];
+  let idx = 0;
+
+  function sync() {
+    thumbs.forEach((b, i) => {
+      const on = i === idx;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (counter) counter.textContent = `${idx + 1} / ${total}`;
+    if (prev) prev.disabled = idx === 0;
+    if (next) next.disabled = idx === total - 1;
+    if (thumbs[idx]) thumbs[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+
+  function go(i) {
+    const n = Math.max(0, Math.min(total - 1, i));
+    if (n === idx) return;
+    idx = n;
+    inner.innerHTML = galStageInner(media[idx], idx, total, product, false);
+    sync();
+  }
+  wireGallery._go = go;   // exposed so 2.3 lightbox can sync the stage
+
+  prev?.addEventListener('click', () => go(idx - 1));
+  next?.addEventListener('click', () => go(idx + 1));
+  rail?.addEventListener('click', e => {
+    const b = e.target.closest('.gal-thumb');
+    if (b) go(Number(b.dataset.idx));
+  });
+  stage?.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(idx - 1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); go(idx + 1); }
+  });
+
+  sync();  // idempotent with the eager-rendered initial DOM
 }
 
 async function submitProductInquiry(productId) {

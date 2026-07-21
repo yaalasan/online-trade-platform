@@ -1261,23 +1261,113 @@ dl { margin: 0; }
 .pd-hero { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
 @media (max-width: 680px) { .pd-hero { grid-template-columns: 1fr; } }
 
-.pd-gallery { background: #0d1418; border-radius: 10px; overflow: hidden; aspect-ratio: 4/3; }
-.pd-gallery img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pd-gallery-wrap { display: flex; flex-direction: column; gap: .35rem; border-radius: 10px; overflow: hidden; background: #0d1418; }
-.pd-main-stage { aspect-ratio: 4/3; overflow: hidden; position: relative; }
-.pd-main-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pd-main-video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
-.pd-thumb-rail { display: flex; gap: .3rem; padding: .35rem .4rem; overflow-x: auto; scrollbar-width: thin; }
-.pd-thumb { flex: 0 0 56px; height: 42px; border: 2px solid transparent; border-radius: 4px; overflow: hidden; padding: 0; cursor: pointer; background: #1a2b35; }
-.pd-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pd-thumb.active { border-color: #0C7B69; }
-.pd-thumb:hover:not(.active) { border-color: #4a8a80; }
-.pd-thumb-play { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
-.pd-no-img { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; }
-.pd-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.45); color: #fff; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 22px; line-height: 1; cursor: pointer; z-index: 2; display: flex; align-items: center; justify-content: center; transition: background .15s; }
-.pd-arrow:hover { background: rgba(0,0,0,.75); }
-.pd-arrow-prev { left: 8px; }
-.pd-arrow-next { right: 8px; }
+/* ---------- Product media gallery (.gal — Phase 2) ---------- */
+.gal { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+
+/* Fixed aspect-ratio stage: page never shifts as media loads. */
+.gal-stage {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--slate-900);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: zoom-in;
+  outline: none;
+}
+.gal-stage:focus-visible { box-shadow: var(--focus-ring); }
+.gal-stage-inner { width: 100%; height: 100%; }
+/* contain (not cover): never crop product detail the buyer needs. */
+.gal-media { width: 100%; height: 100%; object-fit: contain; display: block; }
+.gal-video { background: #000; cursor: default; }
+
+/* Nav arrows — hidden state handled via :disabled */
+.gal-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%;
+  background: rgba(15, 27, 36, .55); color: #fff;
+  font-size: 24px; line-height: 1; cursor: pointer; z-index: 3;
+  transition: background var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.gal-nav:hover { background: rgba(15, 27, 36, .8); box-shadow: none; }
+.gal-prev { left: 10px; }
+.gal-next { right: 10px; }
+.gal-nav:disabled { opacity: 0; pointer-events: none; }
+
+.gal-counter {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  padding: 3px 10px; border-radius: 999px;
+  background: rgba(15, 27, 36, .6); color: #fff;
+  font-size: var(--fs-micro); font-weight: var(--fw-semi); letter-spacing: .04em;
+  z-index: 3; pointer-events: none;
+}
+.gal-expand {
+  position: absolute; top: 10px; right: 10px;
+  width: 36px; height: 36px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: none; border-radius: var(--radius-sm);
+  background: rgba(15, 27, 36, .55); color: #fff;
+  font-size: 18px; cursor: pointer; z-index: 3;
+}
+.gal-expand:hover { background: rgba(15, 27, 36, .8); box-shadow: none; }
+
+/* Thumbnail strip — horizontal, scroll-snaps, never wraps. */
+.gal-rail {
+  display: flex; gap: var(--space-2);
+  overflow-x: auto; scroll-snap-type: x proximity;
+  padding: 2px; scrollbar-width: thin;
+}
+.gal-thumb {
+  position: relative; flex: 0 0 auto;
+  width: 64px; height: 64px; padding: 0;
+  border: var(--bw-2) solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden; cursor: pointer; background: var(--surface-sunken);
+  scroll-snap-align: center;
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.gal-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.gal-thumb-play {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 18px; background: var(--surface-sunken);
+}
+.gal-thumb:hover:not(.is-active) { border-color: var(--border-strong); }
+/* Active state uses more than colour: thicker accent border, inset ring, lift. */
+.gal-thumb.is-active { border-color: var(--accent); transform: translateY(-1px); }
+.gal-thumb-ring { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+.gal-thumb.is-active .gal-thumb-ring { box-shadow: inset 0 0 0 var(--bw-2) var(--surface-raised); }
+
+/* Empty state — real placeholder, supplier-facing line, no orphan controls. */
+.gal--empty .gal-empty {
+  aspect-ratio: 4 / 3; border-radius: var(--radius-md);
+  background: var(--surface-sunken); border: var(--bw-1) dashed var(--border-strong);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3);
+  color: var(--text-subtle); text-align: center; padding: var(--space-5);
+}
+.gal-empty-mark {
+  width: 56px; height: 56px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-raised); color: var(--text-muted);
+  font-weight: var(--fw-black); font-size: var(--fs-4);
+}
+.gal-empty p { font-size: var(--fs-1); max-width: 26ch; }
+
+/* Image-load failure tile — keeps the box, no collapsed layout. */
+.gal-fail {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2);
+  background: var(--surface-sunken); color: var(--text-subtle);
+}
+.gal-fail span { font-size: var(--fs-5); }
+.gal-fail p { font-size: var(--fs-1); }
+
+/* Hover-magnify lens (desktop) — wired in 2.3 */
+.gal-lens {
+  display: none; position: absolute; z-index: 2;
+  border: var(--bw-1) solid var(--surface-raised);
+  background: rgba(255, 255, 255, .18); pointer-events: none;
+}
 
 .pd-buy { display: flex; flex-direction: column; gap: 10px; }
 .pd-eyebrow { font-size: 11px; font-weight: 600; color: var(--pd-brand); text-transform: uppercase; letter-spacing: .06em; }
