@@ -1425,9 +1425,13 @@ _ALLOWED_MEDIA_TYPES = {"image", "video"}
 
 
 def _get_media(db, product_id):
+    # Default order (2.6): the primary (clearest full-product shot) leads, then
+    # the supplier's explicit sort_order. Full semantic ordering — scale/dim ref
+    # -> detail -> context -> certs — needs a per-media `role` field suppliers
+    # would set in the portal; not captured yet (see ledger 2.6, BLOCKED).
     rows = db.execute(
         "SELECT id, type, url, thumb_url, alt_text, sort_order, is_primary FROM product_media "
-        "WHERE product_id = ? ORDER BY sort_order ASC",
+        "WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC, id ASC",
         (product_id,),
     ).fetchall()
     return [dict(r) for r in rows]
