@@ -1498,7 +1498,15 @@ dl { margin: 0; }
 .feedback { font-weight: var(--fw-semi); font-size: var(--fs-base); }
 .feedback.success { color: var(--green); }
 .feedback.error, .error { color: #dc2626; }
-.empty-state { color: var(--ink-3); font-size: var(--fs-base); }
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
+  text-align: center; color: var(--text-muted); font-size: var(--fs-base);
+  padding: var(--space-7) var(--space-4);
+  background: var(--surface-raised); border: var(--bw-1) dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+.empty-state p { max-width: 42ch; margin: 0; }
 .muted, .notice { color: var(--ink-3); font-size: var(--fs-base); }
 
 /* ---------- Modal ---------- */

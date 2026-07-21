@@ -203,6 +203,9 @@ const translations = {
     cardRequestQuote: 'Request quote',
     cardViewDetails: 'View details',
     marketplaceEmpty: 'No matching products found.',
+    emptyCtaSource: 'Tell us what you\'re sourcing',
+    emptyProductsLead: 'Nothing here yet — post what you need and we\'ll match you with verified factories.',
+    emptySuppliersLead: 'No suppliers to show yet — tell us your category and we\'ll introduce qualified factories.',
     marketplaceError: 'Unable to load marketplace data.',
     categoriesError: 'Categories unavailable.',
     auditError: 'Unable to load audit trail.',
@@ -529,6 +532,9 @@ const translations = {
     cardRequestQuote: '索取报价',
     cardViewDetails: '查看详情',
     marketplaceEmpty: '未找到匹配的产品。',
+    emptyCtaSource: '告诉我们您的采购需求',
+    emptyProductsLead: '这里还没有内容 — 发布您的采购需求，我们将为您匹配认证工厂。',
+    emptySuppliersLead: '暂无可显示的供应商 — 告诉我们您的品类，我们将为您推荐合格工厂。',
     marketplaceError: '无法加载产品数据。',
     categoriesError: '品类暂不可用。',
     auditError: '无法加载审计记录。',
@@ -855,6 +861,9 @@ const translations = {
     cardRequestQuote: 'Запросить цену',
     cardViewDetails: 'Подробнее',
     marketplaceEmpty: 'Подходящие товары не найдены.',
+    emptyCtaSource: 'Расскажите, что вы ищете',
+    emptyProductsLead: 'Пока пусто — опишите, что вам нужно, и мы подберём проверенные фабрики.',
+    emptySuppliersLead: 'Поставщиков пока нет — укажите категорию, и мы представим подходящие фабрики.',
     marketplaceError: 'Не удалось загрузить товары.',
     categoriesError: 'Категории недоступны.',
     auditError: 'Не удалось загрузить журнал аудита.',
@@ -1240,6 +1249,15 @@ async function init() {
   applyTranslations();
 }
 
+// Actionable empty state (4.2): a lead line + a CTA that opens the RFQ/contact
+// path, so an empty screen invites action instead of dead-ending.
+function emptyStateHtml(leadKey) {
+  return `<div class="empty-state">
+    <p>${escapeHtml(t(leadKey))}</p>
+    <button type="button" class="secondary" data-scroll-target="contact">${escapeHtml(t('emptyCtaSource'))}</button>
+  </div>`;
+}
+
 async function loadOverview() {
   try {
     const data = await apiFetch('/api/overview');
@@ -1419,7 +1437,7 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
     const categories = data.categories || [];
 
     if (!categories.length || categories.every(c => !c.items.length)) {
-      marketplaceGrid.innerHTML = `<p class="empty-state">${escapeHtml(t('marketplaceEmpty'))}</p>`;
+      marketplaceGrid.innerHTML = emptyStateHtml('emptyProductsLead');
       marketplaceGrid.className = 'marketplace-sections';
       return;
     }
@@ -1992,7 +2010,7 @@ async function loadSuppliers(query = '') {
           </dl>
         </div>
       </article>
-    `).join('') : `<p class="empty-state">${escapeHtml(t('suppliersEmpty'))}</p>`;
+    `).join('') : emptyStateHtml('emptySuppliersLead');
   } catch (error) {
     supplierGrid.innerHTML = `<p class="error">${escapeHtml(t('suppliersError'))}</p>`;
   }
