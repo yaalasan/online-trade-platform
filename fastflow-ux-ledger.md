@@ -119,4 +119,46 @@ BLOCKED: the full heuristic — full-shot → scale/dimension ref → detail clo
 
 ---
 
-_Phase 2 complete — stopped for go-ahead before Phase 3._
+## 3.1 — Hierarchy
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js, static/styles.css
+What changed: Rebuilt the PDP modal as a grid (`gallery`/`buy`/`main` areas). Above the fold: gallery + a buy card carrying category, title, supplier name + verification badge, price, MOQ, and key facts (lead time, capacity), then the primary CTA. Description, specs, and the inquiry form moved into the scrolling `main` column below.
+Verified by: docs/ux-shots/pd3-desktop.png (core buying info above the fold).
+
+## 3.2 — Sticky CTA
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js, static/styles.css
+What changed: The buy card is `position: sticky` in the right column on desktop, so the CTA stays visible while specs/inquiry scroll. On mobile the grid reorders the buy card directly under the gallery AND a `.pd-mobilecta` sticky bottom bar (price + Request quote) pins to the viewport bottom.
+Verified by: computed `position: sticky` on `.pd-side`; docs/ux-shots/pd3-mobile.png shows the pinned bottom bar.
+
+## 3.3 — Specifications table + collapsibles
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js, static/styles.css
+What changed: Specs render as a real `<table class="pd-spec">` (th scope=row / td), not a div blob. Description and Specifications are `<details class="pd-collapse" open>` — expanded by default, collapsible with a rotating chevron and a keyboard-focusable summary.
+Verified by: docs/ux-shots/pd3-validation.png shows the spec table (Material/Tolerance/Certification); 2 `details.pd-collapse` present.
+
+## 3.4 — Supplier trust signals
+Status: DONE (one slot BLOCKED, no fabrication)
+Date: 2026-07-21
+Files touched: main.py, static/app.js, static/styles.css
+What changed: A supplier trust card surfaces verification status (badge), location, and "On Fastflow since &lt;year&gt;" (`supplier_since`, from the account's `created_at`). Response rate is shown as a real slot reading "Not yet rated" — it is **not** tracked, so no number is invented.
+Verified by: trust grid renders `['Verified supplier','Response rate','On Fastflow since']` with the response slot = "Not yet rated".
+BLOCKED: real response-rate / years-in-business data doesn't exist. **Need from you:** whether to start tracking supplier response times (and add a company-founded field) so these become real numbers.
+
+## 3.5 — RFQ form
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js, static/styles.css
+What changed: `submitProductInquiry` now shows per-field inline errors that state what's wrong and how to fix it (`aria-invalid` + amber field styling + focus moves to the first bad field), a real loading spinner on the submit button (`.is-loading` + `aria-busy`), and a success state that names the supplier, the reply channel (their email → your address), and when to expect a reply. Server/network errors surface in a form-level `role="alert"` slot; copy is specific, never apologetic-vague.
+Verified by: empty submit → 3 field errors + focus on name; valid submit → success card "Inquiry sent to Aurora Alloys / …reply within 1–2 business days…" (docs/ux-shots/pd3-validation.png, pd3-success.png).
+
+### FOUND (fixed during Phase 3)
+- FOUND-6: the PDP inquiry POST omitted the `X-CSRF-Token` header while the endpoint enforces CSRF on all POST `/api/` — every submit was failing with 400. The RFQ (the page's single job) had been non-functional. **Fixed** in 3.5 (header now sent).
+- FOUND-7: the inquiry submit button carried `data-product-id`, which the global delegate (app.js) uses to open the PDP — so clicking submit re-opened the modal instead of submitting. **Fixed** (attribute removed; handler binds by class).
+
+---
+
+_Phase 3 complete — stopped for go-ahead before Phase 4._
