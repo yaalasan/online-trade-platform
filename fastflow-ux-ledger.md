@@ -68,4 +68,55 @@ Verified by: keyboard Tab landing on the Search button yields computed `box-shad
 
 ---
 
-_Phase 1 complete — stopped for go-ahead before Phase 2._
+## 2.1 — Data layer
+Status: DONE
+Date: 2026-07-21
+Files touched: main.py
+What changed: Added `product_media.alt_text` via idempotent startup migration; `_get_media` returns it, `_save_media` persists it. Media already supported ordered rows (`sort_order`), `is_primary`, and `image`/`video` types. Per-language alt is free text authored by suppliers; the gallery composes a localized `"<name> — photo N of M"` fallback when it's empty.
+Verified by: PRAGMA shows the new column; `/api/products/5` returns `alt_text` in each media row.
+
+## 2.2 — Layout
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js, static/styles.css
+What changed: Rebuilt the gallery (`galleryHtml` + `.gal*` CSS). Fixed-aspect-ratio stage (contain-fit so product detail is never cropped, addressing the Phase-0 cover-crop finding); horizontal scroll-snap thumbnail strip (64px targets ≥44px, never wraps); active thumb marked by accent border + inset ring + lift (not colour alone); prev/next disable at the ends (removed the silent modulo wrap); overlay `N / M` counter. New i18n keys in en/zh/ru. ArrowLeft/Right navigate when the stage is focused.
+Verified by: renders at 1440 + 390 with 1/2/12 items and a video in position 3 (docs/ux-shots/gal-desktop-12.png, gal-mobile-12.png); single-item = no rail/arrows/counter; disable-at-ends confirmed (prev off at 1/12, next off at 12/12).
+
+## 2.3 — Interaction
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js, static/styles.css
+What changed: Click/Enter on the stage (or expand button) opens a fullscreen lightbox — dimmed backdrop, large image, close/prev/next, counter, focus trapped, Escape closes and returns focus to the stage, arrow keys navigate, prev/next disable at ends. Desktop hover-magnify shows the zoomed region BESIDE the original (lens on source + side panel) so context is kept; mobile pinch works inside the lightbox (`touch-action: pinch-zoom`). Video plays inline with controls, never autoplays with sound; expand/zoom suppressed on video frames (fixes the old autoplay-without-mute bug).
+Verified by: docs/ux-shots/gal-magnify.png (panel beside original), gal-lightbox.png; scripted checks — focus starts on close, ArrowRight advances lightbox, Escape restores focus, magnify panel display=block, video has no autoplay attr.
+
+## 2.4 — Image pipeline
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js
+What changed: 5-width `srcset` + `sizes`; eager primary with `fetchpriority="high"` vs `loading="lazy"` for the rest; real 160px thumbnails (no more full-size-scaled-in-CSS — the Phase-0 defect); 2048px lightbox source; WebP/AVIF via Unsplash `auto=format` content-negotiation (no build step). Added explicit `width`/`height` on the stage `<img>` to reserve the 4:3 box.
+Verified by: helper output shows correct srcset/sizes/fetchpriority/thumb-160/full-2048; **gallery CLS on real click-to-open = 0.0000** (stage height stable at 351px through image load).
+Limitation: for non-`images.unsplash.com` supplier URLs there are no server-side variants (no upload/resize pipeline exists) — those fall back to a single `src`. Real variant generation on upload is supplier-portal scope, out of this work order.
+
+## 2.5 — Empty and failure states
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js, static/styles.css
+What changed: Zero media → dashed placeholder with supplier initials + supplier-facing line, no orphan controls. One image → stage only. Image-load failure → graceful "Image unavailable" tile that preserves the reserved box (stage + lightbox). Fixed a real bug uncovered here: the inline `onerror` handler I first used is blocked by CSP (`default-src 'self'`); failures are now caught by a JS listener (`galGuardImg`) that also detects images already broken before wiring.
+Verified by: docs/ux-shots/gal-empty.png, gal-fail.png; scripted — fail tile shows with stage height 351px preserved; empty placeholder text renders.
+
+## 2.6 — Ordering rule
+Status: DONE (partial — semantic ordering BLOCKED)
+Date: 2026-07-21
+Files touched: main.py
+What changed: `_get_media` orders by `is_primary DESC, sort_order ASC, id ASC` — the primary (clearest full-product shot the broker/supplier marked) always leads, then the supplier's explicit order. `galOrder` mirrors this on the frontend.
+Verified by: a primary planted at `sort_order 3` still renders first via the API.
+BLOCKED: the full heuristic — full-shot → scale/dimension ref → detail close-up → context/application → certs/packaging — needs a per-media `role` field that suppliers would tag in the portal. We don't capture it and it can't be reliably inferred from a URL. **Need from you:** decide whether to add a `role` enum to `product_media` (+ portal authoring UI) in a later phase.
+
+### Phase 2 acceptance
+- Fully keyboard-operable: PASS end-to-end (card → Enter opens PDP → stage ArrowRight navigates → Enter opens lightbox, focus on close → lightbox ArrowRight → Escape closes and returns focus to stage).
+- Zero CLS on load: PASS (0.0000 on real click-to-open).
+- Works at 390px: PASS. Works with 1/2/12 items: PASS. Video in position 3: PASS.
+
+---
+
+_Phase 2 complete — stopped for go-ahead before Phase 3._
