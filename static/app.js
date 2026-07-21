@@ -1463,19 +1463,27 @@ function galStageInner(item, idx, total, product, eager) {
     return `<video class="gal-media gal-video" src="${escapeHtml(item.url)}" controls ` +
            `playsinline preload="metadata" aria-label="${alt}"></video>`;
   }
+  // No inline onerror — CSP (default-src 'self') blocks inline handlers.
+  // Failures are caught by a JS listener wired in wireGallery/lightbox.
   return `<img class="gal-media gal-img" ${galImgAttrs(item.url, eager)} alt="${alt}" ` +
          `width="800" height="600" ` +   // reserve 4:3 intrinsic ratio → no layout shift
-         `data-full="${escapeHtml(galFullSrc(item.url))}" ` +
-         `onerror="galImgFail(this)" />`;
+         `data-full="${escapeHtml(galFullSrc(item.url))}" />`;
 }
 
 // Replace a failed image with a graceful tile that preserves layout.
 function galImgFail(img) {
-  img.onerror = null;
+  if (!img || !img.parentNode) return;
   const tile = document.createElement('div');
   tile.className = 'gal-fail';
   tile.innerHTML = `<span aria-hidden="true">⚠</span><p>${escapeHtml(t('galImageUnavailable'))}</p>`;
   img.replaceWith(tile);
+}
+
+// Attach a failure guard (and catch images that already errored before wiring).
+function galGuardImg(img) {
+  if (!img) return;
+  if (img.complete && img.naturalWidth === 0) { galImgFail(img); return; }
+  img.addEventListener('error', () => galImgFail(img), { once: true });
 }
 
 function galleryHtml(media, fallbackUrl, product) {
@@ -1669,6 +1677,7 @@ function wireGallery(product) {
     idx = n;
     inner.innerHTML = galStageInner(media[idx], idx, total, product, false);
     sync();
+    galGuardImg(inner.querySelector('.gal-img'));
     attachZoom();
   }
 
@@ -1759,6 +1768,7 @@ function wireGallery(product) {
           <div class="gal-lb-counter">${li + 1} / ${total}</div>` : ''}
         <div class="gal-lb-stage">${body}</div>`;
       overlay.querySelector('[data-lb="close"]').focus();
+      galGuardImg(overlay.querySelector('.gal-lb-media'));
     }
     function lbGo(i) { li = Math.max(0, Math.min(total - 1, i)); paint(); }
     function close() {
@@ -1795,6 +1805,7 @@ function wireGallery(product) {
 
   expandBtn?.addEventListener('click', () => openLightbox(idx));
   sync();       // idempotent with the eager-rendered initial DOM
+  galGuardImg(inner.querySelector('.gal-img')); // guard the eager primary image
   attachZoom(); // wire magnify onto the eager primary image
 }
 
