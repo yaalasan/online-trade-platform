@@ -1464,6 +1464,7 @@ function galStageInner(item, idx, total, product, eager) {
            `playsinline preload="metadata" aria-label="${alt}"></video>`;
   }
   return `<img class="gal-media gal-img" ${galImgAttrs(item.url, eager)} alt="${alt}" ` +
+         `width="800" height="600" ` +   // reserve 4:3 intrinsic ratio → no layout shift
          `data-full="${escapeHtml(galFullSrc(item.url))}" ` +
          `onerror="galImgFail(this)" />`;
 }
