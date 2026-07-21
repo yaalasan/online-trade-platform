@@ -1600,14 +1600,20 @@ def product_detail(product_id):
     # Public contact info of the owning manufacturer (broker-managed registry).
     product["supplier_contact_email"] = ""
     product["supplier_contact_phone"] = ""
+    # Trust signals (3.4). Only real data — supplier_since is the platform
+    # membership year (NOT company age); response_rate is not tracked, so it is
+    # deliberately omitted and the UI shows a "not yet rated" slot.
+    product["supplier_since"] = ""
     if product.get("supplier_id"):
         owner = db.execute(
-            "SELECT contact_email, contact_phone FROM users WHERE id = ?",
+            "SELECT contact_email, contact_phone, created_at FROM users WHERE id = ?",
             (product["supplier_id"],),
         ).fetchone()
         if owner:
             product["supplier_contact_email"] = owner["contact_email"] or ""
             product["supplier_contact_phone"] = owner["contact_phone"] or ""
+            created = owner["created_at"] or ""
+            product["supplier_since"] = created[:4] if len(created) >= 4 and created[:4].isdigit() else ""
     return jsonify({"product": product})
 
 
