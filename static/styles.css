@@ -905,7 +905,7 @@ dl { margin: 0; }
 }
 .status-pill.good { background: var(--green-bg); color: var(--green); }
 .status-pill.warn { background: var(--amber-bg); color: var(--amber); }
-.status-pill.translated-badge { background: #dbeafe; color: #1d4ed8; }
+.status-pill.translated-badge { background: var(--info-soft); color: var(--info); }
 
 .card-pills { display: flex; flex-wrap: wrap; gap: .3rem; }
 
@@ -1540,3 +1540,100 @@ footer {
   .hero-actions { flex-direction: column; align-items: stretch; }
   .hero-actions .text-button { align-self: center; }
 }
+
+/* ============================================================
+   Phase 1.3 — Canonical primitives (token-driven)
+   Appended so these additions win predictably in the cascade.
+   New markup should use these; complex existing components
+   (product-card/supplier-card) migrate onto .card in Phase 5.
+   ============================================================ */
+
+/* ---- Button: ghost variant (completes primary/secondary/ghost) ---- */
+.ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text);
+  font-weight: var(--fw-semi);
+}
+.ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+
+/* ---- Button states: disabled + loading (any variant) ---- */
+button:disabled,
+button[disabled],
+.btn-disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+  pointer-events: none;
+}
+/* Loading: hide the label, show a spinner. No !important needed — this
+   rule is later in source order and same specificity as .primary, and
+   loading buttons have pointer-events:none so :hover never overrides. */
+.is-loading {
+  color: transparent;
+  pointer-events: none;
+  position: relative;
+}
+.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1.05em;
+  height: 1.05em;
+  margin: -.525em 0 0 -.525em;
+  border: 2px solid var(--accent);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ff-spin .6s linear infinite;
+}
+.primary.is-loading::after { border-color: var(--accent-contrast); border-right-color: transparent; }
+@keyframes ff-spin { to { transform: rotate(360deg); } }
+
+/* ---- Form controls: disabled + invalid states ---- */
+input:disabled, select:disabled, textarea:disabled {
+  background: var(--surface-sunken);
+  color: var(--text-subtle);
+  cursor: not-allowed;
+}
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"],
+.is-invalid {
+  border-color: var(--warning);
+}
+input[aria-invalid="true"]:focus, textarea[aria-invalid="true"]:focus, select[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(180, 83, 9, .15);
+}
+
+/* ---- Canonical card primitive ---- */
+.card {
+  background: var(--surface-raised);
+  border: var(--bw-1) solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+}
+.card:hover { box-shadow: var(--shadow-md); }
+
+/* ---- Canonical badge primitive (status-pill is the legacy alias) ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  border-radius: 999px;
+  padding: .2rem .6rem;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+.badge-success { background: var(--success-soft); color: var(--success); }
+.badge-warning { background: var(--warning-soft); color: var(--warning); }
+.badge-info    { background: var(--info-soft);    color: var(--info); }

@@ -29,6 +29,8 @@
   --green-raw-soft: #d6f3e6;
   --amber-raw:      #b45309;
   --amber-raw-soft: #fef3c7;
+  --info-raw:       #1d4ed8;   /* informational (e.g. AI-translated) */
+  --info-raw-soft:  #dbeafe;
 
   /* ---------------------------------------------------------
      SEMANTIC ALIASES (use these in new code)
@@ -49,6 +51,8 @@
   --success-soft:    var(--green-raw-soft);
   --warning:         var(--amber-raw);
   --warning-soft:    var(--amber-raw-soft);
+  --info:            var(--info-raw);
+  --info-soft:       var(--info-raw-soft);
 
   /* ---------------------------------------------------------
      TYPOGRAPHY — one body face that renders Latin + Cyrillic
