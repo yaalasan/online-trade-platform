@@ -1637,3 +1637,25 @@ input[aria-invalid="true"]:focus, textarea[aria-invalid="true"]:focus, select[ar
 .badge-success { background: var(--success-soft); color: var(--success); }
 .badge-warning { background: var(--warning-soft); color: var(--warning); }
 .badge-info    { background: var(--info-soft);    color: var(--info); }
+
+/* ============================================================
+   Phase 1.4 — Keyboard focus states
+   Visible focus ring (white halo + accent ring, >=3:1 on light
+   surfaces). Explicit selectors so these tie/beat the existing
+   :focus rules in source order. Mouse clicks don't trigger
+   :focus-visible, so pointer users are unaffected.
+   ============================================================ */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
