@@ -1248,8 +1248,23 @@ async function loadOverview() {
     document.getElementById('metric-rfqs').textContent = data.stats.open_rfqs;
     document.getElementById('metric-orders-count').textContent = data.stats.orders;
     document.getElementById('metric-orders').textContent = `${data.stats.orders} ${t('metricOrdersLabel')}`;
-    const hasData = data.stats.products > 0 || data.stats.verified_suppliers > 0;
-    if (hasData) document.getElementById('stats-strip')?.classList.remove('hidden');
+    // Per-metric gate (4.1): show a stat card only when its value is real
+    // (>= 1). Never display "0" / "0+". Hide the whole strip if none qualify.
+    const cards = [
+      ['card-products', data.stats.products],
+      ['card-verified', data.stats.verified_suppliers],
+      ['card-rfqs', data.stats.open_rfqs],
+      ['card-orders', data.stats.orders],
+    ];
+    let anyVisible = false;
+    cards.forEach(([id, val]) => {
+      const card = document.getElementById(id);
+      if (!card) return;
+      const show = Number(val) >= 1;
+      card.classList.toggle('hidden', !show);
+      if (show) anyVisible = true;
+    });
+    document.getElementById('stats-strip')?.classList.toggle('hidden', !anyVisible);
     document.getElementById('audit-list').innerHTML = data.audit.length ? data.audit.map(item => `
       <article>
         <div>
