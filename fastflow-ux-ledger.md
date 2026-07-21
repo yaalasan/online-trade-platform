@@ -161,4 +161,35 @@ Verified by: empty submit → 3 field errors + focus on name; valid submit → s
 
 ---
 
-_Phase 3 complete — stopped for go-ahead before Phase 4._
+## 4.1 — Kill zero-state counters
+Status: DONE
+Date: 2026-07-21
+Files touched: index.html, static/app.js
+What changed: Each stat card now has an id and is gated per-metric in `loadOverview` — a card shows only when its value is ≥ 1, and the whole strip hides if none qualify. The "0 Orders tracked" card no longer appears; `0`/`0+` is never displayed.
+Verified by: live homepage shows `6+ / 4+ / 2+` (products/verified/RFQs) with the orders card hidden. docs/ux-shots/p4-stats.png.
+
+## 4.2 — Empty sections invite action
+Status: DONE
+Date: 2026-07-21
+Files touched: static/app.js, static/styles.css
+What changed: Product and supplier empty results now render a real empty state (dashed card, localized lead line + a "Tell us what you're sourcing" CTA that scrolls to the contact/RFQ form) via `emptyStateHtml()`, instead of a dead-end "No results" line. Leads localized in en/zh/ru.
+Verified by: forcing an empty product query shows the lead + working CTA. docs/ux-shots/p4-empty.png.
+
+## 4.3 — Replace stock photography
+Status: DONE
+Date: 2026-07-21
+Files touched: index.html, static/styles.css
+What changed: Hero and the three "How it works" step images (Unsplash) are replaced with pure-CSS, token-derived abstract art — a slate blueprint grid + accent glow + concentric "verification target" rings in the hero, and per-step gradient panels (slate/teal/accent) with grid + arc motifs. `index.html` now has zero Unsplash references.
+Verified by: docs/ux-shots/p4-hero.png, p4-how.png; page scan shows no Unsplash in index.html.
+Note: product-card images still come from seed data using Unsplash URLs — that's FOUND-3 (data quality: real product photos), separate from decorative stock; not in scope for 4.3.
+
+## 4.4 — Internal UI hidden from logged-out visitors
+Status: DONE (already correct — verified, no change needed)
+Date: 2026-07-21
+Files touched: none
+What changed: Confirmed the "My Fastflow / Account" (`#dashboard`) and "Operations / Recent audit trail" (`.audit-section`) blocks are hidden for logged-out visitors and the audit trail is admin-only (gated in `renderUserPanel`, from a prior session). The work order's premise (these visible to the public) reflected an older state.
+Verified by: logged-out render — `dashboardVisible=false`, `auditVisible=false`.
+
+---
+
+_Phase 4 complete — stopped for go-ahead before Phase 5._
