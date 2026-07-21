@@ -248,6 +248,19 @@ const translations = {
     pdErrSend: 'Could not send inquiry. Please try again.',
     pdErrNetwork: 'Network error. Please try again.',
     pdSent: 'Inquiry sent! Our team will be in touch shortly.',
+    pdDescription: 'Description',
+    pdSupplierTitle: 'About this supplier',
+    pdVerificationPending: 'Verification pending',
+    pdResponseRate: 'Response rate',
+    pdNotRated: 'Not yet rated',
+    pdYearsActive: 'On Fastflow since',
+    pdMemberSince: 'On Fastflow since {y}',
+    pdCtaHint: 'No account needed — the supplier replies by email',
+    pdErrNameFix: 'Add your name so the supplier knows who is asking.',
+    pdErrEmailFix: 'Enter a valid email — the supplier replies to this address.',
+    pdErrMessageFix: 'Describe what you need in at least 20 characters — specs, quantity, destination.',
+    pdSentTitle: 'Inquiry sent to {supplier}',
+    pdSentNext: 'They usually reply within 1–2 business days. Their response goes to {email}.',
     supplierProducts: 'Products',
     supplierCategories: 'Categories',
     supplierCertifications: 'Certifications',
@@ -561,6 +574,19 @@ const translations = {
     pdErrSend: '发送失败，请重试。',
     pdErrNetwork: '网络错误，请重试。',
     pdSent: '询盘已发送！我们的团队会尽快与您联系。',
+    pdDescription: '产品描述',
+    pdSupplierTitle: '关于该供应商',
+    pdVerificationPending: '认证审核中',
+    pdResponseRate: '回复率',
+    pdNotRated: '暂无评分',
+    pdYearsActive: '入驻 Fastflow',
+    pdMemberSince: '{y} 年入驻 Fastflow',
+    pdCtaHint: '无需注册 — 供应商将通过邮箱回复',
+    pdErrNameFix: '请填写您的姓名，供应商需要知道询价方。',
+    pdErrEmailFix: '请输入有效邮箱 — 供应商将回复到此邮箱。',
+    pdErrMessageFix: '请至少填写 20 个字符，说明您的需求：规格、数量、目的地。',
+    pdSentTitle: '询盘已发送至 {supplier}',
+    pdSentNext: '供应商通常在 1–2 个工作日内回复。回复将发送至 {email}。',
     supplierProducts: '产品数',
     supplierCategories: '品类',
     supplierCertifications: '认证',
@@ -874,6 +900,19 @@ const translations = {
     pdErrSend: 'Не удалось отправить запрос. Попробуйте ещё раз.',
     pdErrNetwork: 'Ошибка сети. Попробуйте ещё раз.',
     pdSent: 'Запрос отправлен! Наша команда скоро свяжется с вами.',
+    pdDescription: 'Описание',
+    pdSupplierTitle: 'О поставщике',
+    pdVerificationPending: 'Проверка ожидается',
+    pdResponseRate: 'Скорость ответа',
+    pdNotRated: 'Пока нет данных',
+    pdYearsActive: 'На Fastflow с',
+    pdMemberSince: 'На Fastflow с {y}',
+    pdCtaHint: 'Без регистрации — поставщик ответит на email',
+    pdErrNameFix: 'Укажите имя, чтобы поставщик знал, кто спрашивает.',
+    pdErrEmailFix: 'Укажите корректный email — поставщик ответит на него.',
+    pdErrMessageFix: 'Опишите запрос минимум в 20 символах: характеристики, количество, пункт назначения.',
+    pdSentTitle: 'Запрос отправлен: {supplier}',
+    pdSentNext: 'Обычно отвечают в течение 1–2 рабочих дней. Ответ придёт на {email}.',
     supplierProducts: 'Товары',
     supplierCategories: 'Категории',
     supplierCertifications: 'Сертификаты',
@@ -1544,86 +1583,129 @@ async function openProductDetail(productId) {
   }
 
   const specs = (product.specs || []);
-  const specsHtml = specs.length
-    ? `<div class="pd-spectable">${specs.map(s => `
-        <div class="pd-srow">
-          <div class="pd-k">${escapeHtml(s.label)}</div>
-          <div class="pd-v">${escapeHtml(s.value)}</div>
-        </div>`).join('')}</div>`
+  const specRows = specs.length
+    ? specs.map(s => [s.label, s.value])
     : [
-        ['MOQ', product.moq],
+        [t('specMoq'), product.moq],
         [t('specLeadTime'), product.lead_time],
         [t('specCapacity'), product.capacity],
         [t('detailCertifications'), product.certifications || t('detailPending')],
-      ].filter(([, v]) => v).map(([k, v]) => `
-        <div class="pd-srow">
-          <div class="pd-k">${escapeHtml(String(k))}</div>
-          <div class="pd-v">${escapeHtml(String(v))}</div>
-        </div>`).join('');
+      ].filter(([, v]) => v);
+  const specTable = specRows.length
+    ? `<table class="pd-spec"><tbody>${specRows.map(([k, v]) =>
+        `<tr><th scope="row">${escapeHtml(String(k))}</th><td>${escapeHtml(String(v))}</td></tr>`).join('')}</tbody></table>`
+    : `<p class="pd-muted">${escapeHtml(t('detailPending'))}</p>`;
+
+  // Key facts for the buy card (3.1) — only render what exists.
+  const keyFacts = [
+    [t('specLeadTime'), product.lead_time],
+    [t('specCapacity'), product.capacity],
+  ].filter(([, v]) => v);
 
   const supplierInitials = escapeHtml((product.supplier || '??').slice(0, 2).toUpperCase());
   const isVerified = product.verified;
+  const statusBadge = isVerified
+    ? `<span class="badge badge-success">✓ ${escapeHtml(t('pdVerifiedBadge'))}</span>`
+    : `<span class="badge badge-warning">${escapeHtml(t('pdVerificationPending'))}</span>`;
 
   openModal(`
     <div class="pd">
-      <div class="pd-hero">
-        ${galleryHtml(product.media || [], product.image_url, product)}
-        <div class="pd-buy">
+      <div class="pd-grid">
+        <div class="pd-gallery-col">
+          ${galleryHtml(product.media || [], product.image_url, product)}
+        </div>
+
+        <aside class="pd-side" id="pd-buy">
           <span class="pd-eyebrow">${escapeHtml(tCategory(product.category || ''))}</span>
           <h2 class="pd-title">${escapeHtml(product.name)}</h2>
+          <div class="pd-buysup">
+            <span class="pd-buysup-name">${escapeHtml(product.supplier || '')}</span>
+            ${statusBadge}
+          </div>
           <div class="pd-pricebox">
             <div class="pd-price">${escapeHtml(product.price || '—')}</div>
             ${product.moq ? `<div class="pd-moq"><b>${escapeHtml(product.moq)}</b> ${escapeHtml(t('pdMinOrder'))}</div>` : ''}
           </div>
-          <p class="pd-desc">${escapeHtml(product.description || '')}</p>
+          ${keyFacts.length ? `<dl class="pd-keyfacts">${keyFacts.map(([k, v]) =>
+            `<div><dt>${escapeHtml(String(k))}</dt><dd>${escapeHtml(String(v))}</dd></div>`).join('')}</dl>` : ''}
           <button class="primary pd-cta" data-quote-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
+          <p class="pd-ctahint">${escapeHtml(t('pdCtaHint'))}</p>
           <div class="pd-trust">
             <div><span class="pd-tick">✓</span> ${escapeHtml(t('pdTrustVetted'))}</div>
             <div><span class="pd-tick">✓</span> ${escapeHtml(t('pdTrustInspection'))}</div>
             <div><span class="pd-tick">✓</span> ${escapeHtml(t('pdTrustSupport'))}</div>
           </div>
+        </aside>
+
+        <div class="pd-main">
+          <section class="pd-supplier">
+            <div class="pd-avatar">${supplierInitials}</div>
+            <div class="pd-supplier-main">
+              <div class="pd-sname">${escapeHtml(product.supplier || '')}</div>
+              <div class="pd-smeta">${escapeHtml(product.location || '')}</div>
+              ${product.supplier_contact_email || product.supplier_contact_phone ? `
+              <div class="pd-smeta">
+                ${product.supplier_contact_email ? `<a href="mailto:${escapeHtml(product.supplier_contact_email)}">${escapeHtml(product.supplier_contact_email)}</a>` : ''}
+                ${product.supplier_contact_email && product.supplier_contact_phone ? ' · ' : ''}
+                ${product.supplier_contact_phone ? escapeHtml(product.supplier_contact_phone) : ''}
+              </div>` : ''}
+            </div>
+            <dl class="pd-trustgrid">
+              <div><dt>${escapeHtml(t('pdVerifiedBadge'))}</dt><dd>${statusBadge}</dd></div>
+              <div><dt>${escapeHtml(t('pdResponseRate'))}</dt><dd class="pd-muted">${escapeHtml(t('pdNotRated'))}</dd></div>
+              ${product.supplier_since ? `<div><dt>${escapeHtml(t('pdYearsActive'))}</dt><dd>${escapeHtml(product.supplier_since)}</dd></div>` : ''}
+            </dl>
+          </section>
+
+          ${product.description ? `<details class="pd-collapse" open>
+            <summary class="pd-sh">${escapeHtml(t('pdDescription'))}</summary>
+            <p class="pd-desc">${escapeHtml(product.description)}</p>
+          </details>` : ''}
+
+          <details class="pd-collapse" open>
+            <summary class="pd-sh">${escapeHtml(t('pdSpecs'))}</summary>
+            ${specTable}
+          </details>
+
+          <section class="pd-section" id="pd-inquiry-section">
+            <h3 class="pd-sh pd-sh-static">${escapeHtml(t('pdInquiryTitle'))}</h3>
+            <div class="pd-formgrid" id="pd-form">
+              <input type="text" name="website" style="display:none" aria-hidden="true" tabindex="-1" autocomplete="off" />
+              <div class="pd-field">
+                <label for="pd-name">${escapeHtml(t('pdFieldName'))}</label>
+                <input id="pd-name" placeholder="${escapeHtml(t('pdFieldNamePh'))}" aria-describedby="pd-name-err" />
+                <span class="pd-fielderr" id="pd-name-err"></span>
+              </div>
+              <div class="pd-field">
+                <label for="pd-email">${escapeHtml(t('pdFieldEmail'))}</label>
+                <input id="pd-email" type="email" placeholder="${escapeHtml(t('pdFieldEmailPh'))}" aria-describedby="pd-email-err" />
+                <span class="pd-fielderr" id="pd-email-err"></span>
+              </div>
+              <div class="pd-field">
+                <label for="pd-company">${escapeHtml(t('pdFieldCompany'))}</label>
+                <input id="pd-company" placeholder="${escapeHtml(t('pdFieldCompanyPh'))}" />
+              </div>
+              <div class="pd-field">
+                <label for="pd-qty">${escapeHtml(t('pdFieldQty'))}</label>
+                <input id="pd-qty" placeholder="${escapeHtml(t('pdFieldQtyPh'))}" />
+              </div>
+              <div class="pd-field pd-full">
+                <label for="pd-message">${escapeHtml(t('pdFieldMessage'))}</label>
+                <textarea id="pd-message" rows="4" placeholder="${escapeHtml(t('pdFieldMessagePh'))}" aria-describedby="pd-message-err"></textarea>
+                <span class="pd-fielderr" id="pd-message-err"></span>
+              </div>
+              <div class="pd-field pd-full"><span class="pd-fielderr" id="pd-form-err" role="alert"></span></div>
+              <div class="pd-field pd-full">
+                <button type="button" class="primary pd-submit">${escapeHtml(t('pdSend'))}</button>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
-      <div class="pd-supplier">
-        <div class="pd-avatar">${supplierInitials}</div>
-        <div>
-          <div class="pd-sname">${escapeHtml(product.supplier || '')}</div>
-          <div class="pd-smeta">${escapeHtml(product.location || '')}</div>
-          ${product.supplier_contact_email || product.supplier_contact_phone ? `
-          <div class="pd-smeta">
-            ${product.supplier_contact_email ? `<a href="mailto:${escapeHtml(product.supplier_contact_email)}">${escapeHtml(product.supplier_contact_email)}</a>` : ''}
-            ${product.supplier_contact_email && product.supplier_contact_phone ? ' · ' : ''}
-            ${product.supplier_contact_phone ? escapeHtml(product.supplier_contact_phone) : ''}
-          </div>` : ''}
-        </div>
-        <div class="pd-spacer"></div>
-        ${isVerified ? `<span class="pd-badge pd-verified">✓ ${escapeHtml(t('pdVerifiedBadge'))}</span>` : ''}
-        ${product.certifications ? `<span class="pd-badge pd-cert">${escapeHtml(product.certifications)}</span>` : ''}
-      </div>
-
-      <div class="pd-section">
-        <h3 class="pd-sh">${escapeHtml(t('pdSpecs'))}</h3>
-        <div class="pd-spectable">${specsHtml}</div>
-      </div>
-
-      <div class="pd-section" id="pd-inquiry-section">
-        <h3 class="pd-sh">${escapeHtml(t('pdInquiryTitle'))}</h3>
-        <div class="pd-formgrid" id="pd-form">
-          <input type="text" name="website" style="display:none" aria-hidden="true" tabindex="-1" autocomplete="off" />
-          <div class="pd-field"><label>${escapeHtml(t('pdFieldName'))}</label><input id="pd-name" placeholder="${escapeHtml(t('pdFieldNamePh'))}" /></div>
-          <div class="pd-field"><label>${escapeHtml(t('pdFieldEmail'))}</label><input id="pd-email" type="email" placeholder="${escapeHtml(t('pdFieldEmailPh'))}" /></div>
-          <div class="pd-field"><label>${escapeHtml(t('pdFieldCompany'))}</label><input id="pd-company" placeholder="${escapeHtml(t('pdFieldCompanyPh'))}" /></div>
-          <div class="pd-field"><label>${escapeHtml(t('pdFieldQty'))}</label><input id="pd-qty" placeholder="${escapeHtml(t('pdFieldQtyPh'))}" /></div>
-          <div class="pd-field pd-full">
-            <label>${escapeHtml(t('pdFieldMessage'))}</label>
-            <textarea id="pd-message" rows="4" placeholder="${escapeHtml(t('pdFieldMessagePh'))}"></textarea>
-          </div>
-          <div class="pd-field pd-full pd-err hidden" id="pd-err"></div>
-          <div class="pd-field pd-full">
-            <button class="primary pd-submit" data-product-id="${product.id}">${escapeHtml(t('pdSend'))}</button>
-          </div>
-        </div>
+      <div class="pd-mobilecta" aria-hidden="false">
+        <div class="pd-mobilecta-price">${escapeHtml(product.price || '—')}</div>
+        <button class="primary pd-cta" data-quote-id="${product.id}">${escapeHtml(t('cardRequestQuote'))}</button>
       </div>
     </div>
   `, { wide: true });
@@ -1633,7 +1715,7 @@ async function openProductDetail(productId) {
   // Wire up the inquiry form
   const submitBtn = document.querySelector('.pd-submit');
   if (submitBtn) {
-    submitBtn.addEventListener('click', () => submitProductInquiry(product.id));
+    submitBtn.addEventListener('click', () => submitProductInquiry(product.id, product));
   }
 }
 
@@ -1809,48 +1891,68 @@ function wireGallery(product) {
   attachZoom(); // wire magnify onto the eager primary image
 }
 
-async function submitProductInquiry(productId) {
-  const errEl = document.getElementById('pd-err');
-  const showErr = (msg) => {
-    errEl.textContent = msg;
-    errEl.classList.remove('hidden');
+async function submitProductInquiry(productId, product) {
+  const fields = {
+    name: document.getElementById('pd-name'),
+    email: document.getElementById('pd-email'),
+    message: document.getElementById('pd-message'),
   };
+  const formErr = document.getElementById('pd-form-err');
+  const setErr = (key, msg) => {
+    const err = document.getElementById(`pd-${key}-err`);
+    if (err) err.textContent = msg || '';
+    if (fields[key]) fields[key].setAttribute('aria-invalid', msg ? 'true' : 'false');
+  };
+  // Clear prior errors
+  ['name', 'email', 'message'].forEach(k => setErr(k, ''));
+  if (formErr) formErr.textContent = '';
 
-  const name = document.getElementById('pd-name')?.value.trim() || '';
-  const email = document.getElementById('pd-email')?.value.trim() || '';
+  const name = fields.name?.value.trim() || '';
+  const email = fields.email?.value.trim() || '';
   const company = document.getElementById('pd-company')?.value.trim() || '';
   const quantity = document.getElementById('pd-qty')?.value.trim() || '';
-  const message = document.getElementById('pd-message')?.value.trim() || '';
+  const message = fields.message?.value.trim() || '';
   const website = document.querySelector('#pd-form input[name="website"]')?.value || '';
 
-  if (!name) return showErr(t('pdErrName'));
-  if (!/^\S+@\S+\.\S+$/.test(email)) return showErr(t('pdErrEmail'));
-  if (message.length < 20) return showErr(t('pdErrMessage'));
+  // Inline, per-field validation: say what's wrong AND how to fix it.
+  let firstBad = null;
+  if (!name) { setErr('name', t('pdErrNameFix')); firstBad = firstBad || fields.name; }
+  if (!/^\S+@\S+\.\S+$/.test(email)) { setErr('email', t('pdErrEmailFix')); firstBad = firstBad || fields.email; }
+  if (message.length < 20) { setErr('message', t('pdErrMessageFix')); firstBad = firstBad || fields.message; }
+  if (firstBad) { firstBad.focus(); return; }
 
-  errEl.classList.add('hidden');
   const btn = document.querySelector('.pd-submit');
-  if (btn) { btn.textContent = t('pdSending'); btn.disabled = true; }
+  const stopLoading = () => { if (btn) { btn.classList.remove('is-loading'); btn.disabled = false; btn.removeAttribute('aria-busy'); } };
+  if (btn) { btn.classList.add('is-loading'); btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
 
   try {
     const res = await fetch(`/api/products/${productId}/inquiry`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': getCookie('csrf_token'),  // required — POST /api/ enforces CSRF
+      },
       credentials: 'include',
       body: JSON.stringify({ name, email, company, quantity, message, website }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      showErr(data.error || t('pdErrSend'));
-      if (btn) { btn.textContent = t('pdSend'); btn.disabled = false; }
+      stopLoading();
+      if (formErr) formErr.textContent = data.error || t('pdErrSend');
       return;
     }
+    // Success state: confirm what happens next and when.
     const form = document.getElementById('pd-form');
     if (form) {
-      form.innerHTML = `<p style="color:#0C7B69;font-weight:600;padding:20px 0">✓ ${escapeHtml(t('pdSent'))}</p>`;
+      form.innerHTML = `<div class="pd-success">
+        <span class="pd-success-mark" aria-hidden="true">✓</span>
+        <h4>${escapeHtml(t('pdSentTitle').replace('{supplier}', product?.supplier || ''))}</h4>
+        <p>${escapeHtml(t('pdSentNext').replace('{email}', email))}</p>
+      </div>`;
     }
   } catch {
-    showErr(t('pdErrNetwork'));
-    if (btn) { btn.textContent = t('pdSend'); btn.disabled = false; }
+    stopLoading();
+    if (formErr) formErr.textContent = t('pdErrNetwork');
   }
 }
 
