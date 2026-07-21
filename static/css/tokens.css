@@ -1,0 +1,160 @@
+/* ============================================================
+   Fastflow — Design Tokens (single source of truth)
+   Loaded BEFORE styles.css. Re-skin the whole app by editing
+   only the values in this file. Legacy variable names used
+   throughout styles.css/app.js are aliased at the bottom so
+   nothing has to change at the call sites.
+   ============================================================ */
+
+:root {
+  /* ---------------------------------------------------------
+     RAW PALETTE — industrial slate + a single credible accent.
+     Trust/verification read, not generic SaaS purple.
+     --------------------------------------------------------- */
+  --slate-900: #0f1b24;   /* ink — matches logo mark + PDP titles */
+  --slate-700: #29343d;
+  --slate-600: #45535f;
+  --slate-500: #6b7885;
+  --slate-300: #cdd4dc;
+  --slate-200: #e3e7ec;
+  --slate-100: #eef1f4;
+  --slate-050: #f6f7f9;
+  --white-raw: #ffffff;
+
+  --accent-raw:      #e8400c;   /* Fastflow orange */
+  --accent-raw-dark: #c23208;
+  --accent-raw-soft: #fff1ec;
+
+  --green-raw:      #0f9d6b;
+  --green-raw-soft: #d6f3e6;
+  --amber-raw:      #b45309;
+  --amber-raw-soft: #fef3c7;
+
+  /* ---------------------------------------------------------
+     SEMANTIC ALIASES (use these in new code)
+     --------------------------------------------------------- */
+  --surface:         var(--slate-050);   /* page background          */
+  --surface-raised:  var(--white-raw);   /* cards, modals            */
+  --surface-sunken:  var(--slate-100);   /* wells, muted panels      */
+  --border:          var(--slate-200);
+  --border-strong:   var(--slate-300);
+  --text:            var(--slate-900);
+  --text-muted:      var(--slate-600);   /* strong secondary / labels */
+  --text-subtle:     var(--slate-500);   /* meta, captions           */
+  --accent:          var(--accent-raw);
+  --accent-hover:    var(--accent-raw-dark);
+  --accent-soft:     var(--accent-raw-soft);
+  --accent-contrast: var(--white-raw);
+  --success:         var(--green-raw);
+  --success-soft:    var(--green-raw-soft);
+  --warning:         var(--amber-raw);
+  --warning-soft:    var(--amber-raw-soft);
+
+  /* ---------------------------------------------------------
+     TYPOGRAPHY — one body face that renders Latin + Cyrillic
+     (Inter) + CJK (system CJK fallbacks, so Chinese pages are
+     never bare). 6-step scale, each with an explicit line-height.
+     --------------------------------------------------------- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "Noto Sans", "Noto Sans SC", "Noto Sans CJK SC",
+               "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB",
+               sans-serif;
+  --font-display: var(--font-sans);
+
+  --fs-1: 0.8125rem;  --lh-1: 1.5;    /* 13px — meta / small labels   */
+  --fs-2: 0.9375rem;  --lh-2: 1.6;    /* 15px — body copy             */
+  --fs-3: 1.0625rem;  --lh-3: 1.45;   /* 17px — card titles / h4      */
+  --fs-4: 1.25rem;    --lh-4: 1.35;   /* 20px — h3                    */
+  --fs-5: 1.625rem;   --lh-5: 1.25;   /* 26px — h2                    */
+  --fs-6: clamp(2.125rem, 3.8vw, 3.125rem); --lh-6: 1.08; /* h1       */
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+  --fw-bold:    700;
+  --fw-black:   800;
+
+  /* ---------------------------------------------------------
+     SPACE — 4px base scale
+     --------------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* ---------------------------------------------------------
+     RADIUS / BORDER WIDTH / SHADOW — 3 values each, no more
+     --------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --bw-1: 1px;
+  --bw-2: 1.5px;
+  --bw-3: 3px;
+
+  --shadow-sm: 0 1px 3px rgba(15,27,36,.06), 0 1px 2px rgba(15,27,36,.04);
+  --shadow-md: 0 4px 12px rgba(15,27,36,.08), 0 2px 4px rgba(15,27,36,.04);
+  --shadow-lg: 0 20px 48px rgba(15,27,36,.10), 0 4px 12px rgba(15,27,36,.06);
+
+  /* ---------------------------------------------------------
+     MOTION — two durations, one easing. Reduced-motion honored
+     globally below.
+     --------------------------------------------------------- */
+  --dur-fast: 120ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(.2, .6, .2, 1);
+
+  /* Keyboard focus ring — solid, >=3:1 against light surfaces */
+  --focus-ring:        0 0 0 3px var(--surface-raised), 0 0 0 5px var(--accent);
+  --focus-ring-inset:  inset 0 0 0 2px var(--accent);
+
+  /* =========================================================
+     LEGACY ALIASES — existing styles.css / app.js call sites.
+     Keep these pointed at the semantic tokens above so the old
+     variable names keep working; do not add new usages of them.
+     ========================================================= */
+  --brand:       var(--accent);
+  --brand-dark:  var(--accent-hover);
+  --brand-light: var(--accent-soft);
+
+  --ink:    var(--text);
+  --ink-2:  var(--text-muted);
+  --ink-3:  var(--text-subtle);
+  --text-primary: var(--text);   /* fixes dangling var at styles.css:821 */
+
+  --border-2: var(--border-strong);
+  --bg:       var(--surface);
+  --bg-2:     var(--surface-sunken);
+  --white:    var(--surface-raised);
+
+  --green:    var(--success);
+  --green-bg: var(--success-soft);
+  --amber:    var(--warning);
+  --amber-bg: var(--warning-soft);
+
+  --radius-xl: var(--radius-lg);
+
+  --fs-micro: 0.6875rem;      /* 11px — kept distinct (badges) */
+  --fs-sm:    var(--fs-1);
+  --fs-base:  var(--fs-2);
+  --fs-md:    1rem;           /* 16px — kept distinct          */
+  --fs-lg:    var(--fs-3);
+  --fs-xl:    var(--fs-4);
+  --fs-2xl:   var(--fs-5);
+  --fs-hero:  var(--fs-6);
+}
+
+/* Respect reduced-motion globally. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;   /* documented in ledger 1.1 */
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
