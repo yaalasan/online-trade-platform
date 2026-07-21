@@ -1641,6 +1641,8 @@ function wireGallery(product) {
   const counter = document.getElementById('gal-counter');
   const prev = document.getElementById('gal-prev');
   const next = document.getElementById('gal-next');
+  const expandBtn = document.getElementById('gal-expand');
+  const lens = document.getElementById('gal-lens');
   const thumbs = rail ? Array.from(rail.querySelectorAll('.gal-thumb')) : [];
   let idx = 0;
 
@@ -1654,6 +1656,10 @@ function wireGallery(product) {
     if (prev) prev.disabled = idx === 0;
     if (next) next.disabled = idx === total - 1;
     if (thumbs[idx]) thumbs[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    // expand + zoom only apply to images
+    const isImg = media[idx].type !== 'video';
+    if (expandBtn) expandBtn.hidden = !isImg;
+    if (stage) stage.style.cursor = isImg ? 'zoom-in' : 'default';
   }
 
   function go(i) {
@@ -1662,8 +1668,8 @@ function wireGallery(product) {
     idx = n;
     inner.innerHTML = galStageInner(media[idx], idx, total, product, false);
     sync();
+    attachZoom();
   }
-  wireGallery._go = go;   // exposed so 2.3 lightbox can sync the stage
 
   prev?.addEventListener('click', () => go(idx - 1));
   next?.addEventListener('click', () => go(idx + 1));
@@ -1674,9 +1680,121 @@ function wireGallery(product) {
   stage?.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') { e.preventDefault(); go(idx - 1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); go(idx + 1); }
+    else if ((e.key === 'Enter' || e.key === ' ') && media[idx].type !== 'video') {
+      e.preventDefault(); openLightbox(idx);
+    }
+  });
+  // Click stage (image) or the expand button opens the lightbox.
+  stage?.addEventListener('click', e => {
+    if (e.target.closest('.gal-nav')) return;
+    if (media[idx].type !== 'video') openLightbox(idx);
   });
 
-  sync();  // idempotent with the eager-rendered initial DOM
+  /* ---- Desktop hover-magnify: zoomed region shown BESIDE the original ---- */
+  function getPanel() {
+    let p = document.querySelector('.gal-zoom-panel');
+    if (!p) { p = document.createElement('div'); p.className = 'gal-zoom-panel'; p.setAttribute('aria-hidden', 'true'); document.body.appendChild(p); }
+    return p;
+  }
+  function hideZoom() {
+    const p = document.querySelector('.gal-zoom-panel');
+    if (p) p.style.display = 'none';
+    if (lens) lens.style.display = 'none';
+  }
+  function attachZoom() {
+    hideZoom();
+    const img = inner.querySelector('.gal-img');
+    const fine = window.matchMedia('(pointer:fine)').matches && window.innerWidth >= 1024;
+    if (!img || !fine) return;
+    const ZOOM = 2.4;
+    const full = img.dataset.full || img.currentSrc || img.src;
+    img.addEventListener('mousemove', e => {
+      const r = img.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      const room = window.innerWidth - r.right - 24;
+      if (x < 0 || x > 1 || y < 0 || y > 1 || room < 240) { hideZoom(); return; }
+      const p = getPanel();
+      p.style.display = 'block';
+      p.style.top = r.top + 'px';
+      p.style.left = (r.right + 12) + 'px';
+      p.style.width = Math.min(r.width, room) + 'px';
+      p.style.height = r.height + 'px';
+      p.style.backgroundImage = `url("${full}")`;
+      p.style.backgroundSize = `${r.width * ZOOM}px ${r.height * ZOOM}px`;
+      p.style.backgroundPosition = `${x * 100}% ${y * 100}%`;
+      if (lens) {
+        const lw = r.width / ZOOM, lh = r.height / ZOOM;
+        lens.style.display = 'block';
+        lens.style.width = lw + 'px'; lens.style.height = lh + 'px';
+        lens.style.left = Math.max(0, Math.min(r.width - lw, (e.clientX - r.left) - lw / 2)) + 'px';
+        lens.style.top = Math.max(0, Math.min(r.height - lh, (e.clientY - r.top) - lh / 2)) + 'px';
+      }
+    });
+    img.addEventListener('mouseleave', hideZoom);
+  }
+
+  /* ---- Fullscreen lightbox: focus-trapped, keyboard, returns focus ---- */
+  function openLightbox(start) {
+    hideZoom();
+    let li = start;
+    const trigger = document.activeElement;
+    const overlay = document.createElement('div');
+    overlay.className = 'gal-lightbox';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', t('galLightboxLabel'));
+
+    function paint() {
+      const m = media[li];
+      const alt = escapeHtml(galAlt(m, product, li, total));
+      const body = m.type === 'video'
+        ? `<video class="gal-lb-media" src="${escapeHtml(m.url)}" controls playsinline preload="metadata" aria-label="${alt}"></video>`
+        : `<img class="gal-lb-media" src="${escapeHtml(galFullSrc(m.url))}" alt="${alt}" />`;
+      overlay.innerHTML = `
+        <button class="gal-lb-close" data-lb="close" type="button" aria-label="${escapeHtml(t('galZoomOpen'))}">×</button>
+        ${total > 1 ? `
+          <button class="gal-lb-nav gal-lb-prev" data-lb="prev" type="button" aria-label="${escapeHtml(t('galPrev'))}" ${li === 0 ? 'disabled' : ''}>‹</button>
+          <button class="gal-lb-nav gal-lb-next" data-lb="next" type="button" aria-label="${escapeHtml(t('galNext'))}" ${li === total - 1 ? 'disabled' : ''}>›</button>
+          <div class="gal-lb-counter">${li + 1} / ${total}</div>` : ''}
+        <div class="gal-lb-stage">${body}</div>`;
+      overlay.querySelector('[data-lb="close"]').focus();
+    }
+    function lbGo(i) { li = Math.max(0, Math.min(total - 1, i)); paint(); }
+    function close() {
+      document.removeEventListener('keydown', onKey);
+      overlay.remove();
+      document.body.style.overflow = '';
+      go(li);  // sync main stage to where the buyer left off
+      (trigger && trigger.focus ? trigger : stage)?.focus();
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+      else if (e.key === 'ArrowLeft') { lbGo(li - 1); }
+      else if (e.key === 'ArrowRight') { lbGo(li + 1); }
+      else if (e.key === 'Tab') {
+        const f = Array.from(overlay.querySelectorAll('button:not([disabled])'));
+        if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    overlay.addEventListener('click', e => {
+      const act = e.target.closest('[data-lb]')?.dataset.lb;
+      if (act === 'close' || e.target === overlay) return close();
+      if (act === 'prev') lbGo(li - 1);
+      if (act === 'next') lbGo(li + 1);
+    });
+    paint();
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    overlay.querySelector('[data-lb="close"]')?.focus();  // element is now in the DOM
+  }
+
+  expandBtn?.addEventListener('click', () => openLightbox(idx));
+  sync();       // idempotent with the eager-rendered initial DOM
+  attachZoom(); // wire magnify onto the eager primary image
 }
 
 async function submitProductInquiry(productId) {
