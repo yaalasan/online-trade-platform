@@ -192,4 +192,45 @@ Verified by: logged-out render — `dashboardVisible=false`, `auditVisible=false
 
 ---
 
-_Phase 4 complete — stopped for go-ahead before Phase 5._
+## 5.1 — Consistent card aspect ratio + skeletons
+Status: DONE
+Date: 2026-07-22
+Files touched: static/styles.css
+What changed: `.product-image` uses `aspect-ratio: 4/3` (was a fixed 200px) so framing is identical across the whole catalog at every width, and `.shimmer-img` uses the same ratio so there's no layout jump when real cards replace the skeleton. Skeleton loaders (`renderProductSkeleton`) already existed.
+Verified by: measured `.product-image` ratio = 1.333.
+
+## 5.2 — B2B filters + shareable URL state
+Status: DONE (MOQ range BLOCKED — see below)
+Date: 2026-07-22
+Files touched: main.py, index.html, static/app.js, static/styles.css
+What changed: `/api/marketplace` accepts `location` (LIKE), `verified=1`, and `lead_max` (parsed from the free-text "N days" `lead_time`), applied to DB rows and portal-merged rows; it returns `all_locations` for a stable dropdown. A filter bar (Verified only / Location / Lead time / Clear) drives the state, which — together with `q` and `category` — is mirrored to the URL (`history.replaceState`) and restored on load (`readFiltersFromURL`), so a filtered result is a shareable link. Localized en/zh/ru.
+Verified by: API `verified=1` → 4, `lead_max=15` → only the 14-day item; UI toggle sets `?verified=1` and shows 4 cards; opening `?verified=1&location=China&lead_max=30` restores the controls and shows the 2 matching verified China products. docs/ux-shots/p5-filters.png.
+BLOCKED: **MOQ range** filter. MOQ is heterogeneous free text ("2,000 kg" / pcs / tons) — a numeric range across mixed units is meaningless. **Need from you:** normalize MOQ into a number + unit (schema change + supplier-portal input) if you want MOQ range filtering.
+
+## 5.3 — Debounced search
+Status: DONE
+Date: 2026-07-22
+Files touched: static/app.js
+What changed: The header search now filters live with a 300ms debounce (products or suppliers per the type select). The skeleton is the visible loading state; the zero-results state is the actionable empty state from 4.2. Enter/Search still scroll to results; live updates don't force-scroll on each keystroke.
+Verified by: typing "steel" → 2 cards in place; gibberish → empty state with the "Tell us what you're sourcing" CTA.
+
+## 5.4 — Language switcher preserves page + scroll
+Status: DONE
+Date: 2026-07-22
+Files touched: static/app.js
+What changed: `setLanguage` already swapped UI strings in place without navigating; it now also re-runs `loadMarketplace()`/`loadSuppliers()` so already-rendered product/supplier cards translate into the new language (they previously stayed in the old language). Neither call scrolls, so the viewport is preserved.
+Verified by: switching EN→ZH/RU keeps `scrollY` (~900, never 0/homepage) and translates the how-it-works heading, category rail, and product cards. (A small viewport shift can occur purely from text reflowing at different lengths — that's the browser keeping content stable, not a scroll reset.)
+
+## 5.5 — Nav consolidation
+Status: DONE
+Date: 2026-07-22
+Files touched: index.html
+What changed: The utility bar duplicated About and Contact (also in the main nav). Removed the utility-bar links so the utility row is just the language switch, leaving one clean nav set (About Us · Membership · FAQ · Contact + Supplier Portal · Sign in · Join Free). The search + category rail remain the one obvious path in; Join Free / product CTAs the one path to a quote.
+Verified by: header scan shows no duplicate About/Contact; utility row = language only.
+
+### FOUND (fixed during Phase 5)
+- FOUND-8: the CSP (`default-src 'self'`, no `style-src`/`font-src`) **blocked the Google Fonts stylesheet the page links**, so Inter never loaded and the whole UI silently fell back to system fonts (undermining the Phase 1 type system). **Fixed**: added `style-src` (self + `unsafe-inline` for the SPA's inline style attributes + `fonts.googleapis.com`) and `font-src` (self + `fonts.gstatic.com`); script policy unchanged. Verified Inter loads with zero CSP violations.
+
+---
+
+_Phase 5 complete — stopped for go-ahead before Phase 6._
