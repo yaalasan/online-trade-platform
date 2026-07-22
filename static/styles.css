@@ -683,6 +683,7 @@ main {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
+  min-width: 0;
 }
 
 .service-grid article {
@@ -694,6 +695,7 @@ main {
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
+  min-width: 0;   /* allow the grid item to shrink below its content min-content */
 }
 
 .service-grid h3 {
@@ -715,7 +717,8 @@ main {
 
 .service-sub { font-size: var(--fs-sm); color: var(--ink-3); line-height: 1.55; }
 
-.service-grid button { align-self: flex-start; }
+/* Long CTA labels (esp. Russian) must wrap so they don't force the column wide. */
+.service-grid button { align-self: flex-start; white-space: normal; text-align: left; max-width: 100%; }
 
 /* ---------- Service Cards (Core Services) ---------- */
 .service-cards {
@@ -1708,6 +1711,9 @@ footer {
   .stats-strip { grid-template-columns: 1fr 1fr; gap: .5rem; }
   .nav-actions { flex-wrap: wrap; justify-content: flex-end; }
   .nav-actions .portal-link { display: none; }
+  .nav-actions button { white-space: normal; }   /* long RU labels wrap, don't overflow */
+  .nav-search { min-width: 0; }                   /* let the full-width search shrink */
+  .nav-search input { min-width: 0; }
   .hero-actions { flex-direction: column; align-items: stretch; }
   .hero-actions .text-button { align-self: center; }
 }
