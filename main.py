@@ -1209,6 +1209,10 @@ def overview():
 def marketplace():
     query = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
+    location = request.args.get("location", "").strip()
+    verified_only = request.args.get("verified", "") == "1"
+    lead_max_raw = request.args.get("lead_max", "").strip()
+    lead_max = int(lead_max_raw) if lead_max_raw.isdigit() else None
     target_lang = request.args.get("target_lang", "").strip()
     if target_lang not in ("en", "zh", "ru"):
         target_lang = ""
@@ -1228,6 +1232,11 @@ def marketplace():
         names = expand_category_filter(category)
         filters.append(f"category IN ({','.join('?' * len(names))})")
         params.extend(names)
+    if location:
+        filters.append("location LIKE ?")
+        params.append(f"%{location}%")
+    if verified_only:
+        filters.append("verified = 1")
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
     products = db.execute(f"SELECT * FROM products {where} ORDER BY verified DESC, category, name", params).fetchall()
 
@@ -1245,16 +1254,31 @@ def marketplace():
             if mr["product_id"] not in primary_media:
                 primary_media[mr["product_id"]] = mr["url"]
 
+    def _passes_lead(item):
+        # lead_time is free text ("21 days"); parse the leading integer.
+        if lead_max is None:
+            return True
+        m = re.match(r"\s*(\d+)", str(item.get("lead_time") or ""))
+        return m is not None and int(m.group(1)) <= lead_max
+
     categories = {}
     for row in products:
         product = row_to_dict(row)
         # Prefer product_media primary URL; fall back to legacy image_url.
         product["image_url"] = primary_media.get(product["id"]) or product.get("image_url", "")
+        if not _passes_lead(product):
+            continue
         categories.setdefault(product["category"], []).append(product)
 
     # Merge in live products published from the supplier portal (best-effort).
     for prow in fetch_portal_products(query=query):
         if category and prow["category"] not in expand_category_filter(category):
+            continue
+        if location and location.lower() not in (prow.get("location") or "").lower():
+            continue
+        if verified_only and not prow.get("verified"):
+            continue
+        if not _passes_lead(prow):
             continue
         categories.setdefault(prow["category"], []).append(prow)
 
@@ -1265,14 +1289,23 @@ def marketplace():
             for name, items in categories.items()
         }
 
-    return jsonify({"categories": [
-        {
-            "name": name,
-            "display_name": _translated_category(name, target_lang, db),
-            "items": items,
-        }
-        for name, items in categories.items()
-    ]})
+    # Distinct locations (unfiltered) so the location filter is stable.
+    loc_rows = db.execute(
+        "SELECT DISTINCT location FROM products WHERE TRIM(COALESCE(location,'')) != '' ORDER BY location"
+    ).fetchall()
+    all_locations = [r["location"] for r in loc_rows]
+
+    return jsonify({
+        "categories": [
+            {
+                "name": name,
+                "display_name": _translated_category(name, target_lang, db),
+                "items": items,
+            }
+            for name, items in categories.items()
+        ],
+        "all_locations": all_locations,
+    })
 
 
 @app.route("/api/categories")

@@ -25,6 +25,11 @@ let currentUser = null;
 let activeQuoteId = null;
 let activeCategory = '';
 let lastMarketplaceQuery = '';
+// B2B filter state (5.2) — mirrored to the URL so results are shareable.
+let filterLocation = '';
+let filterVerified = false;
+let filterLeadMax = '';
+let knownLocations = [];
 let currentLang = 'en';
 
 
@@ -204,6 +209,12 @@ const translations = {
     cardViewDetails: 'View details',
     marketplaceEmpty: 'No matching products found.',
     emptyCtaSource: 'Tell us what you\'re sourcing',
+    filterVerified: 'Verified only',
+    filterLocation: 'Location',
+    filterLeadTime: 'Lead time',
+    filterAny: 'Any',
+    filterLeadDays: '≤ {d} days',
+    filterClear: 'Clear filters',
     emptyProductsLead: 'Nothing here yet — post what you need and we\'ll match you with verified factories.',
     emptySuppliersLead: 'No suppliers to show yet — tell us your category and we\'ll introduce qualified factories.',
     marketplaceError: 'Unable to load marketplace data.',
@@ -533,6 +544,12 @@ const translations = {
     cardViewDetails: '查看详情',
     marketplaceEmpty: '未找到匹配的产品。',
     emptyCtaSource: '告诉我们您的采购需求',
+    filterVerified: '仅认证',
+    filterLocation: '产地',
+    filterLeadTime: '交期',
+    filterAny: '全部',
+    filterLeadDays: '≤ {d} 天',
+    filterClear: '清除筛选',
     emptyProductsLead: '这里还没有内容 — 发布您的采购需求，我们将为您匹配认证工厂。',
     emptySuppliersLead: '暂无可显示的供应商 — 告诉我们您的品类，我们将为您推荐合格工厂。',
     marketplaceError: '无法加载产品数据。',
@@ -862,6 +879,12 @@ const translations = {
     cardViewDetails: 'Подробнее',
     marketplaceEmpty: 'Подходящие товары не найдены.',
     emptyCtaSource: 'Расскажите, что вы ищете',
+    filterVerified: 'Только проверенные',
+    filterLocation: 'Локация',
+    filterLeadTime: 'Срок',
+    filterAny: 'Любой',
+    filterLeadDays: '≤ {d} дн.',
+    filterClear: 'Сбросить фильтры',
     emptyProductsLead: 'Пока пусто — опишите, что вам нужно, и мы подберём проверенные фабрики.',
     emptySuppliersLead: 'Поставщиков пока нет — укажите категорию, и мы представим подходящие фабрики.',
     marketplaceError: 'Не удалось загрузить товары.',
@@ -1245,6 +1268,7 @@ async function init() {
     currentUser = null;
   }
   renderUserPanel();
+  readFiltersFromURL();   // restore shareable filter/search state from the URL
   await Promise.all([
     loadOverview(),
     loadCategories(),
@@ -1424,22 +1448,94 @@ function renderProductSkeleton() {
   `).join('');
 }
 
+// Mirror the active filters to the URL so a result view is shareable (5.2).
+function syncMarketplaceURL() {
+  const p = new URLSearchParams();
+  if (lastMarketplaceQuery) p.set('q', lastMarketplaceQuery);
+  if (activeCategory) p.set('category', activeCategory);
+  if (filterLocation) p.set('location', filterLocation);
+  if (filterVerified) p.set('verified', '1');
+  if (filterLeadMax) p.set('lead_max', filterLeadMax);
+  const qs = p.toString();
+  try { history.replaceState(null, '', qs ? `?${qs}` : location.pathname); } catch (_) {}
+}
+
+// Restore filter state from the URL on load (shareable links).
+function readFiltersFromURL() {
+  const p = new URLSearchParams(location.search);
+  lastMarketplaceQuery = p.get('q') || '';
+  activeCategory = p.get('category') || '';
+  filterLocation = p.get('location') || '';
+  filterVerified = p.get('verified') === '1';
+  filterLeadMax = /^\d+$/.test(p.get('lead_max') || '') ? p.get('lead_max') : '';
+  if (lastMarketplaceQuery) {
+    if (searchQuery) searchQuery.value = lastMarketplaceQuery;
+    if (heroSearchQuery) heroSearchQuery.value = lastMarketplaceQuery;
+  }
+}
+
+// B2B filter bar: verification, supplier location, lead time. (Category is the
+// rail; MOQ range is intentionally absent — MOQ units are heterogeneous free
+// text, see ledger 5.2.)
+function renderFilterBar() {
+  const bar = document.getElementById('marketplace-filters');
+  if (!bar) return;
+  const needBuild = bar.dataset.built !== '1' || bar.dataset.locs !== String(knownLocations.length);
+  if (needBuild) {
+    bar.innerHTML = `
+      <label class="filter-check"><input type="checkbox" id="f-verified"> <span>${escapeHtml(t('filterVerified'))}</span></label>
+      <label class="filter-field"><span>${escapeHtml(t('filterLocation'))}</span>
+        <select id="f-location"><option value="">${escapeHtml(t('filterAny'))}</option>
+          ${knownLocations.map(l => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('')}
+        </select></label>
+      <label class="filter-field"><span>${escapeHtml(t('filterLeadTime'))}</span>
+        <select id="f-lead"><option value="">${escapeHtml(t('filterAny'))}</option>
+          ${[7, 15, 30, 60].map(d => `<option value="${d}">${escapeHtml(t('filterLeadDays').replace('{d}', d))}</option>`).join('')}
+        </select></label>
+      <button type="button" id="f-clear" class="text-button filter-clear">${escapeHtml(t('filterClear'))}</button>`;
+    bar.dataset.built = '1';
+    bar.dataset.locs = String(knownLocations.length);
+    bar.querySelector('#f-verified').addEventListener('change', e => { filterVerified = e.target.checked; loadMarketplace(); });
+    bar.querySelector('#f-location').addEventListener('change', e => { filterLocation = e.target.value; loadMarketplace(); });
+    bar.querySelector('#f-lead').addEventListener('change', e => { filterLeadMax = e.target.value; loadMarketplace(); });
+    bar.querySelector('#f-clear').addEventListener('click', () => {
+      filterLocation = ''; filterVerified = false; filterLeadMax = ''; lastMarketplaceQuery = ''; activeCategory = '';
+      if (searchQuery) searchQuery.value = '';
+      if (heroSearchQuery) heroSearchQuery.value = '';
+      loadMarketplace();
+      renderCategories();
+    });
+  }
+  const v = bar.querySelector('#f-verified'); if (v) v.checked = filterVerified;
+  const loc = bar.querySelector('#f-location'); if (loc) loc.value = filterLocation;
+  const lead = bar.querySelector('#f-lead'); if (lead) lead.value = filterLeadMax;
+  const clear = bar.querySelector('#f-clear');
+  if (clear) clear.hidden = !(filterLocation || filterVerified || filterLeadMax || lastMarketplaceQuery || activeCategory);
+}
+
 async function loadMarketplace(query = lastMarketplaceQuery, category = activeCategory) {
   lastMarketplaceQuery = query || '';
   activeCategory = category || '';
   const params = new URLSearchParams();
   if (lastMarketplaceQuery) params.set('q', lastMarketplaceQuery);
   if (activeCategory) params.set('category', activeCategory);
+  if (filterLocation) params.set('location', filterLocation);
+  if (filterVerified) params.set('verified', '1');
+  if (filterLeadMax) params.set('lead_max', filterLeadMax);
   // Request server-side translation from cache when UI is not in Chinese.
   // Ask the backend to overlay cached translations for the active language.
   // All three locales are valid targets — products may be entered in any language.
   if (currentLang) params.set('target_lang', currentLang);
 
+  syncMarketplaceURL();
+  const anyFilter = !!(activeCategory || lastMarketplaceQuery || filterLocation || filterVerified || filterLeadMax);
   marketplaceGrid.innerHTML = renderProductSkeleton();
 
   try {
     const data = await apiFetch(`/api/marketplace${params.toString() ? `?${params}` : ''}`);
     const categories = data.categories || [];
+    if (Array.isArray(data.all_locations) && data.all_locations.length) knownLocations = data.all_locations;
+    renderFilterBar();
 
     if (!categories.length || categories.every(c => !c.items.length)) {
       marketplaceGrid.innerHTML = emptyStateHtml('emptyProductsLead');
@@ -1447,7 +1543,7 @@ async function loadMarketplace(query = lastMarketplaceQuery, category = activeCa
       return;
     }
 
-    if (activeCategory || lastMarketplaceQuery) {
+    if (anyFilter) {
       // Filtered view: flat grid
       const products = flattenCategories(categories);
       marketplaceGrid.className = 'product-grid';
