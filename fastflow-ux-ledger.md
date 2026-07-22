@@ -233,4 +233,66 @@ Verified by: header scan shows no duplicate About/Contact; utility row = languag
 
 ---
 
-_Phase 5 complete — stopped for go-ahead before Phase 6._
+## 6.1 — Responsive to 360px, no horizontal scroll
+Status: DONE
+Date: 2026-07-22
+Files touched: static/styles.css
+What changed: Fixed the only failure found — Russian at 360px overflowed on homepage and PDP. Cause: long CTA labels in the buyer/supplier service panels and the full-width header search couldn't shrink below their content. Fix: `white-space: normal` + `min-width: 0` on the service panels/buttons, and `min-width: 0` on `.nav-search`/input plus wrapping `.nav-actions` buttons at ≤480px.
+Verified by: sweep of 360/768/1440 × en/zh/ru on homepage AND PDP → **0 horizontal-scroll failures**. docs/ux-shots/p6-home-360-ru.png, p6-pdp-360-zh.png.
+
+## 6.2 — Lighthouse / quality metrics (mobile)
+Status: DONE (measured directly — Lighthouse CLI unavailable, see note)
+Date: 2026-07-22
+Files touched: none (measurement task)
+What changed: The Lighthouse CLI and axe-core are not installed in this environment, and the CSP blocks injecting an external audit bundle into the page. Instead I ran a **direct** audit via the automation runtime:
+- **Accessibility (structural, all PASS on homepage + PDP):** `html[lang]` set; header/nav/main/footer landmarks present; exactly one `<h1>` with sane heading order; **0** images missing `alt`; **0** buttons/links without an accessible name; **0** inputs without a label. Plus Phase 1.4 focus rings and Phase 6.3 keyboard operability. These are the checks Lighthouse's a11y category automates — strongly consistent with a ≥95 score.
+- **Performance (measured, mobile viewport):** homepage CLS **0.0001**, transfer ~214KB across 9 requests; PDP transfer ~216KB. FCP/LCP ≈ 2.5s in this headless environment (inflated by the 2.5s portal-timeout XHRs and render-blocking web font). PDP's raw CLS reading (0.31) is a measurement artifact of opening the modal programmatically; on a real click-to-open the gallery CLS is **0.0000** (Phase 2.4).
+NOTE / NEED FROM YOU: I can't produce official Lighthouse *scores* (Perf ≥85 / A11y ≥95) without the Lighthouse CLI or Chrome DevTools. Run `lighthouse <url> --preset=mobile` in your environment (or DevTools → Lighthouse) for the certified numbers; the structural evidence above indicates a11y is in very good shape and the biggest perf lever is the blocking web font + the portal-timeout on XHRs.
+
+## 6.3 — Keyboard-only buyer journey
+Status: DONE
+Date: 2026-07-22
+Files touched: none (verification)
+What changed: Walked homepage → catalog → PDP → RFQ submit with the keyboard only. Header tab order is logical (language → brand → search type/field/button → nav links → portal → sign in → join free); a product card opens the PDP via Enter; the RFQ form fills and submits via keyboard to the success state; the modal close is reachable; the lightbox traps focus and returns it on Escape (Phase 2.3). No traps or unreachable controls found.
+Verified by: scripted keyboard walk — PDP opened via Enter, RFQ submitted via keyboard, all stops reachable.
+
+## 6.4 — Three locales at every breakpoint
+Status: DONE
+Date: 2026-07-22
+Files touched: none (verification; fixes landed in 6.1)
+What changed: Verified en/zh/ru at 360/768/1440. Cyrillic (longer strings) and CJK both render and wrap correctly; the only overflow found (RU@360) was fixed in 6.1. `html[lang]` updates on switch and catalog content re-translates (5.4).
+Verified by: docs/ux-shots/p6-home-360-ru.png (Cyrillic), p6-pdp-360-zh.png (CJK line-breaking); 0-overflow sweep across all locales/breakpoints.
+
+## 6.5 — Final summary
+Status: DONE
+Date: 2026-07-22
+
+### What changed (by phase)
+- **Phase 1** — `static/css/tokens.css` is the single source of design tokens (industrial palette, 6-step type scale w/ line-heights, CJK+Cyrillic font stack, space/radius/shadow/motion). Consolidated duplicate token block; canonical primitives (button + ghost/disabled/loading, inputs, card, badge, modal); keyboard focus rings everywhere. Re-skinnable by editing one file.
+- **Phase 2** — Full PDP media gallery: fixed-ratio stage, scroll-snap thumbnails, disable-at-ends nav, keyboard, fullscreen lightbox (focus-trapped), desktop hover-magnify beside the original, mobile pinch, video-no-autoplay, responsive image pipeline (srcset/WebP/real thumbs), empty/failure states, primary-first ordering. `alt_text` column added.
+- **Phase 3** — PDP overhaul: above-the-fold hierarchy, sticky CTA (desktop sidebar + mobile bar), specs as a real table, collapsibles, supplier trust card, RFQ form with inline per-field validation + loading + success state.
+- **Phase 4** — Homepage credibility: per-metric stat gating (never "0"), actionable empty states, token-based abstract art replacing Unsplash hero/steps, verified internal blocks hidden from logged-out.
+- **Phase 5** — Catalog: consistent card ratio + skeletons, B2B filters (verification/location/lead time) with shareable URL state, debounced live search, language switch preserves scroll + re-translates, nav de-duplicated.
+- **Phase 6** — 360px no-scroll across locales, direct a11y/perf measurements, keyboard journey, tri-locale verification.
+
+### Bugs found & fixed along the way (were live in production)
+- FOUND-6: RFQ POST omitted the CSRF header → every inquiry failed (fixed 3.5).
+- FOUND-7: submit button's `data-product-id` re-opened the modal instead of submitting (fixed 3.5).
+- FOUND-8: CSP blocked the Google Fonts the page links → Inter never loaded, whole UI on system fonts (fixed in Phase 5).
+
+### Still BLOCKED — need from you
+1. **Product URLs / SEO (FOUND-2)** — products have no crawlable URL, canonical, `hreflang`, or OG tags (SPA modal). Decide whether to add `/product/<id>` deep-links that boot the SPA.
+2. **Semantic media ordering (2.6)** — needs a per-media `role` field (full-shot/detail/cert) authored in the portal.
+3. **Supplier response rate / years-in-business (3.4)** — not tracked; UI shows honest "Not yet rated". Decide whether to start tracking.
+4. **MOQ range filter (5.2)** — MOQ is heterogeneous free text; needs a normalized number+unit to filter by range.
+5. **Official Lighthouse scores (6.2)** — needs the Lighthouse CLI / Chrome DevTools run in your environment.
+6. **Real product photography (FOUND-3)** — product cards still use Unsplash seed images; supply real photos or let products without photos fall back to the token placeholder.
+
+### Other notes
+- Kept the brand orange accent (re-skinnable in one line if you want to change it).
+- `.product-card`/`.supplier-card` were intentionally NOT migrated onto the canonical `.card` (deferred to avoid churn; both are token-driven already).
+- Leftover XSS-probe junk in `product_specs` for product 5 (FOUND-1, safely escaped) — recommend deleting that row.
+
+---
+
+_Phase 6 complete. UX overhaul work order finished — awaiting direction on the BLOCKED items above._
