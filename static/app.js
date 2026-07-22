@@ -1136,6 +1136,11 @@ function setLanguage(lang) {
   applyTranslations();
   renderCategories();
   if (currentUser) renderUserPanel();
+  // Re-translate already-loaded catalog content into the new language, in
+  // place (loadMarketplace keeps the active query/category; neither scrolls,
+  // so the browser preserves the viewport — no jump to the homepage/top).
+  loadMarketplace();
+  loadSuppliers(supplierSearch?.value.trim() || '');
 }
 
 function translateButtonsInForm(form) {
