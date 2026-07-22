@@ -1006,6 +1006,9 @@ def apply_security_headers(response):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
+        # Google Fonts stylesheet + inline style attributes used across the SPA.
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' https: data:; "
         "media-src 'self' https:; "
         "connect-src 'self'; "
