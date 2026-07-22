@@ -2703,6 +2703,23 @@ heroSearchForm?.addEventListener('submit', async event => {
   await runProductSearch(q);
 });
 
+// Debounced live search (5.3): typing filters results in place (skeleton =
+// loading state, empty-state-with-CTA = zero results). Pressing Enter/Search
+// still scrolls to the results. Live updates don't force-scroll on each key.
+function debounce(fn, ms = 300) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+const liveProductSearch = debounce((q) => { activeCategory = ''; loadMarketplace(q, ''); }, 300);
+const liveSupplierSearch = debounce((q) => { loadSuppliers(q); }, 300);
+
+searchQuery?.addEventListener('input', () => {
+  const q = searchQuery.value.trim();
+  if (searchType?.value === 'suppliers') liveSupplierSearch(q);
+  else liveProductSearch(q);
+});
+heroSearchQuery?.addEventListener('input', () => liveProductSearch(heroSearchQuery.value.trim()));
+
 supplierSearch?.addEventListener('input', event => {
   loadSuppliers(event.target.value.trim());
 });
