@@ -2088,6 +2088,42 @@ def verifications():
     return jsonify({"verifications": [row_to_dict(row) for row in rows]})
 
 
+@app.route("/api/admin/verifications/<int:verif_id>", methods=["POST"])
+def admin_set_verification(verif_id):
+    """Admin-only: approve or revoke a supplier verification.
+    Approving sets the record to 'verified' AND flips products.verified=1 for
+    that company (which drives the Verified badge on cards/PDP and the homepage
+    stat). Revoking undoes both."""
+    user, error = require_user()
+    if error:
+        return error
+    if user["role"] != "admin":
+        return jsonify({"error": "Admin only."}), 403
+
+    action = str((request.get_json(silent=True) or {}).get("action", "")).strip().lower()
+    if action not in ("approve", "revoke"):
+        return jsonify({"error": "Unknown action — use 'approve' or 'revoke'."}), 400
+
+    db = get_db()
+    row = db.execute("SELECT * FROM supplier_verifications WHERE id = ?", (verif_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "Verification record not found."}), 404
+
+    company = row["supplier_company"]
+    now = utc_now()
+    if action == "approve":
+        db.execute("UPDATE supplier_verifications SET status = 'verified', updated_at = ? WHERE id = ?", (now, verif_id))
+        db.execute("UPDATE products SET verified = 1 WHERE supplier = ?", (company,))
+    else:
+        db.execute("UPDATE supplier_verifications SET status = 'application', updated_at = ? WHERE id = ?", (now, verif_id))
+        db.execute("UPDATE products SET verified = 0 WHERE supplier = ?", (company,))
+    log_audit(action, "supplier_verification", verif_id, company, actor_id=user["id"])
+    db.commit()
+
+    updated = db.execute("SELECT * FROM supplier_verifications WHERE id = ?", (verif_id,)).fetchone()
+    return jsonify({"verification": row_to_dict(updated)})
+
+
 @app.route("/api/admin/translate-backfill", methods=["POST"])
 def admin_translate_backfill():
     """One-time (idempotent) translation of all existing product names,
