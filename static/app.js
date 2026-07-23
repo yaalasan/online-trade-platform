@@ -1417,11 +1417,28 @@ function renderCategories() {
 
 // Datalist of canonical category names for product forms. Values are stored in
 // English; the label in parentheses shows the current-language name as a hint.
-function categoryPresetsDatalist() {
-  return `<datalist id="category-presets">${CATEGORY_PRESETS.map(name => {
-    const localized = tCategory(name);
-    return `<option value="${escapeHtml(name)}"${localized !== name ? ` label="${escapeHtml(localized)}"` : ''}></option>`;
-  }).join('')}</datalist>`;
+// Category is a closed set defined in code (CATEGORY_TREE + flat presets), so the
+// product form uses a <select>, not free text — no more untranslated orphan
+// categories. Grouped categories become optgroups; standalone ones follow.
+// A legacy value not in the set is preserved as an option so editing never
+// silently changes it.
+function categorySelectHtml(selected = '') {
+  const grouped = new Set(Object.values(CATEGORY_TREE).flat());
+  const flat = CATEGORY_PRESETS.filter(name => !grouped.has(name));
+  const known = new Set(CATEGORY_PRESETS);
+  const opt = name =>
+    `<option value="${escapeHtml(name)}"${name === selected ? ' selected' : ''}>${escapeHtml(tCategory(name))}</option>`;
+  const groups = Object.entries(CATEGORY_TREE).map(([parent, subs]) =>
+    `<optgroup label="${escapeHtml(tCategory(parent))}">${subs.map(opt).join('')}</optgroup>`).join('');
+  const legacy = (selected && !known.has(selected))
+    ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(tCategory(selected))} (legacy)</option>`
+    : '';
+  return `<select name="category" required>
+    <option value="" disabled${selected ? '' : ' selected'}>${escapeHtml(t('pfCategoryPh'))}</option>
+    ${groups}
+    ${flat.map(opt).join('')}
+    ${legacy}
+  </select>`;
 }
 
 function closeCategoryMenus() {
@@ -2537,8 +2554,7 @@ function productFormHtml(product = null) {
     : (product?.image_url ? [{ type: 'image', url: product.image_url, is_primary: true }] : []);
   return `
     <form id="product-form" class="data-form two-column" data-id="${isEdit ? product.id : ''}">
-      <label>${escapeHtml(t('pfCategory'))}<input name="category" value="${v('category')}" list="category-presets" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
-      ${categoryPresetsDatalist()}
+      <label>${escapeHtml(t('pfCategory'))}${categorySelectHtml(v('category'))}</label>
       <label>${escapeHtml(t('pfName'))}<input name="name" value="${v('name')}" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
       <label>${escapeHtml(t('pfLocation'))}<input name="location" value="${v('location')}" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
       <label>${escapeHtml(t('pfPrice'))}<input name="price" value="${v('price')}" placeholder="${escapeHtml(t('pfPricePh'))}" required /></label>
@@ -2671,8 +2687,7 @@ async function renderAdminPanel() {
           ${registry.map(s => `<option value="${s.id}">${escapeHtml(s.company)}</option>`).join('')}
         </select>
       </label>
-      <label>${escapeHtml(t('pfCategory'))}<input name="category" list="category-presets" placeholder="${escapeHtml(t('pfCategoryPh'))}" required /></label>
-      ${categoryPresetsDatalist()}
+      <label>${escapeHtml(t('pfCategory'))}${categorySelectHtml('')}</label>
       <label>${escapeHtml(t('pfName'))}<input name="name" placeholder="${escapeHtml(t('pfNamePh'))}" required /></label>
       <label>${escapeHtml(t('pfLocation'))}<input name="location" placeholder="${escapeHtml(t('pfLocationPh'))}" required /></label>
       <label>${escapeHtml(t('pfPrice'))}<input name="price" placeholder="${escapeHtml(t('pfPricePh'))}" required /></label>
@@ -2975,6 +2990,24 @@ quoteForm?.addEventListener('submit', async event => {
 // The category dropdown is fixed-positioned, so close it when anything scrolls.
 window.addEventListener('scroll', closeCategoryMenus, { passive: true });
 document.getElementById('category-list')?.addEventListener('scroll', closeCategoryMenus, { passive: true });
+
+// The category rail scrolls horizontally, but a desktop mouse wheel only scrolls
+// vertically — translate vertical wheel intent into horizontal scroll so every
+// category is reachable without a trackpad or visible scrollbar.
+document.getElementById('category-list')?.addEventListener('wheel', event => {
+  const rail = event.currentTarget;
+  if (rail.scrollWidth <= rail.clientWidth) return; // nothing to scroll
+  const delta = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
+  if (!delta) return;
+  const atStart = rail.scrollLeft <= 0;
+  const atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1;
+  // Only hijack the wheel while there's room to scroll in that direction,
+  // otherwise let the page scroll normally at the ends.
+  if ((delta < 0 && !atStart) || (delta > 0 && !atEnd)) {
+    rail.scrollLeft += delta;
+    event.preventDefault();
+  }
+}, { passive: false });
 
 document.addEventListener('click', async event => {
   const groupBtn = event.target.closest('.cat-group-btn');
