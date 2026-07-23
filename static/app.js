@@ -1086,12 +1086,18 @@ const CATEGORY_TREE = {
     'Rodenticides',
     'Plant Growth Regulators',
   ],
+  'Vehicles': [
+    'Electric Bikes',
+    'Motorbikes',
+    'Spare Parts',
+  ],
 };
 
 // Canonical names suggested in the product-form category field.
 const CATEGORY_PRESETS = [
   ...CATEGORY_TREE['Machinery'],
   ...CATEGORY_TREE['Pesticides'],
+  ...CATEGORY_TREE['Vehicles'],
   'Raw Materials',
   'Packaging',
   'Components',
@@ -1123,7 +1129,11 @@ const CATEGORY_NAMES = {
     'Insecticides': '杀虫剂',
     'Fungicides': '杀菌剂',
     'Rodenticides': '灭鼠剂',
-    'Plant Growth Regulators': '植物生长调节剂'
+    'Plant Growth Regulators': '植物生长调节剂',
+    'Vehicles': '车辆',
+    'Electric Bikes': '电动自行车',
+    'Motorbikes': '摩托车',
+    'Spare Parts': '备件'
   },
   ru: {
     'Raw Materials': 'Сырьё',
@@ -1143,7 +1153,11 @@ const CATEGORY_NAMES = {
     'Insecticides': 'Инсектициды',
     'Fungicides': 'Фунгициды',
     'Rodenticides': 'Родентициды',
-    'Plant Growth Regulators': 'Регуляторы роста растений'
+    'Plant Growth Regulators': 'Регуляторы роста растений',
+    'Vehicles': 'Транспорт',
+    'Electric Bikes': 'Электровелосипеды',
+    'Motorbikes': 'Мотоциклы',
+    'Spare Parts': 'Запасные части'
   }
 };
 

@@ -96,6 +96,11 @@ CATEGORY_GROUPS = {
         "Rodenticides",
         "Plant Growth Regulators",
     ],
+    "Vehicles": [
+        "Electric Bikes",
+        "Motorbikes",
+        "Spare Parts",
+    ],
 }
 
 
