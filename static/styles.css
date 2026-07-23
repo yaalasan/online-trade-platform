@@ -1941,3 +1941,8 @@ textarea:focus-visible {
 .filter-field select { width: auto; padding: .4rem .6rem; font-size: var(--fs-1); }
 .filter-check input { width: auto; accent-color: var(--accent); }
 .filter-clear { color: var(--accent); font-size: var(--fs-1); font-weight: var(--fw-semi); margin-left: auto; }
+
+/* Admin verification approve/revoke actions */
+.record-actions { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); flex-wrap: wrap; }
+.record-actions button { font-size: var(--fs-1); padding: .4rem .9rem; }
+.verif-err { font-size: var(--fs-1); color: var(--warning); }

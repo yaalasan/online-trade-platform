@@ -311,6 +311,9 @@ const translations = {
     verificationTitle: 'Supplier verification',
     verificationRecords: 'records',
     verifStatus: 'Status',
+    verifApprove: 'Approve — mark verified',
+    verifRevoke: 'Revoke verification',
+    verifActionError: 'Could not update verification.',
     verifFactory: 'Factory',
     verifEvidence: 'Evidence',
     verifNextReview: 'Next review',
@@ -646,6 +649,9 @@ const translations = {
     verificationTitle: '供应商认证',
     verificationRecords: '条记录',
     verifStatus: '状态',
+    verifApprove: '批准 — 标记为已认证',
+    verifRevoke: '撤销认证',
+    verifActionError: '无法更新认证状态。',
     verifFactory: '工厂',
     verifEvidence: '证明材料',
     verifNextReview: '下次审核',
@@ -981,6 +987,9 @@ const translations = {
     verificationTitle: 'Верификация поставщика',
     verificationRecords: 'записей',
     verifStatus: 'Статус',
+    verifApprove: 'Одобрить — отметить проверенным',
+    verifRevoke: 'Отозвать проверку',
+    verifActionError: 'Не удалось обновить статус проверки.',
     verifFactory: 'Фабрика',
     verifEvidence: 'Документы',
     verifNextReview: 'Следующая проверка',
@@ -2344,11 +2353,17 @@ async function loadVerifications() {
           <article class="record-card">
             <strong>${escapeHtml(item.supplier_company)}</strong>
             <dl class="record-meta">
-              <div><dt>${escapeHtml(t('verifStatus'))}</dt><dd>${escapeHtml(item.status)}</dd></div>
+              <div><dt>${escapeHtml(t('verifStatus'))}</dt><dd>${item.status === 'verified'
+                ? `<span class="status-pill good">${escapeHtml(item.status)}</span>`
+                : escapeHtml(item.status)}</dd></div>
               <div><dt>${escapeHtml(t('verifFactory'))}</dt><dd>${escapeHtml(item.factory_address || t('verifMissing'))}</dd></div>
               <div><dt>${escapeHtml(t('verifEvidence'))}</dt><dd>${escapeHtml(item.evidence || t('verifMissing'))}</dd></div>
               <div><dt>${escapeHtml(t('verifNextReview'))}</dt><dd>${escapeHtml(item.next_review_at || t('verifUnset'))}</dd></div>
             </dl>
+            ${currentUser.role === 'admin' ? `<div class="record-actions">${item.status === 'verified'
+              ? `<button class="secondary verif-action" data-id="${item.id}" data-action="revoke">${escapeHtml(t('verifRevoke'))}</button>`
+              : `<button class="primary verif-action" data-id="${item.id}" data-action="approve">${escapeHtml(t('verifApprove'))}</button>`}
+              <span class="verif-err" role="alert"></span></div>` : ''}
           </article>
         `).join('')}
       </div>
@@ -2370,6 +2385,26 @@ async function loadVerifications() {
         body: JSON.stringify(payload)
       });
       await Promise.all([loadVerifications(), loadOverview(), loadSuppliers()]);
+    });
+
+    // Admin: approve / revoke a supplier verification (sets products.verified).
+    container.querySelectorAll('.verif-action').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const errEl = btn.parentElement.querySelector('.verif-err');
+        if (errEl) errEl.textContent = '';
+        btn.disabled = true;
+        try {
+          await apiFetch(`/api/admin/verifications/${btn.dataset.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: btn.dataset.action })
+          });
+          await Promise.all([loadVerifications(), loadOverview(), loadSuppliers(), loadMarketplace()]);
+        } catch (error) {
+          btn.disabled = false;
+          if (errEl) errEl.textContent = error.message || t('verifActionError');
+        }
+      });
     });
   } catch (error) {
     container.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
