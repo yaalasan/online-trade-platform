@@ -326,6 +326,11 @@ const translations = {
     verifEvidenceLabel: 'Evidence',
     verifEvidencePh: 'Certificates, ownership, audit notes',
     verifSubmit: 'Submit evidence',
+    verifCompany: 'Supplier company',
+    verifCompanyPick: 'Choose a company…',
+    verifCompanyNone: 'No suppliers left to add — all listed companies already have a record.',
+    verifOptional: '(optional)',
+    verifAdminHint: 'Pick a company to create a verification record, then Approve it. License and evidence are optional.',
     productFormTitle: 'Add product listing',
     productFormSub: 'Supplier listings enter verification review',
     pfCategory: 'Category',
@@ -664,6 +669,11 @@ const translations = {
     verifEvidenceLabel: '证明材料',
     verifEvidencePh: '证书、产权、审核记录',
     verifSubmit: '提交材料',
+    verifCompany: '供应商公司',
+    verifCompanyPick: '选择公司…',
+    verifCompanyNone: '没有可添加的供应商 — 所有已列出的公司都已有记录。',
+    verifOptional: '（选填）',
+    verifAdminHint: '选择公司以创建认证记录，然后批准。营业执照和证明材料为选填项。',
     productFormTitle: '添加产品',
     productFormSub: '供应商发布的产品将进入认证审核',
     pfCategory: '品类',
@@ -1002,6 +1012,11 @@ const translations = {
     verifEvidenceLabel: 'Документы',
     verifEvidencePh: 'Сертификаты, право собственности, заметки аудита',
     verifSubmit: 'Отправить документы',
+    verifCompany: 'Компания-поставщик',
+    verifCompanyPick: 'Выберите компанию…',
+    verifCompanyNone: 'Нет поставщиков для добавления — у всех компаний уже есть запись.',
+    verifOptional: '(необязательно)',
+    verifAdminHint: 'Выберите компанию, чтобы создать запись проверки, затем одобрите её. Лицензия и документы необязательны.',
     productFormTitle: 'Добавить товар',
     productFormSub: 'Товары поставщиков проходят проверку',
     pfCategory: 'Категория',
@@ -2344,8 +2359,27 @@ async function loadThread(quoteId) {
 
 async function loadVerifications() {
   const container = document.getElementById('workspace-content');
+  const isAdmin = currentUser.role === 'admin';
   try {
     const data = await apiFetch('/api/verifications');
+    // Admin: build a picker of supplier companies that don't yet have a record,
+    // so the admin can create (and then approve) a verification for any of them.
+    let companyOptions = '';
+    let hasCompanies = false;
+    if (isAdmin) {
+      try {
+        const sup = await apiFetch('/api/suppliers');
+        const existing = new Set(data.verifications.map(v => v.supplier_company));
+        const companies = (sup.suppliers || [])
+          .map(s => s.company)
+          .filter(c => c && !existing.has(c))
+          .sort((a, b) => a.localeCompare(b));
+        hasCompanies = companies.length > 0;
+        companyOptions = companies
+          .map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`)
+          .join('');
+      } catch (_) { /* non-fatal: form still works via free-text fallback */ }
+    }
     container.innerHTML = `
       <div class="workspace-header"><h3>${escapeHtml(t('verificationTitle'))}</h3><span>${data.verifications.length} ${escapeHtml(t('verificationRecords'))}</span></div>
       <div class="verification-grid">
@@ -2367,11 +2401,20 @@ async function loadVerifications() {
           </article>
         `).join('')}
       </div>
-      ${currentUser.role === 'supplier' || currentUser.role === 'admin' ? `
+      ${currentUser.role === 'supplier' || isAdmin ? `
         <form id="verification-form" class="data-form">
-          <label>${escapeHtml(t('verifBusinessLicense'))}<input name="business_license" placeholder="${escapeHtml(t('verifBusinessLicensePh'))}" required /></label>
-          <label>${escapeHtml(t('verifFactoryAddress'))}<input name="factory_address" placeholder="${escapeHtml(t('verifFactoryAddressPh'))}" required /></label>
-          <label>${escapeHtml(t('verifEvidenceLabel'))}<textarea name="evidence" rows="3" placeholder="${escapeHtml(t('verifEvidencePh'))}" required></textarea></label>
+          ${isAdmin ? `
+            <p class="form-hint">${escapeHtml(t('verifAdminHint'))}</p>
+            ${hasCompanies
+              ? `<label>${escapeHtml(t('verifCompany'))}<select name="supplier_company" required>
+                   <option value="">${escapeHtml(t('verifCompanyPick'))}</option>
+                   ${companyOptions}
+                 </select></label>`
+              : `<label>${escapeHtml(t('verifCompany'))}<input name="supplier_company" placeholder="${escapeHtml(t('verifCompanyPick'))}" required /></label>`}
+          ` : ''}
+          <label>${escapeHtml(t('verifBusinessLicense'))}${isAdmin ? ` <span class="muted">${escapeHtml(t('verifOptional'))}</span>` : ''}<input name="business_license" placeholder="${escapeHtml(t('verifBusinessLicensePh'))}" ${isAdmin ? '' : 'required'} /></label>
+          <label>${escapeHtml(t('verifFactoryAddress'))}${isAdmin ? ` <span class="muted">${escapeHtml(t('verifOptional'))}</span>` : ''}<input name="factory_address" placeholder="${escapeHtml(t('verifFactoryAddressPh'))}" ${isAdmin ? '' : 'required'} /></label>
+          <label>${escapeHtml(t('verifEvidenceLabel'))}${isAdmin ? ` <span class="muted">${escapeHtml(t('verifOptional'))}</span>` : ''}<textarea name="evidence" rows="3" placeholder="${escapeHtml(t('verifEvidencePh'))}" ${isAdmin ? '' : 'required'}></textarea></label>
           <button type="submit" class="primary">${escapeHtml(t('verifSubmit'))}</button>
         </form>
       ` : ''}
