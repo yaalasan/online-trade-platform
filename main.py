@@ -89,6 +89,13 @@ CATEGORY_GROUPS = {
         "Construction Machinery",
         "Industrial Machinery",
     ],
+    "Pesticides": [
+        "Herbicides",
+        "Insecticides",
+        "Fungicides",
+        "Rodenticides",
+        "Plant Growth Regulators",
+    ],
 }
 
 

@@ -196,7 +196,7 @@ const translations = {
     dashboardRfqThread: 'RFQ Thread',
     dashboardRfqThreadEmpty: 'Select an RFQ to open the thread.',
     categoriesAll: 'All Categories',
-    catAllMachinery: 'All Machinery',
+    catAllPrefix: 'All',
     categoryProducts: 'products',
     systemActor: 'System',
     metricOrdersLabel: 'orders',
@@ -539,7 +539,7 @@ const translations = {
     dashboardRfqThread: '询盘会话',
     dashboardRfqThreadEmpty: '选择询盘查看对话。',
     categoriesAll: '全部品类',
-    catAllMachinery: '全部机械设备',
+    catAllPrefix: '全部',
     categoryProducts: '件产品',
     systemActor: '系统',
     metricOrdersLabel: '个订单',
@@ -882,7 +882,7 @@ const translations = {
     dashboardRfqThread: 'Тред запроса',
     dashboardRfqThreadEmpty: 'Выберите запрос для просмотра треда.',
     categoriesAll: 'Все категории',
-    catAllMachinery: 'Всё оборудование',
+    catAllPrefix: 'Всё',
     categoryProducts: 'товаров',
     systemActor: 'Система',
     metricOrdersLabel: 'заказов',
@@ -1079,11 +1079,19 @@ const CATEGORY_TREE = {
     'Construction Machinery',
     'Industrial Machinery',
   ],
+  'Pesticides': [
+    'Herbicides',
+    'Insecticides',
+    'Fungicides',
+    'Rodenticides',
+    'Plant Growth Regulators',
+  ],
 };
 
 // Canonical names suggested in the product-form category field.
 const CATEGORY_PRESETS = [
   ...CATEGORY_TREE['Machinery'],
+  ...CATEGORY_TREE['Pesticides'],
   'Raw Materials',
   'Packaging',
   'Components',
@@ -1110,6 +1118,12 @@ const CATEGORY_NAMES = {
     'Electronics': '电子产品',
     'Textiles & Apparel': '纺织服装',
     'Consumer Goods': '消费品',
+    'Pesticides': '农药',
+    'Herbicides': '除草剂',
+    'Insecticides': '杀虫剂',
+    'Fungicides': '杀菌剂',
+    'Rodenticides': '灭鼠剂',
+    'Plant Growth Regulators': '植物生长调节剂'
   },
   ru: {
     'Raw Materials': 'Сырьё',
@@ -1124,6 +1138,12 @@ const CATEGORY_NAMES = {
     'Electronics': 'Электроника',
     'Textiles & Apparel': 'Текстиль и одежда',
     'Consumer Goods': 'Потребительские товары',
+    'Pesticides': 'Пестициды',
+    'Herbicides': 'Гербициды',
+    'Insecticides': 'Инсектициды',
+    'Fungicides': 'Фунгициды',
+    'Rodenticides': 'Родентициды',
+    'Plant Growth Regulators': 'Регуляторы роста растений'
   }
 };
 
@@ -1371,7 +1391,7 @@ function renderCategories() {
         </button>
         <div class="cat-dropdown hidden">
           <button class="${activeCategory === parent ? 'active' : ''}" data-category="${escapeHtml(parent)}">
-            <span>${escapeHtml(t('catAllMachinery'))}</span><small>${count}</small>
+            <span>${escapeHtml(t('catAllPrefix'))} ${escapeHtml(tCategory(parent, byName[parent]?.display_name))}</span><small>${count}</small>
           </button>
           ${subs.map(sub => `
             <button class="${activeCategory === sub ? 'active' : ''}" data-category="${escapeHtml(sub)}">
