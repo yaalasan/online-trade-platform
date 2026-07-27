@@ -1074,29 +1074,20 @@ function t(key) {
 // (CATEGORY_GROUPS) so filtering by the parent matches all its subs.
 const CATEGORY_TREE = {
   'Machinery': [
-    'Agricultural Machinery',
-    'Metalworking Machinery',
     'Construction Machinery',
-    'Industrial Machinery',
   ],
-  'Pesticides': [
-    'Herbicides',
-    'Insecticides',
-    'Fungicides',
-    'Rodenticides',
-    'Plant Growth Regulators',
-  ],
+  
   'Vehicles': [
     'Electric Bikes',
     'Motorbikes',
-    'Spare Parts',
+    'Auto Spare Parts',
+    'Moto Spare Parts',
   ],
 };
 
 // Canonical names suggested in the product-form category field.
 const CATEGORY_PRESETS = [
   ...CATEGORY_TREE['Machinery'],
-  ...CATEGORY_TREE['Pesticides'],
   ...CATEGORY_TREE['Vehicles'],
   'Raw Materials',
   'Packaging',
@@ -1112,52 +1103,22 @@ const CATEGORY_PRESETS = [
 // to the stored string.
 const CATEGORY_NAMES = {
   zh: {
-    'Raw Materials': '原材料',
-    'Packaging': '包装',
-    'Components': '零部件',
     'Machinery': '机械设备',
-    'Agricultural Machinery': '农业机械',
-    'Metalworking Machinery': '金属加工机械',
     'Construction Machinery': '工程机械',
-    'Industrial Machinery': '工业机械',
-    'Home & Kitchen': '家居厨房',
-    'Electronics': '电子产品',
-    'Textiles & Apparel': '纺织服装',
-    'Consumer Goods': '消费品',
-    'Pesticides': '农药',
-    'Herbicides': '除草剂',
-    'Insecticides': '杀虫剂',
-    'Fungicides': '杀菌剂',
-    'Rodenticides': '灭鼠剂',
-    'Plant Growth Regulators': '植物生长调节剂',
     'Vehicles': '车辆',
     'Electric Bikes': '电动自行车',
     'Motorbikes': '摩托车',
-    'Spare Parts': '备件'
+    'Auto Spare Parts': '汽车配件',
+    'Moto Spare Parts': '摩托车配件'
   },
   ru: {
-    'Raw Materials': 'Сырьё',
-    'Packaging': 'Упаковка',
-    'Components': 'Комплектующие',
     'Machinery': 'Оборудование',
-    'Agricultural Machinery': 'Сельскохозяйственная техника',
-    'Metalworking Machinery': 'Металлообрабатывающие станки',
     'Construction Machinery': 'Строительная техника',
-    'Industrial Machinery': 'Промышленное оборудование',
-    'Home & Kitchen': 'Дом и кухня',
-    'Electronics': 'Электроника',
-    'Textiles & Apparel': 'Текстиль и одежда',
-    'Consumer Goods': 'Потребительские товары',
-    'Pesticides': 'Пестициды',
-    'Herbicides': 'Гербициды',
-    'Insecticides': 'Инсектициды',
-    'Fungicides': 'Фунгициды',
-    'Rodenticides': 'Родентициды',
-    'Plant Growth Regulators': 'Регуляторы роста растений',
     'Vehicles': 'Транспорт',
     'Electric Bikes': 'Электровелосипеды',
     'Motorbikes': 'Мотоциклы',
-    'Spare Parts': 'Запасные части'
+    'Auto Spare Parts': 'Автомобильные запчасти',
+    'Moto Spare Parts': 'Запчасти для мотоциклов'
   }
 };
 

@@ -84,22 +84,14 @@ PORTAL_TIMEOUT = float(os.environ.get("PORTAL_TIMEOUT", "2.5"))
 # Mirrored in static/app.js (CATEGORY_TREE) for the category rail dropdown.
 CATEGORY_GROUPS = {
     "Machinery": [
-        "Agricultural Machinery",
-        "Metalworking Machinery",
         "Construction Machinery",
-        "Industrial Machinery",
     ],
-    "Pesticides": [
-        "Herbicides",
-        "Insecticides",
-        "Fungicides",
-        "Rodenticides",
-        "Plant Growth Regulators",
-    ],
+
     "Vehicles": [
         "Electric Bikes",
         "Motorbikes",
-        "Spare Parts",
+        "Auto Spare Parts",
+        "Moto Spare Parts"
     ],
 }
 
