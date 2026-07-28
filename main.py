@@ -3,16 +3,38 @@ import hmac
 import os
 import re
 import secrets
-import sqlite3
 import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from flask import Flask, Response, g, jsonify, request, send_file, session
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
+
+from flask import Flask, Response, abort, g, jsonify, request, send_file, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
+
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def _load_dotenv(path):
+    """Minimal .env loader (no dependency). Populates os.environ for values not
+    already set, so local runs pick up DATABASE_URL/SECRET_KEY from .env while
+    production keeps using systemd EnvironmentFile / real env vars."""
+    try:
+        for raw in Path(path).read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            os.environ.setdefault(key.strip(), val.strip())
+    except FileNotFoundError:
+        pass
+
+
+_load_dotenv(BASE_DIR / ".env")
 
 IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
@@ -60,8 +82,48 @@ def rate_limit_handler(e):
     return jsonify({"error": "Too many requests. Please try again later."}), 429
 
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "data.db"
+# --- Database: shared Postgres pool + per-request tenant resolution ----------
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is required.")
+
+# One pool for the process; dict_row so every fetched row is a dict (keyed
+# access). Tenant isolation is enforced by Postgres RLS keyed on app.site_id,
+# which open_db() sets per request from the request host.
+pool = ConnectionPool(
+    conninfo=DATABASE_URL,
+    kwargs={"row_factory": dict_row},
+    min_size=2,
+    max_size=10,
+    open=False,
+)
+pool.open()
+# Close the pool cleanly at process exit so its worker threads aren't joined
+# during interpreter finalization (which would raise a noisy shutdown warning).
+import atexit  # noqa: E402
+atexit.register(pool.close)
+
+# host -> site_id, loaded once at startup from the global `sites` table.
+_SITES = {}
+
+
+def load_sites():
+    _SITES.clear()
+    with pool.connection() as conn:
+        for row in conn.execute("SELECT host, id FROM sites WHERE is_active = 1"):
+            _SITES[row["host"]] = row["id"]
+
+
+def resolve_site_id(host):
+    """Map a request host to a site_id. Unknown hosts are 404 in production; in
+    dev they fall back to the primary site so localhost/127.0.0.1 work."""
+    h = (host or "").split(":")[0].lower()
+    if h.startswith("www."):
+        h = h[4:]
+    sid = _SITES.get(h)
+    if sid is None and not IS_PRODUCTION:
+        sid = _SITES.get("fastflow.global")
+    return sid
 
 
 # --- Supplier portal integration ---------------------------------------------
@@ -215,275 +277,24 @@ def clean_str(data, key, default=""):
         value = str(value)
     return value.strip()
 
-SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS schema_migrations (
-    name TEXT PRIMARY KEY,
-    applied_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE,
-    password_hash TEXT NOT NULL,
-    company TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('buyer', 'supplier', 'admin')),
-    created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category TEXT NOT NULL,
-    name TEXT NOT NULL,
-    supplier TEXT NOT NULL,
-    supplier_id INTEGER,
-    location TEXT NOT NULL,
-    description TEXT NOT NULL,
-    price TEXT NOT NULL,
-    moq TEXT DEFAULT '',
-    lead_time TEXT DEFAULT '',
-    capacity TEXT DEFAULT '',
-    certifications TEXT DEFAULT '',
-    image_url TEXT DEFAULT '',
-    verified INTEGER DEFAULT 0,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(supplier_id) REFERENCES users(id)
-);
-
-CREATE TABLE IF NOT EXISTS quotes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    buyer_id INTEGER NOT NULL,
-    product_id INTEGER NOT NULL,
-    quantity TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'requested',
-    target_price TEXT DEFAULT '',
-    destination TEXT DEFAULT '',
-    notes TEXT,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(buyer_id) REFERENCES users(id),
-    FOREIGN KEY(product_id) REFERENCES products(id)
-);
-
-CREATE TABLE IF NOT EXISTS orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quote_id INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'draft',
-    incoterm TEXT NOT NULL DEFAULT 'FOB',
-    payment_status TEXT NOT NULL DEFAULT 'escrow_pending',
-    inspection_status TEXT NOT NULL DEFAULT 'not_scheduled',
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(quote_id) REFERENCES quotes(id)
-);
-
-CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quote_id INTEGER NOT NULL,
-    sender_id INTEGER NOT NULL,
-    body TEXT NOT NULL,
-    read_at TEXT,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(quote_id) REFERENCES quotes(id),
-    FOREIGN KEY(sender_id) REFERENCES users(id)
-);
-
-CREATE TABLE IF NOT EXISTS supplier_verifications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    supplier_company TEXT NOT NULL UNIQUE,
-    supplier_id INTEGER,
-    status TEXT NOT NULL DEFAULT 'not_started',
-    business_license TEXT DEFAULT '',
-    factory_address TEXT DEFAULT '',
-    evidence TEXT DEFAULT '',
-    next_review_at TEXT DEFAULT '',
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY(supplier_id) REFERENCES users(id)
-);
-
-CREATE TABLE IF NOT EXISTS audit_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    actor_id INTEGER,
-    action TEXT NOT NULL,
-    entity_type TEXT NOT NULL,
-    entity_id INTEGER,
-    details TEXT DEFAULT '',
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(actor_id) REFERENCES users(id)
-);
-
-CREATE TABLE IF NOT EXISTS trust_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quote_id INTEGER,
-    provider TEXT NOT NULL,
-    event_type TEXT NOT NULL,
-    status TEXT NOT NULL,
-    amount TEXT DEFAULT '',
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(quote_id) REFERENCES quotes(id)
-);
-
-CREATE TABLE IF NOT EXISTS translations_cache (
-    cache_key TEXT PRIMARY KEY,
-    source_text TEXT NOT NULL,
-    target_lang TEXT NOT NULL,
-    translated_text TEXT NOT NULL,
-    created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS product_specs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    label TEXT NOT NULL,
-    value TEXT NOT NULL,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(product_id) REFERENCES products(id)
-);
-
-CREATE TABLE IF NOT EXISTS product_inquiries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    supplier_id INTEGER,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    company TEXT NOT NULL DEFAULT '',
-    quantity TEXT NOT NULL DEFAULT '',
-    message TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(product_id) REFERENCES products(id)
-);
-
-CREATE TABLE IF NOT EXISTS product_media (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    type       TEXT NOT NULL DEFAULT 'image' CHECK(type IN ('image','video')),
-    url        TEXT NOT NULL,
-    thumb_url  TEXT NOT NULL DEFAULT '',
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    is_primary INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(product_id) REFERENCES products(id)
-);
-"""
-
-SAMPLE_USERS = [
-    {"name": "Global Buyer", "email": "buyer@example.com", "password": "Password123", "company": "ProcureCo", "role": "buyer"},
-    {"name": "Aurora Partner", "email": "aurora@example.com", "password": "Password123", "company": "Aurora Alloys", "role": "supplier"},
-    {"name": "GreenWrap Partner", "email": "greenwrap@example.com", "password": "Password123", "company": "GreenWrap", "role": "supplier"},
-    {"name": "Trade Desk Admin", "email": "admin@example.com", "password": "Password123", "company": "Fastflow", "role": "admin"},
-]
-
-SAMPLE_PRODUCTS = [
-    {
-        "category": "Raw Materials",
-        "name": "Industrial Metals",
-        "supplier": "Aurora Alloys",
-        "location": "Istanbul, Turkey",
-        "description": "High-grade steel and aluminum alloys for manufacturing.",
-        "price": "$1.25/kg",
-        "moq": "2,000 kg",
-        "lead_time": "21 days",
-        "capacity": "180 tons/month",
-        "certifications": "ISO 9001, REACH",
-        "image_url": "https://images.unsplash.com/photo-1535813547-99c456a41d4a?auto=format&fit=crop&w=900&q=80",
-        "verified": 1,
-    },
-    {
-        "category": "Packaging",
-        "name": "Biodegradable Packaging Film",
-        "supplier": "GreenWrap",
-        "location": "Poznan, Poland",
-        "description": "Compostable film for finished goods and export packing.",
-        "price": "$18.50/roll",
-        "moq": "300 rolls",
-        "lead_time": "14 days",
-        "capacity": "12,000 rolls/month",
-        "certifications": "BPI, EN 13432",
-        "image_url": "https://images.unsplash.com/photo-1605600659908-0ef719419d41?auto=format&fit=crop&w=900&q=80",
-        "verified": 1,
-    },
-    {
-        "category": "Components",
-        "name": "Electronic Control Modules",
-        "supplier": "Nordic Circuits",
-        "location": "Tampere, Finland",
-        "description": "Custom control modules for industrial automation.",
-        "price": "$34.70/unit",
-        "moq": "500 units",
-        "lead_time": "35 days",
-        "capacity": "40,000 units/month",
-        "certifications": "ISO 14001, CE",
-        "image_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",
-        "verified": 0,
-    },
-    {
-        "category": "Components",
-        "name": "Precision Fasteners",
-        "supplier": "BoltWorks",
-        "location": "Stuttgart, Germany",
-        "description": "High-strength fasteners for heavy equipment assembly.",
-        "price": "$12.00/pack",
-        "moq": "800 packs",
-        "lead_time": "18 days",
-        "capacity": "90,000 packs/month",
-        "certifications": "IATF 16949",
-        "image_url": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=900&q=80",
-        "verified": 0,
-    },
-    {
-        "category": "Machinery",
-        "name": "CNC Machined Aluminum Housings",
-        "supplier": "Delta Precision Works",
-        "location": "Shenzhen, China",
-        "description": "Custom CNC housings with anodizing, QA reports, and export packing.",
-        "price": "$4.80/unit",
-        "moq": "1,000 units",
-        "lead_time": "28 days",
-        "capacity": "75,000 units/month",
-        "certifications": "ISO 9001, RoHS",
-        "image_url": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=900&q=80",
-        "verified": 1,
-    },
-    {
-        "category": "Home & Kitchen",
-        "name": "Stainless Steel Drinkware Set",
-        "supplier": "Harbor Home Manufacturing",
-        "location": "Ningbo, China",
-        "description": "OEM drinkware with private label packaging and inspection support.",
-        "price": "$2.95/set",
-        "moq": "2,400 sets",
-        "lead_time": "24 days",
-        "capacity": "120,000 sets/month",
-        "certifications": "BSCI, LFGB",
-        "image_url": "https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=900&q=80",
-        "verified": 1,
-    },
-]
-
-
 def utc_now():
     return datetime.now(UTC).isoformat()
 
 
 def get_db():
-    if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-    return g.db
+    """The request-scoped pooled connection, opened by open_db() with the
+    tenant's app.site_id already set."""
+    return g.conn
 
 
 def row_to_dict(row):
+    # Rows are already dicts (dict_row); copy so callers can mutate freely.
     if not row:
         return None
-    return {key: row[key] for key in row.keys()}
+    return dict(row)
 
 
 # --- Translation helpers ------------------------------------------------------
-
-def _open_translation_db():
-    """Open a dedicated SQLite connection for use outside request context."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 # Internal language codes (en/zh/ru) → Google Translate codes. Google uses
@@ -555,7 +366,7 @@ def get_cached_translation(text, target_lang, db):
     if not text:
         return None
     row = db.execute(
-        "SELECT translated_text FROM translations_cache WHERE cache_key = ?",
+        "SELECT translated_text FROM translations_cache WHERE cache_key = %s",
         (_cache_key(text, target_lang),),
     ).fetchone()
     return row["translated_text"] if row else None
@@ -564,20 +375,26 @@ def get_cached_translation(text, target_lang, db):
 def _store_translation(text, target_lang, translated, db):
     db.execute(
         """
-        INSERT OR REPLACE INTO translations_cache
+        INSERT INTO translations_cache
         (cache_key, source_text, target_lang, translated_text, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (cache_key) DO UPDATE SET
+            source_text = EXCLUDED.source_text,
+            target_lang = EXCLUDED.target_lang,
+            translated_text = EXCLUDED.translated_text,
+            created_at = EXCLUDED.created_at
         """,
         (_cache_key(text, target_lang), text, target_lang, translated, utc_now()),
     )
 
 
 def translate_text_cached(text, target_lang):
-    """Translate text using Claude, with SQLite cache. Uses its own DB connection (thread-safe)."""
+    """Translate text with a Postgres-backed cache. Runs outside request context,
+    so it borrows its own pooled connection. translations_cache is a global
+    (non-RLS) table, so no app.site_id is needed."""
     if not text:
         return text
-    db = _open_translation_db()
-    try:
+    with pool.connection() as db:
         cached = get_cached_translation(text, target_lang, db)
         if cached is not None:
             return cached
@@ -585,25 +402,21 @@ def translate_text_cached(text, target_lang):
         _store_translation(text, target_lang, translated, db)
         db.commit()
         return translated
-    finally:
-        db.close()
 
 
 def _bg_translate_texts(texts):
     """Pre-translate arbitrary user-facing strings to EN/ZH/RU and cache them.
-    Runs in a daemon thread; each string is translated once per language."""
-    db = _open_translation_db()
+    Runs in a daemon thread with its own pooled connection."""
     try:
-        for lang in ("en", "zh", "ru"):
-            for text in texts:
-                if text and get_cached_translation(text, lang, db) is None:
-                    translated = _machine_translate(text, lang)
-                    _store_translation(text, lang, translated, db)
-        db.commit()
+        with pool.connection() as db:
+            for lang in ("en", "zh", "ru"):
+                for text in texts:
+                    if text and get_cached_translation(text, lang, db) is None:
+                        translated = _machine_translate(text, lang)
+                        _store_translation(text, lang, translated, db)
+            db.commit()
     except Exception:
         pass
-    finally:
-        db.close()
 
 
 def _bg_translate_product(name, description, category=""):
@@ -672,276 +485,53 @@ def _apply_translations(products, target_lang, db):
     return result
 
 
-def add_column_if_missing(db, table, column, definition):
-    columns = [row[1] for row in db.execute(f"PRAGMA table_info({table})").fetchall()]
-    if column not in columns:
-        db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
-
-
-def migrate_users_role_constraint(db):
-    row = db.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").fetchone()
-    if not row or "'admin'" in row[0]:
-        return
-    db.executescript(
-        """
-        ALTER TABLE users RENAME TO users_legacy;
-        CREATE TABLE users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            company TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('buyer', 'supplier', 'admin')),
-            created_at TEXT NOT NULL
-        );
-        INSERT INTO users (id, name, email, password_hash, company, role, created_at)
-        SELECT id, name, email, password_hash, company, role, created_at FROM users_legacy;
-        DROP TABLE users_legacy;
-        """
-    )
-
-
-def migrate_users_email_nullable(db):
-    # Broker-managed supplier accounts have no login of their own, so email must
-    # allow NULL. UNIQUE still applies to real emails (SQLite permits repeated NULLs).
-    row = db.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").fetchone()
-    if not row or "email TEXT NOT NULL" not in row[0]:
-        return
-    db.executescript(
-        """
-        ALTER TABLE users RENAME TO users_legacy;
-        CREATE TABLE users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE,
-            password_hash TEXT NOT NULL,
-            company TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('buyer', 'supplier', 'admin')),
-            created_at TEXT NOT NULL
-        );
-        INSERT INTO users (id, name, email, password_hash, company, role, created_at)
-        SELECT id, name, email, password_hash, company, role, created_at FROM users_legacy;
-        DROP TABLE users_legacy;
-        """
-    )
-
-
-def init_db():
-    db = sqlite3.connect(DB_PATH)
-    db.executescript(SCHEMA_SQL)
-    migrate_users_role_constraint(db)
-    migrate_users_email_nullable(db)
-    add_column_if_missing(db, "products", "moq", "TEXT DEFAULT ''")
-    add_column_if_missing(db, "products", "lead_time", "TEXT DEFAULT ''")
-    add_column_if_missing(db, "products", "capacity", "TEXT DEFAULT ''")
-    add_column_if_missing(db, "products", "certifications", "TEXT DEFAULT ''")
-    add_column_if_missing(db, "products", "image_url", "TEXT DEFAULT ''")
-    add_column_if_missing(db, "products", "verified", "INTEGER DEFAULT 0")
-    add_column_if_missing(db, "products", "supplier_id", "INTEGER")
-    add_column_if_missing(db, "supplier_verifications", "supplier_id", "INTEGER")
-    add_column_if_missing(db, "quotes", "target_price", "TEXT DEFAULT ''")
-    add_column_if_missing(db, "quotes", "destination", "TEXT DEFAULT ''")
-    # Contact info for broker-managed manufacturer accounts. Plain data, not a
-    # credential — the same email/phone may back any number of companies.
-    add_column_if_missing(db, "users", "contact_email", "TEXT DEFAULT ''")
-    add_column_if_missing(db, "users", "contact_phone", "TEXT DEFAULT ''")
-    # Alt text for media. Free text; suppliers may author a localized string,
-    # otherwise the frontend composes a localized "<name> — photo N" fallback.
-    add_column_if_missing(db, "product_media", "alt_text", "TEXT DEFAULT ''")
-
-    # Backfill product_media from the legacy image_url column (idempotent).
-    db.execute(
-        """
-        INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at)
-        SELECT id, 'image', image_url, image_url, 0, 1, created_at
-        FROM   products
-        WHERE  TRIM(COALESCE(image_url, '')) != ''
-          AND  id NOT IN (SELECT DISTINCT product_id FROM product_media)
-        """
-    )
-
-    # S2: one-off unescape of HTML-encoded data written by the old clean_str().
-    # Guarded by schema_migrations so it runs exactly once per database.
-    already_run = db.execute(
-        "SELECT 1 FROM schema_migrations WHERE name = 's2_unescape_html'"
-    ).fetchone()
-    if not already_run:
-        from html import unescape as html_unescape
-        for table, col in [
-            ("products",          "name"),
-            ("products",          "category"),
-            ("products",          "description"),
-            ("products",          "location"),
-            ("products",          "supplier"),
-            ("products",          "certifications"),
-            ("product_specs",     "label"),
-            ("product_specs",     "value"),
-            ("product_inquiries", "name"),
-            ("product_inquiries", "email"),
-            ("product_inquiries", "company"),
-            ("product_inquiries", "quantity"),
-            ("product_inquiries", "message"),
-            ("users",             "name"),
-            ("users",             "company"),
-        ]:
-            rows = db.execute(f"SELECT id, {col} FROM {table}").fetchall()
-            for row_id, raw in rows:
-                unescaped = html_unescape(raw) if raw else raw
-                if unescaped != raw:
-                    db.execute(f"UPDATE {table} SET {col}=? WHERE id=?", (unescaped, row_id))
-        db.execute(
-            "INSERT INTO schema_migrations (name, applied_at) VALUES ('s2_unescape_html', ?)",
-            (utc_now(),),
-        )
-
-    # Demo seed data (accounts with known passwords + sample catalog) must NEVER
-    # be created in production — it would leave a public admin/buyer/supplier
-    # login open to the world. Only seed in dev/demo environments.
-    if IS_PRODUCTION:
-        db.commit()
-        db.close()
-        return
-
-    existing_emails = {row[0] for row in db.execute("SELECT email FROM users").fetchall()}
-    for user in SAMPLE_USERS:
-        if user["email"] not in existing_emails:
-            db.execute(
-                "INSERT INTO users (name, email, password_hash, company, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (user["name"], user["email"], generate_password_hash(user["password"]), user["company"], user["role"], utc_now()),
-            )
-
-    existing_product_names = {row[0] for row in db.execute("SELECT name FROM products").fetchall()}
-    for product in SAMPLE_PRODUCTS:
-        if product["name"] in existing_product_names:
-            db.execute(
-                """
-                UPDATE products
-                SET moq = COALESCE(NULLIF(moq, ''), ?),
-                    lead_time = COALESCE(NULLIF(lead_time, ''), ?),
-                    capacity = COALESCE(NULLIF(capacity, ''), ?),
-                    certifications = COALESCE(NULLIF(certifications, ''), ?),
-                    image_url = COALESCE(NULLIF(image_url, ''), ?)
-                WHERE name = ?
-                """,
-                (
-                    product["moq"],
-                    product["lead_time"],
-                    product["capacity"],
-                    product["certifications"],
-                    product["image_url"],
-                    product["name"],
-                ),
-            )
-            continue
-
-        db.execute(
-            """
-            INSERT INTO products
-            (category, name, supplier, location, description, price, moq, lead_time, capacity, certifications, image_url, verified, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                product["category"],
-                product["name"],
-                product["supplier"],
-                product["location"],
-                product["description"],
-                product["price"],
-                product["moq"],
-                product["lead_time"],
-                product["capacity"],
-                product["certifications"],
-                product["image_url"],
-                product["verified"],
-                utc_now(),
-            ),
-        )
-
-    for product in SAMPLE_PRODUCTS:
-        db.execute(
-            """
-            INSERT OR IGNORE INTO supplier_verifications
-            (supplier_company, status, business_license, factory_address, evidence, next_review_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                product["supplier"],
-                "verified" if product["verified"] else "document_review",
-                "License file pending secure upload",
-                product["location"],
-                product["certifications"],
-                "2026-12-31",
-                utc_now(),
-            ),
-        )
-
-    # Backfill the supplier identity link so authorization no longer depends on
-    # the free-text company name. Each product/verification is tied to the
-    # earliest supplier (or admin) account whose company matches.
-    db.execute(
-        """
-        UPDATE products SET supplier_id = (
-            SELECT u.id FROM users u
-            WHERE u.company = products.supplier AND u.role IN ('supplier', 'admin')
-            ORDER BY u.id LIMIT 1
-        )
-        WHERE supplier_id IS NULL
-        """
-    )
-    db.execute(
-        """
-        UPDATE supplier_verifications SET supplier_id = (
-            SELECT u.id FROM users u
-            WHERE u.company = supplier_verifications.supplier_company AND u.role IN ('supplier', 'admin')
-            ORDER BY u.id LIMIT 1
-        )
-        WHERE supplier_id IS NULL
-        """
-    )
-
-    # S4: log any products still lacking a supplier_id after backfill.
-    orphans = db.execute(
-        "SELECT id, supplier FROM products WHERE supplier_id IS NULL"
-    ).fetchall()
-    if orphans:
-        import logging
-        for row in orphans:
-            logging.warning("S4: product id=%s supplier=%r has no supplier_id — cannot be owned", row[0], row[1])
-
-    db.commit()
-    db.close()
-
-
-def ensure_db():
-    init_db()
-
-
 def log_audit(action, entity_type, entity_id=None, details="", actor_id=None):
     db = get_db()
     if actor_id is None:
         user = get_current_user()
         actor_id = user["id"] if user else None
     db.execute(
-        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, details, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, details, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
         (actor_id, action, entity_type, entity_id, details, utc_now()),
     )
 
 
-ensure_db()
+load_sites()
 
 
-@app.teardown_appcontext
-def close_db(exception=None):
-    db = g.pop("db", None)
-    if db is not None:
-        db.close()
+@app.before_request
+def open_db():
+    """Resolve the tenant from the request host and hand the request a pooled
+    connection with app.site_id set, so RLS scopes every later query."""
+    sid = resolve_site_id(request.host)
+    if sid is None:
+        abort(404)
+    conn = pool.getconn()
+    # SET cannot take a bind parameter; set_config can (site_id is a trusted int).
+    conn.execute("SELECT set_config('app.site_id', %s, false)", (str(sid),))
+    g.conn = conn
+    g.site_id = sid
+
+
+@app.teardown_request
+def close_db(exc=None):
+    conn = g.pop("conn", None)
+    if conn is None:
+        return
+    try:
+        if exc is not None or g.get("_db_rollback"):
+            conn.rollback()
+        else:
+            conn.commit()
+    finally:
+        pool.putconn(conn)
 
 
 def get_current_user():
     user_id = session.get("user_id")
     if not user_id:
         return None
-    row = get_db().execute("SELECT id, name, email, company, role FROM users WHERE id = ?", (user_id,)).fetchone()
+    row = get_db().execute("SELECT id, name, email, company, role FROM users WHERE id = %s", (user_id,)).fetchone()
     return row_to_dict(row)
 
 
@@ -963,10 +553,10 @@ def _owns_product(user, product):
 
 def quote_scope_clause(user):
     if user["role"] == "buyer":
-        return "q.buyer_id = ?", (user["id"],)
+        return "q.buyer_id = %s", (user["id"],)
     if user["role"] == "supplier":
         # Scope by the verified supplier identity link, never the company string.
-        return "p.supplier_id = ?", (user["id"],)
+        return "p.supplier_id = %s", (user["id"],)
     return "1 = 1", ()
 
 
@@ -1041,10 +631,9 @@ def handle_unexpected_error(error):
 
     if isinstance(error, HTTPException):
         return error
-    db = g.pop("db", None)
-    if db is not None:
-        db.rollback()
-        db.close()
+    # Mark the request's connection for rollback; teardown_request returns it to
+    # the pool. (The exception is handled here, so teardown won't see `exc`.)
+    g._db_rollback = True
     app.logger.exception("Unhandled error: %s", error)
     return jsonify({"error": "An unexpected server error occurred."}), 500
 
@@ -1076,28 +665,28 @@ def register():
         return jsonify({"error": "Password must be at least 8 characters."}), 400
 
     db = get_db()
-    if db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
+    if db.execute("SELECT id FROM users WHERE email = %s", (email,)).fetchone():
         return jsonify({"error": "Email is already registered."}), 400
 
     # Block claiming another supplier's company name — identity is what gates
     # access to that company's RFQs and verification record.
     if role == "supplier":
         taken = db.execute(
-            "SELECT id FROM users WHERE LOWER(company) = LOWER(?) AND role IN ('supplier', 'admin')",
+            "SELECT id FROM users WHERE LOWER(company) = LOWER(%s) AND role IN ('supplier', 'admin')",
             (company,),
         ).fetchone()
         if taken:
             return jsonify({"error": "This company is already registered. Contact support to join an existing supplier account."}), 400
 
-    cursor = db.execute(
-        "INSERT INTO users (name, email, password_hash, company, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    new_id = db.execute(
+        "INSERT INTO users (name, email, password_hash, company, role, created_at) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
         (name, email, generate_password_hash(password), company, role, utc_now()),
-    )
-    log_audit("registered", "user", cursor.lastrowid, f"{role} account created", cursor.lastrowid)
+    ).fetchone()["id"]
+    log_audit("registered", "user", new_id, f"{role} account created", new_id)
     db.commit()
     session.permanent = True
-    session["user_id"] = cursor.lastrowid
-    user = db.execute("SELECT id, name, email, company, role FROM users WHERE id = ?", (cursor.lastrowid,)).fetchone()
+    session["user_id"] = new_id
+    user = db.execute("SELECT id, name, email, company, role FROM users WHERE id = %s", (new_id,)).fetchone()
     return jsonify({"user": row_to_dict(user)})
 
 
@@ -1114,7 +703,7 @@ def login():
         return jsonify({"error": "Email and password are required."}), 400
 
     db = get_db()
-    row = db.execute("SELECT id, password_hash FROM users WHERE email = ?", (email,)).fetchone()
+    row = db.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,)).fetchone()
     # Broker-managed accounts have an empty hash — they can never log in.
     if not row or not row["password_hash"] or not check_password_hash(row["password_hash"], password):
         return jsonify({"error": "Invalid email or password."}), 401
@@ -1123,7 +712,7 @@ def login():
     session["user_id"] = row["id"]
     log_audit("logged_in", "user", row["id"], "Session started", row["id"])
     db.commit()
-    user = db.execute("SELECT id, name, email, company, role FROM users WHERE id = ?", (row["id"],)).fetchone()
+    user = db.execute("SELECT id, name, email, company, role FROM users WHERE id = %s", (row["id"],)).fetchone()
     return jsonify({"user": row_to_dict(user)})
 
 
@@ -1181,10 +770,10 @@ def api_translate():
 def overview():
     db = get_db()
     stats = {
-        "products": db.execute("SELECT COUNT(*) FROM products").fetchone()[0],
-        "verified_suppliers": db.execute("SELECT COUNT(*) FROM supplier_verifications WHERE status = 'verified'").fetchone()[0],
-        "open_rfqs": db.execute("SELECT COUNT(*) FROM quotes WHERE status != 'closed'").fetchone()[0],
-        "orders": db.execute("SELECT COUNT(*) FROM orders").fetchone()[0],
+        "products": db.execute("SELECT COUNT(*) AS n FROM products").fetchone()["n"],
+        "verified_suppliers": db.execute("SELECT COUNT(*) AS n FROM supplier_verifications WHERE status = 'verified'").fetchone()["n"],
+        "open_rfqs": db.execute("SELECT COUNT(*) AS n FROM quotes WHERE status != 'closed'").fetchone()["n"],
+        "orders": db.execute("SELECT COUNT(*) AS n FROM orders").fetchone()["n"],
     }
     # Audit log and trust events are admin-only — they contain actor names and
     # internal operation details that must not be exposed to unauthenticated users.
@@ -1227,17 +816,17 @@ def marketplace():
         like = f"%{query}%"
         filters.append(
             """
-            (name LIKE ? OR supplier LIKE ? OR category LIKE ? OR description LIKE ?
-            OR location LIKE ? OR certifications LIKE ?)
+            (name LIKE %s OR supplier LIKE %s OR category LIKE %s OR description LIKE %s
+            OR location LIKE %s OR certifications LIKE %s)
             """
         )
         params.extend([like, like, like, like, like, like])
     if category:
         names = expand_category_filter(category)
-        filters.append(f"category IN ({','.join('?' * len(names))})")
+        filters.append(f"category IN ({','.join(['%s'] * len(names))})")
         params.extend(names)
     if location:
-        filters.append("location LIKE ?")
+        filters.append("location LIKE %s")
         params.append(f"%{location}%")
     if verified_only:
         filters.append("verified = 1")
@@ -1248,7 +837,7 @@ def marketplace():
     product_ids = [row["id"] for row in products]
     primary_media = {}
     if product_ids:
-        placeholders = ",".join("?" * len(product_ids))
+        placeholders = ",".join(["%s"] * len(product_ids))
         media_rows = db.execute(
             f"SELECT product_id, url FROM product_media WHERE product_id IN ({placeholders}) "
             f"AND is_primary = 1 ORDER BY sort_order ASC",
@@ -1358,7 +947,7 @@ def my_products():
         rows = db.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
     else:
         rows = db.execute(
-            "SELECT * FROM products WHERE supplier_id = ? ORDER BY created_at DESC",
+            "SELECT * FROM products WHERE supplier_id = %s ORDER BY created_at DESC",
             (user["id"],),
         ).fetchall()
     return jsonify({"products": [row_to_dict(r) for r in rows]})
@@ -1372,7 +961,7 @@ def update_product(product_id):
     if user["role"] not in ("supplier", "admin"):
         return jsonify({"error": "Suppliers only."}), 403
     db = get_db()
-    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    row = db.execute("SELECT * FROM products WHERE id = %s", (product_id,)).fetchone()
     if not row:
         return jsonify({"error": "Product not found."}), 404
     product = row_to_dict(row)
@@ -1388,8 +977,8 @@ def update_product(product_id):
         return jsonify({"error": "No fields to update."}), 400
 
     if updates:
-        set_clause = ", ".join(f"{f} = ?" for f in updates)
-        db.execute(f"UPDATE products SET {set_clause} WHERE id = ?", [*updates.values(), product_id])
+        set_clause = ", ".join(f"{f} = %s" for f in updates)
+        db.execute(f"UPDATE products SET {set_clause} WHERE id = %s", [*updates.values(), product_id])
     if media_list is not None and len(media_list) <= _MAX_MEDIA:
         _save_media(db, product_id, media_list, utc_now())
     log_audit("updated", "product", product_id, f"{user['company']} updated {product.get('name')}")
@@ -1410,7 +999,7 @@ def save_product_specs(product_id):
         return error
 
     db = get_db()
-    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    row = db.execute("SELECT * FROM products WHERE id = %s", (product_id,)).fetchone()
     if not row:
         return jsonify({"error": "Product not found."}), 404
     product = row_to_dict(row)
@@ -1445,14 +1034,14 @@ def save_product_specs(product_id):
 
     now = utc_now()
     # Transactional replace: delete-then-reinsert under the same implicit transaction.
-    db.execute("DELETE FROM product_specs WHERE product_id = ?", (product_id,))
+    db.execute("DELETE FROM product_specs WHERE product_id = %s", (product_id,))
     saved = []
     for spec in validated:
-        cursor = db.execute(
-            "INSERT INTO product_specs (product_id, label, value, sort_order, created_at) VALUES (?, ?, ?, ?, ?)",
+        new_id = db.execute(
+            "INSERT INTO product_specs (product_id, label, value, sort_order, created_at) VALUES (%s, %s, %s, %s, %s) RETURNING id",
             (product_id, spec["label"], spec["value"], spec["sort_order"], now),
-        )
-        saved.append({**spec, "id": cursor.lastrowid, "product_id": product_id})
+        ).fetchone()["id"]
+        saved.append({**spec, "id": new_id, "product_id": product_id})
     log_audit("updated", "product_specs", product_id,
               f"{len(saved)} specs saved by {user['company']}")
     db.commit()
@@ -1471,7 +1060,7 @@ def _get_media(db, product_id):
     # would set in the portal; not captured yet (see ledger 2.6, BLOCKED).
     rows = db.execute(
         "SELECT id, type, url, thumb_url, alt_text, sort_order, is_primary FROM product_media "
-        "WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC, id ASC",
+        "WHERE product_id = %s ORDER BY is_primary DESC, sort_order ASC, id ASC",
         (product_id,),
     ).fetchall()
     return [dict(r) for r in rows]
@@ -1479,7 +1068,7 @@ def _get_media(db, product_id):
 
 def _save_media(db, product_id, media_list, now):
     """Replace all media for a product. Returns the saved rows."""
-    db.execute("DELETE FROM product_media WHERE product_id = ?", (product_id,))
+    db.execute("DELETE FROM product_media WHERE product_id = %s", (product_id,))
     saved = []
     has_primary = False
     for i, item in enumerate(media_list):
@@ -1496,16 +1085,16 @@ def _save_media(db, product_id, media_list, now):
         is_primary = 1 if (item.get("is_primary") and not has_primary) else 0
         if is_primary:
             has_primary = True
-        cursor = db.execute(
+        new_id = db.execute(
             "INSERT INTO product_media (product_id, type, url, thumb_url, alt_text, sort_order, is_primary, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
             (product_id, kind, url, thumb, alt, i, is_primary, now),
-        )
-        saved.append({"id": cursor.lastrowid, "product_id": product_id, "type": kind,
+        ).fetchone()["id"]
+        saved.append({"id": new_id, "product_id": product_id, "type": kind,
                       "url": url, "thumb_url": thumb, "alt_text": alt, "sort_order": i, "is_primary": is_primary})
     # If caller sent rows but none were marked primary, promote first one.
     if saved and not has_primary:
-        db.execute("UPDATE product_media SET is_primary=1 WHERE id=?", (saved[0]["id"],))
+        db.execute("UPDATE product_media SET is_primary=1 WHERE id=%s", (saved[0]["id"],))
         saved[0]["is_primary"] = 1
     return saved
 
@@ -1517,7 +1106,7 @@ def save_product_media(product_id):
     if error:
         return error
     db = get_db()
-    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    row = db.execute("SELECT * FROM products WHERE id = %s", (product_id,)).fetchone()
     if not row:
         return jsonify({"error": "Product not found."}), 404
     if not _owns_product(user, row_to_dict(row)):
@@ -1551,7 +1140,7 @@ _MAX_QTY_LEN     = 100
 @limiter.limit("5 per hour")
 def product_inquiry(product_id):
     db = get_db()
-    row = db.execute("SELECT id, name, supplier_id FROM products WHERE id = ?", (product_id,)).fetchone()
+    row = db.execute("SELECT id, name, supplier_id FROM products WHERE id = %s", (product_id,)).fetchone()
     if not row:
         return jsonify({"error": "Product not found."}), 404
     product = row_to_dict(row)
@@ -1593,13 +1182,12 @@ def product_inquiry(product_id):
     quantity = raw_quantity
     message  = raw_message
 
-    cursor = db.execute(
+    inquiry_id = db.execute(
         """INSERT INTO product_inquiries
            (product_id, supplier_id, name, email, company, quantity, message, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
         (product_id, product.get("supplier_id"), name, email, company, quantity, message, utc_now()),
-    )
-    inquiry_id = cursor.lastrowid
+    ).fetchone()["id"]
     log_audit("created", "product_inquiry", product_id,
               f"inquiry from {email}", actor_id=None)
     db.commit()
@@ -1627,12 +1215,12 @@ def product_inquiry(product_id):
 @app.route("/api/products/<int:product_id>")
 def product_detail(product_id):
     db = get_db()
-    row = db.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    row = db.execute("SELECT * FROM products WHERE id = %s", (product_id,)).fetchone()
     if not row:
         return jsonify({"error": "Product not found."}), 404
     product = row_to_dict(row)
     spec_rows = db.execute(
-        "SELECT label, value FROM product_specs WHERE product_id = ? ORDER BY sort_order ASC",
+        "SELECT label, value FROM product_specs WHERE product_id = %s ORDER BY sort_order ASC",
         (product_id,),
     ).fetchall()
     product["specs"] = [{"label": r["label"], "value": r["value"]} for r in spec_rows]
@@ -1646,7 +1234,7 @@ def product_detail(product_id):
     product["supplier_since"] = ""
     if product.get("supplier_id"):
         owner = db.execute(
-            "SELECT contact_email, contact_phone, created_at FROM users WHERE id = ?",
+            "SELECT contact_email, contact_phone, created_at FROM users WHERE id = %s",
             (product["supplier_id"],),
         ).fetchone()
         if owner:
@@ -1676,7 +1264,7 @@ def suppliers():
     where = ""
     if query:
         like = f"%{query}%"
-        where = "WHERE p.supplier LIKE ? OR p.location LIKE ? OR p.certifications LIKE ?"
+        where = "WHERE p.supplier LIKE %s OR p.location LIKE %s OR p.certifications LIKE %s"
         params = [like, like, like]
     rows = get_db().execute(
         f"""
@@ -1684,13 +1272,13 @@ def suppliers():
                MIN(p.location) AS location,
                COUNT(p.id) AS product_count,
                MAX(p.verified) AS verified,
-               GROUP_CONCAT(DISTINCT p.category) AS categories,
-               GROUP_CONCAT(DISTINCT p.certifications) AS certifications,
+               string_agg(DISTINCT p.category, ',') AS categories,
+               string_agg(DISTINCT p.certifications, ',') AS certifications,
                COALESCE(v.status, 'not_started') AS verification_status
         FROM products p
         LEFT JOIN supplier_verifications v ON v.supplier_company = p.supplier
         {where}
-        GROUP BY p.supplier
+        GROUP BY p.supplier, v.status
         ORDER BY verified DESC, product_count DESC, p.supplier ASC
         """,
         params,
@@ -1726,7 +1314,7 @@ def create_product():
         if not isinstance(supplier_id, int):
             return jsonify({"error": "Pick the manufacturer this product belongs to."}), 400
         owner = db.execute(
-            "SELECT id, company FROM users WHERE id = ? AND role = 'supplier'",
+            "SELECT id, company FROM users WHERE id = %s AND role = 'supplier'",
             (supplier_id,),
         ).fetchone()
         if not owner:
@@ -1736,11 +1324,11 @@ def create_product():
     else:
         supplier = user["company"]
         owner_id = user["id"]
-    cursor = db.execute(
+    product_id = db.execute(
         """
         INSERT INTO products
         (category, name, supplier, supplier_id, location, description, price, moq, lead_time, capacity, certifications, image_url, verified, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
         """,
         (
             fields["category"],
@@ -1758,9 +1346,8 @@ def create_product():
             0,
             utc_now(),
         ),
-    )
-    log_audit("created", "product", cursor.lastrowid, f"{supplier} listed {fields['name']}")
-    product_id = cursor.lastrowid
+    ).fetchone()["id"]
+    log_audit("created", "product", product_id, f"{supplier} listed {fields['name']}")
 
     # Persist media rows if provided; otherwise fall back to legacy image_url field.
     media_list = data.get("media") if isinstance(data.get("media"), list) else None
@@ -1769,7 +1356,7 @@ def create_product():
     elif clean_str(data, "image_url"):
         db.execute(
             "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
-            "VALUES (?, 'image', ?, ?, 0, 1, ?)",
+            "VALUES (%s, 'image', %s, %s, 0, 1, %s)",
             (product_id, clean_str(data, "image_url"), clean_str(data, "image_url"), utc_now()),
         )
 
@@ -1808,20 +1395,19 @@ def quotes():
         if not product_id or not quantity:
             return jsonify({"error": "Product and quantity are required."}), 400
 
-        product = db.execute("SELECT id, name, supplier FROM products WHERE id = ?", (product_id,)).fetchone()
+        product = db.execute("SELECT id, name, supplier FROM products WHERE id = %s", (product_id,)).fetchone()
         if not product:
             return jsonify({"error": "Product not found."}), 404
 
-        cursor = db.execute(
+        quote_id = db.execute(
             """
             INSERT INTO quotes (buyer_id, product_id, quantity, notes, target_price, destination, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
             """,
             (user["id"], product_id, quantity, notes, target_price, destination, utc_now()),
-        )
-        quote_id = cursor.lastrowid
+        ).fetchone()["id"]
         db.execute(
-            "INSERT INTO messages (quote_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)",
+            "INSERT INTO messages (quote_id, sender_id, body, created_at) VALUES (%s, %s, %s, %s)",
             (quote_id, user["id"], f"RFQ opened. Quantity: {quantity}. {notes}".strip(), utc_now()),
         )
         log_audit("created", "rfq", quote_id, f"RFQ sent to {product['supplier']}")
@@ -1844,7 +1430,7 @@ def quotes():
             "contactCompany": (user.get("company") or "")[:160],
         })
 
-        quote = db.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)).fetchone()
+        quote = db.execute("SELECT * FROM quotes WHERE id = %s", (quote_id,)).fetchone()
         return jsonify({"quote": row_to_dict(quote)})
 
     clause, params = quote_scope_clause(user)
@@ -1879,7 +1465,7 @@ def update_quote_status(quote_id):
         """
         SELECT q.*, p.supplier, p.supplier_id FROM quotes q
         JOIN products p ON q.product_id = p.id
-        WHERE q.id = ?
+        WHERE q.id = %s
         """,
         (quote_id,),
     ).fetchone()
@@ -1903,9 +1489,9 @@ def update_quote_status(quote_id):
             if status == "accepted" and quote["status"] != "quoted":
                 return jsonify({"error": "This RFQ has not been quoted yet."}), 400
 
-    db.execute("UPDATE quotes SET status = ? WHERE id = ?", (status, quote_id))
+    db.execute("UPDATE quotes SET status = %s WHERE id = %s", (status, quote_id))
     db.execute(
-        "INSERT INTO messages (quote_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO messages (quote_id, sender_id, body, created_at) VALUES (%s, %s, %s, %s)",
         (quote_id, user["id"], f"Status changed to {status}.", utc_now()),
     )
     log_audit("updated_status", "rfq", quote_id, status)
@@ -1926,7 +1512,7 @@ def orders():
             """
             SELECT q.*, p.supplier, p.supplier_id FROM quotes q
             JOIN products p ON q.product_id = p.id
-            WHERE q.id = ?
+            WHERE q.id = %s
             """,
             (quote_id,),
         ).fetchone()
@@ -1936,10 +1522,10 @@ def orders():
             return jsonify({"error": "You cannot create an order for this RFQ."}), 403
         if quote["status"] != "accepted":
             return jsonify({"error": "The RFQ must be accepted before an order can be created."}), 400
-        if db.execute("SELECT id FROM orders WHERE quote_id = ?", (quote_id,)).fetchone():
+        if db.execute("SELECT id FROM orders WHERE quote_id = %s", (quote_id,)).fetchone():
             return jsonify({"error": "An order already exists for this RFQ."}), 400
-        cursor = db.execute(
-            "INSERT INTO orders (quote_id, incoterm, payment_status, inspection_status, created_at) VALUES (?, ?, ?, ?, ?)",
+        order_id = db.execute(
+            "INSERT INTO orders (quote_id, incoterm, payment_status, inspection_status, created_at) VALUES (%s, %s, %s, %s, %s) RETURNING id",
             (
                 quote_id,
                 clean_str(data, "incoterm", "FOB") or "FOB",
@@ -1947,14 +1533,14 @@ def orders():
                 "not_scheduled",
                 utc_now(),
             ),
-        )
+        ).fetchone()["id"]
         db.execute(
-            "INSERT INTO trust_events (quote_id, provider, event_type, status, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO trust_events (quote_id, provider, event_type, status, amount, created_at) VALUES (%s, %s, %s, %s, %s, %s)",
             (quote_id, "provider_abstraction", "escrow_intent", "created", clean_str(data, "amount"), utc_now()),
         )
-        log_audit("created", "order", cursor.lastrowid, "Order and escrow intent created")
+        log_audit("created", "order", order_id, "Order and escrow intent created")
         db.commit()
-        return jsonify({"order_id": cursor.lastrowid})
+        return jsonify({"order_id": order_id})
 
     clause, params = quote_scope_clause(user)
     rows = db.execute(
@@ -1983,7 +1569,7 @@ def messages(quote_id):
         """
         SELECT q.*, p.supplier, p.supplier_id FROM quotes q
         JOIN products p ON q.product_id = p.id
-        WHERE q.id = ?
+        WHERE q.id = %s
         """,
         (quote_id,),
     ).fetchone()
@@ -1997,11 +1583,11 @@ def messages(quote_id):
         body = clean_str(data, "body")
         if not body:
             return jsonify({"error": "Message is required."}), 400
-        cursor = db.execute(
-            "INSERT INTO messages (quote_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)",
+        msg_id = db.execute(
+            "INSERT INTO messages (quote_id, sender_id, body, created_at) VALUES (%s, %s, %s, %s) RETURNING id",
             (quote_id, user["id"], body, utc_now()),
-        )
-        log_audit("sent", "message", cursor.lastrowid, f"Quote {quote_id}")
+        ).fetchone()["id"]
+        log_audit("sent", "message", msg_id, f"Quote {quote_id}")
         db.commit()
 
     rows = db.execute(
@@ -2009,7 +1595,7 @@ def messages(quote_id):
         SELECT m.*, u.name AS sender_name, u.company AS sender_company
         FROM messages m
         JOIN users u ON m.sender_id = u.id
-        WHERE m.quote_id = ?
+        WHERE m.quote_id = %s
         ORDER BY m.created_at ASC
         """,
         (quote_id,),
@@ -2038,21 +1624,21 @@ def verifications():
             # A supplier may only touch their own record (matched by identity),
             # or claim the unowned seeded record for their company.
             own = db.execute(
-                "SELECT id FROM supplier_verifications WHERE supplier_id = ?", (user["id"],)
+                "SELECT id FROM supplier_verifications WHERE supplier_id = %s", (user["id"],)
             ).fetchone()
             if not own:
                 own = db.execute(
-                    "SELECT id FROM supplier_verifications WHERE supplier_company = ? AND supplier_id IS NULL",
+                    "SELECT id FROM supplier_verifications WHERE supplier_company = %s AND supplier_id IS NULL",
                     (supplier_company,),
                 ).fetchone()
             if own:
                 db.execute(
                     """
                     UPDATE supplier_verifications SET
-                        supplier_id = ?, status = 'document_review',
-                        business_license = ?, factory_address = ?, evidence = ?,
-                        next_review_at = ?, updated_at = ?
-                    WHERE id = ?
+                        supplier_id = %s, status = 'document_review',
+                        business_license = %s, factory_address = %s, evidence = %s,
+                        next_review_at = %s, updated_at = %s
+                    WHERE id = %s
                     """,
                     (user["id"], business_license, factory_address, evidence, next_review_at, now, own["id"]),
                 )
@@ -2061,7 +1647,7 @@ def verifications():
                     """
                     INSERT INTO supplier_verifications
                     (supplier_company, supplier_id, status, business_license, factory_address, evidence, next_review_at, updated_at)
-                    VALUES (?, ?, 'application', ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, 'application', %s, %s, %s, %s, %s)
                     """,
                     (supplier_company, user["id"], business_license, factory_address, evidence, next_review_at, now),
                 )
@@ -2071,14 +1657,14 @@ def verifications():
                 """
                 INSERT INTO supplier_verifications
                 (supplier_company, status, business_license, factory_address, evidence, next_review_at, updated_at)
-                VALUES (?, 'application', ?, ?, ?, ?, ?)
-                ON CONFLICT(supplier_company) DO UPDATE SET
+                VALUES (%s, 'application', %s, %s, %s, %s, %s)
+                ON CONFLICT (site_id, supplier_company) DO UPDATE SET
                     status = 'document_review',
-                    business_license = excluded.business_license,
-                    factory_address = excluded.factory_address,
-                    evidence = excluded.evidence,
-                    next_review_at = excluded.next_review_at,
-                    updated_at = excluded.updated_at
+                    business_license = EXCLUDED.business_license,
+                    factory_address = EXCLUDED.factory_address,
+                    evidence = EXCLUDED.evidence,
+                    next_review_at = EXCLUDED.next_review_at,
+                    updated_at = EXCLUDED.updated_at
                 """,
                 (supplier_company, business_license, factory_address, evidence, next_review_at, now),
             )
@@ -2086,7 +1672,7 @@ def verifications():
         db.commit()
 
     if user["role"] == "supplier":
-        rows = db.execute("SELECT * FROM supplier_verifications WHERE supplier_id = ?", (user["id"],)).fetchall()
+        rows = db.execute("SELECT * FROM supplier_verifications WHERE supplier_id = %s", (user["id"],)).fetchall()
     else:
         rows = db.execute("SELECT * FROM supplier_verifications ORDER BY updated_at DESC").fetchall()
     return jsonify({"verifications": [row_to_dict(row) for row in rows]})
@@ -2109,22 +1695,22 @@ def admin_set_verification(verif_id):
         return jsonify({"error": "Unknown action — use 'approve' or 'revoke'."}), 400
 
     db = get_db()
-    row = db.execute("SELECT * FROM supplier_verifications WHERE id = ?", (verif_id,)).fetchone()
+    row = db.execute("SELECT * FROM supplier_verifications WHERE id = %s", (verif_id,)).fetchone()
     if not row:
         return jsonify({"error": "Verification record not found."}), 404
 
     company = row["supplier_company"]
     now = utc_now()
     if action == "approve":
-        db.execute("UPDATE supplier_verifications SET status = 'verified', updated_at = ? WHERE id = ?", (now, verif_id))
-        db.execute("UPDATE products SET verified = 1 WHERE supplier = ?", (company,))
+        db.execute("UPDATE supplier_verifications SET status = 'verified', updated_at = %s WHERE id = %s", (now, verif_id))
+        db.execute("UPDATE products SET verified = 1 WHERE supplier = %s", (company,))
     else:
-        db.execute("UPDATE supplier_verifications SET status = 'application', updated_at = ? WHERE id = ?", (now, verif_id))
-        db.execute("UPDATE products SET verified = 0 WHERE supplier = ?", (company,))
+        db.execute("UPDATE supplier_verifications SET status = 'application', updated_at = %s WHERE id = %s", (now, verif_id))
+        db.execute("UPDATE products SET verified = 0 WHERE supplier = %s", (company,))
     log_audit(action, "supplier_verification", verif_id, company, actor_id=user["id"])
     db.commit()
 
-    updated = db.execute("SELECT * FROM supplier_verifications WHERE id = ?", (verif_id,)).fetchone()
+    updated = db.execute("SELECT * FROM supplier_verifications WHERE id = %s", (verif_id,)).fetchone()
     return jsonify({"verification": row_to_dict(updated)})
 
 
@@ -2189,7 +1775,7 @@ def admin_suppliers():
         rows = db.execute(
             """
             SELECT id, name, company, contact_email, contact_phone, created_at
-            FROM users WHERE role = 'supplier' ORDER BY company COLLATE NOCASE ASC
+            FROM users WHERE role = 'supplier' ORDER BY LOWER(company) ASC
             """
         ).fetchall()
         return jsonify({"suppliers": [row_to_dict(row) for row in rows]})
@@ -2207,22 +1793,22 @@ def admin_suppliers():
 
     # Company name stays unique — it is the anchor products are pinned to.
     if db.execute(
-        "SELECT id FROM users WHERE LOWER(company) = LOWER(?) AND role IN ('supplier', 'admin')",
+        "SELECT id FROM users WHERE LOWER(company) = LOWER(%s) AND role IN ('supplier', 'admin')",
         (company,),
     ).fetchone():
         return jsonify({"error": "A supplier with that company name already exists."}), 400
 
-    cursor = db.execute(
+    new_id = db.execute(
         """
         INSERT INTO users (name, email, password_hash, company, role, contact_email, contact_phone, created_at)
-        VALUES (?, NULL, '', ?, 'supplier', ?, ?, ?)
+        VALUES (%s, NULL, '', %s, 'supplier', %s, %s, %s) RETURNING id
         """,
         (name, company, contact_email, contact_phone, utc_now()),
-    )
-    log_audit("created", "user", cursor.lastrowid, f"admin registered manufacturer {company}", cursor.lastrowid)
+    ).fetchone()["id"]
+    log_audit("created", "user", new_id, f"admin registered manufacturer {company}", new_id)
     db.commit()
     return jsonify({
-        "supplier_id": cursor.lastrowid,
+        "supplier_id": new_id,
         "company": company,
         "contact_email": contact_email,
         "contact_phone": contact_phone,

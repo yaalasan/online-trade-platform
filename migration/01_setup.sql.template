@@ -1,0 +1,33 @@
+-- Run as the postgres superuser:  psql -U postgres -f migration/01_setup.sql
+--
+-- SECRETS: do not edit this template. Generate a runnable copy from .env with:
+--   source .env
+--   sed -e "s|CHANGE_ME_owner|$OWNER_PW|" -e "s|CHANGE_ME_app|$APP_PW|" \
+--       migration/01_setup.sql.template > migration/01_setup.sql
+-- The generated migration/01_setup.sql is gitignored (carries real passwords).
+
+CREATE DATABASE fastflow;
+\c fastflow
+
+CREATE ROLE fastflow_owner LOGIN PASSWORD 'CHANGE_ME_owner';
+CREATE ROLE fastflow_app   LOGIN PASSWORD 'CHANGE_ME_app';
+
+GRANT CONNECT ON DATABASE fastflow TO fastflow_owner, fastflow_app;
+GRANT USAGE  ON SCHEMA public       TO fastflow_app;
+ALTER SCHEMA public OWNER TO fastflow_owner;
+
+CREATE TABLE sites (
+    id        integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    host      text    NOT NULL UNIQUE,
+    slug      text    NOT NULL UNIQUE,
+    name      text    NOT NULL,
+    is_active integer NOT NULL DEFAULT 1
+);
+ALTER TABLE sites OWNER TO fastflow_owner;
+
+INSERT INTO sites (host, slug, name) VALUES
+    ('fastflow.global', 'fastflow', 'Fastflow Global'),
+    ('fastflow.asia',   'asia',     'Fastflow Asia'),
+    ('fastflow.tools',  'tools',    'Fastflow Tools');
+
+GRANT SELECT ON sites TO fastflow_app;
