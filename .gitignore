@@ -21,3 +21,6 @@ data.db.bak-*
 
 # migration setup carries generated DB passwords — keep only the template
 migration/01_setup.sql
+
+# Local database backups (never commit)
+backups/
