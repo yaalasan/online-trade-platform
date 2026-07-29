@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}{{ site.brand_name }}{% endblock %}</title>
+<meta name="description" content="{% block description %}{{ site.meta_description }}{% endblock %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+</head>
+<body>
+
+<!-- top bar -->
+<div class="topbar"><div class="wrap">
+  <span>Sales enquiries:
+    <a href="mailto:{{ site.email_sales }}">{{ site.email_sales }}</a>
+    &nbsp;·&nbsp; WhatsApp:
+    <a href="https://wa.me/{{ site.whatsapp_link }}" target="_blank" rel="noopener">{{ site.whatsapp }}</a>
+  </span>
+  <span class="langs">
+    {% for code, label in site.languages %}
+      <span class="{{ 'on' if code == 'en' else '' }}" data-lang="{{ code }}">{{ label }}</span>
+      {% if not loop.last %}<span class="sep">|</span>{% endif %}
+    {% endfor %}
+  </span>
+</div></div>
+
+<!-- header -->
+<header><div class="wrap">
+  <a class="logo" href="{{ url_for('page_home') }}">{{ site.brand_split[0] }}<b>{{ site.brand_split[1] }}</b></a>
+  <button class="burger" id="burger" aria-label="Menu" aria-expanded="false">&#9776;</button>
+  <nav id="nav">
+    {% for key, label in site.nav %}
+      <a href="{{ url_for('page_' ~ key) }}"
+         class="{{ 'active' if active_page == key else '' }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <a class="cta" href="{{ url_for('page_contact') }}">Get a quote</a>
+</div></header>
+
+{% block content %}{% endblock %}
+
+<!-- footer -->
+<footer><div class="wrap">
+  <div class="fgrid">
+    <div>
+      <div class="flogo">{{ site.brand_name }}</div>
+      <div class="about">{{ site.company_name }} &mdash; international trade,
+        cross-border sourcing and supply chain services.</div>
+    </div>
+    <div>
+      <h4>Navigation</h4>
+      <a href="{{ url_for('page_home') }}">Home</a>
+      <a href="{{ url_for('page_products') }}">Products</a>
+      <a href="{{ url_for('page_about') }}">About us</a>
+    </div>
+    <div>
+      <h4>Support</h4>
+      <a href="{{ url_for('page_contact') }}">Contact us</a>
+      <a href="{{ url_for('page_faq') }}">FAQ</a>
+    </div>
+    <div>
+      <h4>Contact us</h4>
+      <div class="fcontact">
+        Tel: <span>{{ site.tel }}</span><br>
+        Mobile: <span>{{ site.mobile }}</span><br>
+        WhatsApp: <span>{{ site.whatsapp }}</span><br>
+        Sales: <span>{{ site.email_sales }}</span><br>
+        General: <span>{{ site.email_general }}</span><br>
+        {{ site.address }}
+      </div>
+    </div>
+  </div>
+  <div class="fbot">
+    <span>Copyright &copy; {{ current_year }} {{ site.company_name }}</span>
+    <span>fastflow.global · fastflow.asia · fastflow.tools</span>
+  </div>
+</div></footer>
+
+<!-- floating WhatsApp -->
+<a class="wa" href="https://wa.me/{{ site.whatsapp_link }}" target="_blank"
+   rel="noopener" aria-label="Chat with us on WhatsApp">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1a12 12 0 0 1-3.3-1.6 12.4 12.4 0 0 1-3.4-4c-.4-.7-.6-1.4-.6-2 0-.7.3-1.3.7-1.7.2-.2.4-.3.6-.3h.5c.2 0 .4 0 .6.4l.8 1.9c.1.2 0 .4-.1.5l-.4.5c-.1.2-.3.3-.1.6.3.5.8 1.2 1.4 1.7.7.6 1.3.9 1.8 1.1.2.1.4.1.6-.1l.7-.8c.2-.2.3-.2.6-.1l1.8.9c.3.1.4.2.4.4v.6z"/></svg>
+  <span class="txt">WhatsApp</span>
+</a>
+
+<script>
+(function(){
+  var burger = document.getElementById('burger');
+  var nav = document.getElementById('nav');
+  burger.addEventListener('click', function(){
+    var open = nav.classList.toggle('open');
+    burger.setAttribute('aria-expanded', open);
+  });
+
+  document.querySelectorAll('.qa .q').forEach(function(q){
+    q.addEventListener('click', function(){
+      q.parentElement.classList.toggle('open');
+    });
+  });
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

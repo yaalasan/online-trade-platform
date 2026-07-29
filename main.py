@@ -10,10 +10,22 @@ from pathlib import Path
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from flask import Flask, Response, abort, g, jsonify, request, send_file, session
+from flask import (
+    Flask,
+    abort,
+    g,
+    jsonify,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+from site_config import get_site
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -638,11 +650,194 @@ def handle_unexpected_error(error):
     return jsonify({"error": "An unexpected server error occurred."}), 500
 
 
+# --- Server-rendered public site ---------------------------------------------
+# Five pages at real URLs (Home / Products / About / Contact / FAQ) plus a
+# per-category listing page and a product detail page. All site-specific text
+# comes from site_config.py; nothing about the company is hardcoded here.
+
+# request host -> site_config slug. RLS tenant resolution lives in open_db();
+# this only picks which config dict to render with.
+_HOST_SLUG = {
+    "fastflow.global": "fastflow",
+    "fastflow.asia": "asia",
+    "fastflow.tools": "tools",
+}
+
+
+def _site_slug():
+    host = (request.host or "").split(":")[0].lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return _HOST_SLUG.get(host, "fastflow")
+
+
+@app.context_processor
+def inject_site():
+    """Make `site` config and `current_year` available in every template."""
+    return {"site": get_site(_site_slug()), "current_year": datetime.now(UTC).year}
+
+
+def _slugify(name):
+    """'Construction machinery' -> 'construction-machinery'."""
+    return re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+
+
+def _category_counts():
+    """{category_name: count} across the tenant's products. No site_id clause —
+    RLS scopes it to the current site."""
+    rows = get_db().execute(
+        "SELECT category, COUNT(*) AS n FROM products GROUP BY category"
+    ).fetchall()
+    return {r["category"]: r["n"] for r in rows}
+
+
+def _categories_with_counts(site):
+    """Merge the config category list (what to show — source of truth for
+    display) with live DB counts (how many are listed). The trailing
+    'Custom sourcing' entry is a CTA to the contact form, not a listing page."""
+    counts = _category_counts()
+    out = []
+    for name, blurb, moq, lead_time in site["categories"]:
+        is_cta = name == "Custom sourcing"
+        slug = _slugify(name)
+        out.append({
+            "name": name,
+            "blurb": blurb,
+            "moq": moq,
+            "lead_time": lead_time,
+            "slug": slug,
+            "is_cta": is_cta,
+            "count": 0 if is_cta else counts.get(name, 0),
+            "url": url_for("page_contact") if is_cta
+                   else url_for("page_category", slug=slug),
+        })
+    return out
+
+
+def _enquiry_categories(site):
+    """Real category names + 'Other' for the contact-form dropdown, so it can
+    never drift from the catalogue. Excludes the 'Custom sourcing' CTA tile."""
+    names = [name for (name, *_rest) in site["categories"] if name != "Custom sourcing"]
+    return names + ["Other"]
+
+
+def _primary_image(db, product_id):
+    """Best display image: primary product_media, else lowest sort_order, else
+    the legacy products.image_url, else None."""
+    row = db.execute(
+        "SELECT url FROM product_media WHERE product_id = %s "
+        "ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1",
+        (product_id,),
+    ).fetchone()
+    if row and row["url"]:
+        return row["url"]
+    legacy = db.execute(
+        "SELECT image_url FROM products WHERE id = %s", (product_id,)
+    ).fetchone()
+    if legacy and legacy["image_url"]:
+        return legacy["image_url"]
+    return None
+
+
 @app.route("/")
-def home():
-    # Inject the portal URL so the "Supplier Portal" links point at the right host.
-    html = (BASE_DIR / "index.html").read_text(encoding="utf-8")
-    return Response(html.replace("{{PORTAL_URL}}", PORTAL_URL), mimetype="text/html")
+def page_home():
+    site = get_site(_site_slug())
+    return render_template(
+        "home.html", active_page="home",
+        categories=_categories_with_counts(site),
+    )
+
+
+@app.route("/products")
+def page_products():
+    site = get_site(_site_slug())
+    return render_template(
+        "products.html", active_page="products",
+        categories=_categories_with_counts(site),
+    )
+
+
+@app.route("/products/<slug>")
+def page_category(slug):
+    site = get_site(_site_slug())
+    cat = next(
+        (c for c in _categories_with_counts(site)
+         if c["slug"] == slug and not c["is_cta"]),
+        None,
+    )
+    if not cat:
+        abort(404)
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, name, supplier, location, price, moq, lead_time, verified "
+        "FROM products WHERE category = %s ORDER BY verified DESC, name",
+        (cat["name"],),
+    ).fetchall()
+    products = []
+    for r in rows:
+        p = dict(r)
+        p["image"] = _primary_image(db, r["id"])
+        products.append(p)
+    return render_template(
+        "category.html", active_page="products",
+        category=cat, products=products,
+    )
+
+
+@app.route("/product/<int:id>")
+def page_product(id):
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    product = dict(row)
+    product["image"] = _primary_image(db, id)
+    product["media"] = _get_media(db, id)
+    spec_rows = db.execute(
+        "SELECT label, value FROM product_specs WHERE product_id = %s ORDER BY sort_order ASC",
+        (id,),
+    ).fetchall()
+    product["specs"] = [dict(s) for s in spec_rows]
+    return render_template(
+        "product.html", active_page="products",
+        product=product, category_slug=_slugify(product["category"]),
+    )
+
+
+@app.route("/about")
+def page_about():
+    return render_template("about.html", active_page="about")
+
+
+@app.route("/faq")
+def page_faq():
+    return render_template("faq.html", active_page="faq")
+
+
+@app.route("/contact", methods=["GET", "POST"])
+def page_contact():
+    site = get_site(_site_slug())
+    enquiry_categories = _enquiry_categories(site)
+    ctx = {
+        "active_page": "contact",
+        "enquiry_categories": enquiry_categories,
+        "csrf_token": session.get("csrf_token", ""),
+    }
+    if request.method == "POST":
+        form = {k: clean_str(request.form, k)
+                for k in ("name", "company", "email", "category", "message")}
+        if not form["name"] or not form["email"] or not form["message"]:
+            error = "Please provide your name, email, and a short description of what you need."
+        elif not _EMAIL_RE.match(form["email"]):
+            error = "Please enter a valid email address."
+        else:
+            error = None
+        if error:
+            return render_template("contact.html", form=form, error=error, **ctx)
+        # TODO Step 3: persist the enquiry to a table and send an email
+        # notification (and forward to the portal broker queue). Out of scope here.
+        return render_template("contact.html", sent=True, **ctx)
+    return render_template("contact.html", **ctx)
 
 
 @app.route("/api/auth/register", methods=["POST"])
@@ -724,6 +919,8 @@ def logout():
 
 @app.route("/api/auth/me")
 def current_user_compat():
+    # Deprecated: duplicate of /api/me, kept as a compatibility alias. No caller
+    # in this repo; retained until any external consumer is confirmed gone.
     user = get_current_user()
     return jsonify({"authenticated": user is not None, "user": user})
 

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Products &mdash; {{ site.brand_name }}{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>Products</h1>
+    <div class="crumb">Home / Products</div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Product categories</h2><div class="rule"></div>
+      <p>Construction machinery, e-bikes, motorbikes and spare parts.
+         Minimum order quantity is one unit for machines &mdash; for spare
+         parts, please contact us for details.</p>
+    </div>
+
+    <div class="grid3">
+      {% for item in categories %}
+      <a class="card" href="{{ item.url }}">
+        <div class="ph"></div>
+        <div class="body">
+          <h3>{{ item.name }}</h3>
+          <p>{{ item.blurb }}</p>
+          {% if item.moq or item.lead_time %}
+          <div class="spec">
+            {% if item.moq %}<span>MOQ <b>{{ item.moq }}</b></span>{% endif %}
+            {% if item.lead_time %}<span>Lead time <b>{{ item.lead_time }}</b></span>{% endif %}
+          </div>
+          {% endif %}
+          <span class="more">
+            {%- if item.is_cta %}Send an enquiry
+            {%- elif item.count %}View {{ item.count }} listing{{ 's' if item.count != 1 else '' }}
+            {%- else %}Enquire{% endif %} &rarr;</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+    <div style="text-align:center;margin-top:44px">
+      <p style="font-size:15px;color:var(--muted);margin-bottom:18px">
+        Can't find what you're looking for? We source to specification.</p>
+      <a class="btn primary" href="{{ url_for('page_contact') }}">Send an enquiry</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Contact us &mdash; {{ site.brand_name }}{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>Contact us</h1>
+    <div class="crumb">Home / Contact us</div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap contact">
+
+    <div class="info">
+      <h3>Get in touch</h3>
+      <div class="co">{{ site.company_name }}</div>
+
+      <div class="row"><div class="k">Address</div>
+        <div class="v">{{ site.address }}</div></div>
+      <div class="row"><div class="k">Tel</div>
+        <div class="v"><a href="tel:{{ site.tel_link }}">{{ site.tel }}</a></div></div>
+      <div class="row"><div class="k">Mobile</div>
+        <div class="v"><a href="tel:{{ site.mobile_link }}">{{ site.mobile }}</a></div></div>
+      <div class="row"><div class="k">WhatsApp</div>
+        <div class="v"><a href="https://wa.me/{{ site.whatsapp_link }}"
+           target="_blank" rel="noopener">{{ site.whatsapp }}</a></div></div>
+      <div class="row"><div class="k">Sales</div>
+        <div class="v"><a href="mailto:{{ site.email_sales }}">{{ site.email_sales }}</a></div></div>
+      <div class="row"><div class="k">General</div>
+        <div class="v"><a href="mailto:{{ site.email_general }}">{{ site.email_general }}</a></div></div>
+      <div class="row"><div class="k">Website</div>
+        <div class="v"><a href="https://www.{{ site.domain }}">www.{{ site.domain }}</a></div></div>
+
+      <div class="ph" style="height:240px;margin-top:28px"></div>
+    </div>
+
+    <div class="form">
+      <h3 style="font-size:20px;font-weight:600">Send an enquiry</h3>
+      <p style="font-size:14px;color:var(--muted);margin-top:6px">
+        We reply to enquiries within one business day.</p>
+
+      {% if sent %}
+        <div class="sent" style="display:block">
+          Thank you &mdash; your enquiry has been received. We'll reply to you shortly.
+        </div>
+      {% endif %}
+      {% if error %}
+        <div class="err" style="display:block">{{ error }}</div>
+      {% endif %}
+
+      {# Step 3 wires this POST to a database table and an email notification. #}
+      <form method="post" action="{{ url_for('page_contact') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <label for="cname">Name</label>
+        <input id="cname" name="name" type="text" required
+               value="{{ form.name if form else '' }}" placeholder="Your name">
+
+        <label for="ccompany">Company</label>
+        <input id="ccompany" name="company" type="text"
+               value="{{ form.company if form else '' }}" placeholder="Company name">
+
+        <label for="cemail">Email</label>
+        <input id="cemail" name="email" type="email" required
+               value="{{ form.email if form else '' }}" placeholder="you@company.com">
+
+        <label for="ccat">Product category</label>
+        <select id="ccat" name="category">
+          {% for c in enquiry_categories %}
+          <option{% if form and form.category == c %} selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="cmsg">Your requirement</label>
+        <textarea id="cmsg" name="message" required
+          placeholder="Product, specification, quantity, destination port&hellip;">{{ form.message if form else '' }}</textarea>
+
+        <button class="btn primary" type="submit">Send enquiry</button>
+      </form>
+    </div>
+
+  </div>
+</section>
+
+{% endblock %}

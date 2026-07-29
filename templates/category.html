@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name }} &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}{{ category.name }} sourced from verified Chinese suppliers by {{ site.company_name }}. {{ category.blurb }}{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>{{ category.name }}</h1>
+    <div class="crumb">
+      <a href="{{ url_for('page_home') }}">Home</a> /
+      <a href="{{ url_for('page_products') }}">Products</a> /
+      {{ category.name }}
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <h2>{{ category.name }}</h2><div class="rule"></div>
+      {% if category.blurb %}<p>{{ category.blurb }}</p>{% endif %}
+    </div>
+
+    {% if products %}
+    <div class="grid3">
+      {% for p in products %}
+      <a class="card" href="{{ url_for('page_product', id=p.id) }}">
+        <div class="ph">{% if p.image %}<img src="{{ p.image }}" alt="{{ p.name }}">{% endif %}</div>
+        <div class="body">
+          {% if p.verified %}<span class="badge">Verified supplier</span>{% endif %}
+          <h3>{{ p.name }}</h3>
+          <p class="meta">{{ p.supplier }}{% if p.location %} &middot; {{ p.location }}{% endif %}</p>
+          {% if p.price %}<div class="price">{{ p.price }}</div>{% endif %}
+          {% if p.moq or p.lead_time %}
+          <div class="spec">
+            {% if p.moq %}<span>MOQ <b>{{ p.moq }}</b></span>{% endif %}
+            {% if p.lead_time %}<span>Lead time <b>{{ p.lead_time }}</b></span>{% endif %}
+          </div>
+          {% endif %}
+          <span class="more">View details &rarr;</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <div class="ph"></div>
+      <h3>No {{ category.name|lower }} listed online yet</h3>
+      <p>We source {{ category.name|lower }} to your specification. Send us the
+         model, quantity and destination port and we'll come back with options
+         and a quote.</p>
+      <div class="btns">
+        <a class="btn primary" href="{{ url_for('page_contact') }}">Send an enquiry</a>
+        <a class="btn line" href="https://wa.me/{{ site.whatsapp_link }}"
+           target="_blank" rel="noopener">Ask on WhatsApp</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}{{ product.name }} from {{ product.supplier }}. {{ (product.description or '')[:150] }}{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>{{ product.name }}</h1>
+    <div class="crumb">
+      <a href="{{ url_for('page_home') }}">Home</a> /
+      <a href="{{ url_for('page_products') }}">Products</a> /
+      <a href="{{ url_for('page_category', slug=category_slug) }}">{{ product.category }}</a> /
+      {{ product.name }}
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap pdp">
+    <div class="pdp-media">
+      <div class="ph main">{% if product.image %}<img src="{{ product.image }}" alt="{{ product.name }}">{% endif %}</div>
+      {% if product.media and product.media|length > 1 %}
+      <div class="thumbs">
+        {% for m in product.media %}
+        <div class="ph thumb">{% if m.url %}<img src="{{ m.thumb_url or m.url }}" alt="{{ m.alt_text or product.name }}">{% endif %}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="pdp-info">
+      {% if product.verified %}<span class="badge">Verified supplier</span>{% endif %}
+      <h2>{{ product.name }}</h2>
+      <p class="meta">{{ product.supplier }}{% if product.location %} &middot; {{ product.location }}{% endif %}</p>
+      {% if product.price %}<div class="price big">{{ product.price }}</div>{% endif %}
+      {% if product.description %}<p class="desc">{{ product.description }}</p>{% endif %}
+
+      <div class="pdp-actions">
+        <a class="btn primary" href="{{ url_for('page_contact') }}">Request a quote</a>
+        <a class="btn line" href="https://wa.me/{{ site.whatsapp_link }}"
+           target="_blank" rel="noopener">Ask on WhatsApp</a>
+      </div>
+
+      <div class="terms">
+        Payment: T/T &mdash; 30% in advance, 70% before shipment. Warranty: 1 year.
+        <a href="{{ url_for('page_faq') }}">See our FAQ</a> for shipping and lead times.
+      </div>
+    </div>
+  </div>
+
+  {% set has_specs = product.moq or product.lead_time or product.capacity or product.certifications or product.specs %}
+  {% if has_specs %}
+  <div class="wrap spectable-wrap">
+    <h3>Specifications</h3>
+    <table class="spectable">
+      {% if product.moq %}<tr><th>Minimum order</th><td>{{ product.moq }}</td></tr>{% endif %}
+      {% if product.lead_time %}<tr><th>Lead time</th><td>{{ product.lead_time }}</td></tr>{% endif %}
+      {% if product.capacity %}<tr><th>Capacity</th><td>{{ product.capacity }}</td></tr>{% endif %}
+      {% if product.certifications %}<tr><th>Certifications</th><td>{{ product.certifications }}</td></tr>{% endif %}
+      {% for s in product.specs %}<tr><th>{{ s.label }}</th><td>{{ s.value }}</td></tr>{% endfor %}
+    </table>
+  </div>
+  {% endif %}
+</section>
+
+{% endblock %}

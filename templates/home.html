@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ site.brand_name }} &mdash; {{ site.tagline }}{% endblock %}
+
+{% block content %}
+
+<div class="hero">
+  <div class="shade"></div>
+  <div class="wrap">
+    <div class="rule"></div>
+    <h1>{{ site.hero_title }}</h1>
+    <p>{{ site.hero_text | safe }}</p>
+    <div class="btns">
+      <a class="btn primary" href="{{ url_for('page_products') }}">Browse products</a>
+      <a class="btn ghost" href="{{ url_for('page_contact') }}">Request a quote</a>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Products</h2><div class="rule"></div>
+      <p>Machinery, components, and industrial goods sourced from audited
+         manufacturers across China.</p>
+    </div>
+
+    <div class="grid3">
+      {% for item in categories %}
+      <a class="card" href="{{ item.url }}">
+        <div class="ph"></div>
+        <div class="body">
+          <h3>{{ item.name }}</h3>
+          <p>{{ item.blurb }}</p>
+          <span class="more">{{ 'Send an enquiry' if item.is_cta else 'View category' }} &rarr;</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap split">
+    <div class="ph"></div>
+    <div>
+      <h2>About us</h2><div class="rule"></div>
+      <p>{{ site.company_name }} was established in {{ site.founded }}. We are a
+         comprehensive trading company specializing in international trade,
+         cross-border sourcing and supply chain services.</p>
+      <p>We connect global buyers with high-quality Chinese suppliers, providing
+         one-stop solutions including product sourcing, supplier audit, quality
+         inspection, export consulting and logistics coordination.</p>
+      <div class="pillars">
+        <div class="pillar"><h4>Supplier audit</h4>
+          <p>Factories checked before we recommend them.</p></div>
+        <div class="pillar"><h4>Quality inspection</h4>
+          <p>Goods inspected before shipment leaves.</p></div>
+      </div>
+      <a class="btn line" href="{{ url_for('page_about') }}" style="margin-top:26px">Learn more</a>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <h2>How we work</h2><div class="rule"></div>
+      <p>One point of contact from enquiry to delivery.</p>
+    </div>
+    <div class="services">
+      <div class="service"><div class="n">1</div>
+        <h3>Tell us what you need</h3>
+        <p>Send your specification, drawing, or reference product. We identify
+           suitable manufacturers.</p></div>
+      <div class="service"><div class="n">2</div>
+        <h3>Quotation and samples</h3>
+        <p>We negotiate pricing, arrange samples, and collect compliance
+           documents on your behalf.</p></div>
+      <div class="service"><div class="n">3</div>
+        <h3>Inspection and shipping</h3>
+        <p>Goods are inspected before dispatch, then shipped by the method that
+           suits your order.</p></div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

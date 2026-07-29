@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}FAQ &mdash; {{ site.brand_name }}{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>FAQ</h1>
+    <div class="crumb">Home / FAQ</div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="sechead">
+      <h2>Frequently asked questions</h2><div class="rule"></div>
+    </div>
+
+    <div class="faq">
+      {% for question, answer in site.faq %}
+      <div class="qa{{ ' open' if loop.first else '' }}">
+        <button class="q" type="button">
+          {{ question }}<span class="sign">+</span>
+        </button>
+        <div class="a">{{ answer | safe }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="text-align:center;margin-top:44px">
+      <p style="font-size:15px;color:var(--muted);margin-bottom:18px">
+        Still have a question?</p>
+      <a class="btn primary" href="{{ url_for('page_contact') }}">Contact us</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
