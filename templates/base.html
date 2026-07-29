@@ -20,12 +20,15 @@
     &nbsp;·&nbsp; WhatsApp:
     <a href="https://wa.me/{{ site.whatsapp_link }}" target="_blank" rel="noopener">{{ site.whatsapp }}</a>
   </span>
+  {# TODO Step 4: server-rendered i18n via ?lang= and translate_text_cached #}
+  {#
   <span class="langs">
     {% for code, label in site.languages %}
       <span class="{{ 'on' if code == 'en' else '' }}" data-lang="{{ code }}">{{ label }}</span>
       {% if not loop.last %}<span class="sep">|</span>{% endif %}
     {% endfor %}
   </span>
+  #}
 </div></div>
 
 <!-- header -->
