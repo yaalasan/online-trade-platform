@@ -150,7 +150,6 @@ import urllib.parse  # noqa: E402
 import urllib.request  # noqa: E402
 
 PORTAL_API_URL = os.environ.get("PORTAL_API_URL", "http://localhost:3000").rstrip("/")
-PORTAL_URL = os.environ.get("PORTAL_URL", PORTAL_API_URL)
 PORTAL_TIMEOUT = float(os.environ.get("PORTAL_TIMEOUT", "2.5"))
 
 # Category taxonomy: parent -> subcategories. Products store the subcategory
@@ -835,7 +834,12 @@ def page_contact():
         if error:
             return render_template("contact.html", form=form, error=error, **ctx)
         # TODO Step 3: persist the enquiry to a table and send an email
-        # notification (and forward to the portal broker queue). Out of scope here.
+        # notification (and forward to the portal broker queue). Also add the
+        # protections that matter most for a public form, in this order of value:
+        #   1. flask-limiter rate limit on POST /contact (throttle abuse)
+        #   2. a hidden honeypot field (drop the submission if it is filled)
+        #   3. a same-session CSRF check on this POST (the existing
+        #      verify_csrf_token only guards /api/*, so /contact is uncovered)
         return render_template("contact.html", sent=True, **ctx)
     return render_template("contact.html", **ctx)
 
