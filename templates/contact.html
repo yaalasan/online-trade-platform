@@ -51,9 +51,15 @@
         <div class="err" style="display:block">{{ error }}</div>
       {% endif %}
 
-      {# Step 3 wires this POST to a database table and an email notification. #}
       <form method="post" action="{{ url_for('page_contact') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        {# Honeypot: hidden from humans, tempting to bots. A filled "website"
+           field makes the server silently drop the submission. #}
+        <div style="position:absolute;left:-9999px" aria-hidden="true">
+          <label for="cwebsite">Website</label>
+          <input id="cwebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
 
         <label for="cname">Name</label>
         <input id="cname" name="name" type="text" required

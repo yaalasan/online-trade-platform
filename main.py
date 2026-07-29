@@ -445,6 +445,17 @@ def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
     )
 
 
+def _notify_contact_enquiry(enquiry_id, name, email, category):
+    """Background staff notification for a public contact-form enquiry. Email
+    delivery is not yet configured — this logs in the same console-mode pattern
+    as _notify_supplier_inquiry. Replace with an SMTP/SendGrid call when the
+    provider is wired."""
+    app.logger.info(
+        "contact_enquiry#%s from %s <%s> (category=%s) → notify sales",
+        enquiry_id, name, email, category or "-",
+    )
+
+
 def _forward_lead_to_portal(payload):
     """Best-effort forward of a marketplace lead (contact form, product inquiry,
     RFQ) to the portal broker queue, so staff have a single inbox. Runs in a
@@ -814,6 +825,7 @@ def page_faq():
 
 
 @app.route("/contact", methods=["GET", "POST"])
+@limiter.limit("5 per hour", methods=["POST"])
 def page_contact():
     site = get_site(_site_slug())
     enquiry_categories = _enquiry_categories(site)
@@ -823,6 +835,25 @@ def page_contact():
         "csrf_token": session.get("csrf_token", ""),
     }
     if request.method == "POST":
+        # Honeypot: bots fill the hidden "website" field; a legitimate browser
+        # leaves it empty. Pretend success and persist nothing.
+        if clean_str(request.form, "website"):
+            return render_template("contact.html", sent=True, **ctx)
+
+        # Same-session CSRF check. verify_csrf_token only guards /api/*, so this
+        # public form POST is otherwise uncovered. The token rides in a hidden
+        # form field (this is a full form POST, not a fetch with a header).
+        expected = session.get("csrf_token", "")
+        provided = request.form.get("csrf_token", "")
+        if not expected or not hmac.compare_digest(expected, provided):
+            return render_template(
+                "contact.html",
+                form={k: clean_str(request.form, k)
+                      for k in ("name", "company", "email", "category", "message")},
+                error="Your session expired. Please reload the page and try again.",
+                **ctx,
+            )
+
         form = {k: clean_str(request.form, k)
                 for k in ("name", "company", "email", "category", "message")}
         if not form["name"] or not form["email"] or not form["message"]:
@@ -833,13 +864,33 @@ def page_contact():
             error = None
         if error:
             return render_template("contact.html", form=form, error=error, **ctx)
-        # TODO Step 3: persist the enquiry to a table and send an email
-        # notification (and forward to the portal broker queue). Also add the
-        # protections that matter most for a public form, in this order of value:
-        #   1. flask-limiter rate limit on POST /contact (throttle abuse)
-        #   2. a hidden honeypot field (drop the submission if it is filled)
-        #   3. a same-session CSRF check on this POST (the existing
-        #      verify_csrf_token only guards /api/*, so /contact is uncovered)
+
+        db = get_db()
+        enquiry_id = db.execute(
+            """INSERT INTO contact_enquiries
+               (name, email, company, category, message, created_at)
+               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+            (form["name"], form["email"].lower(), form["company"],
+             form["category"], form["message"], utc_now()),
+        ).fetchone()["id"]
+        log_audit("created", "contact_enquiry", enquiry_id,
+                  f"enquiry from {form['email'].lower()}", actor_id=None)
+        db.commit()
+
+        threading.Thread(
+            target=_notify_contact_enquiry,
+            args=(enquiry_id, form["name"], form["email"].lower(), form["category"]),
+            daemon=True,
+        ).start()
+
+        _forward_lead_to_portal({
+            "kind": "CONTACT",
+            "message": form["message"][:3000],
+            "contactName": form["name"][:120],
+            "contactEmail": form["email"].lower(),
+            "contactCompany": form["company"][:160],
+        })
+
         return render_template("contact.html", sent=True, **ctx)
     return render_template("contact.html", **ctx)
 
