@@ -10,7 +10,11 @@ CREATE TABLE contact_enquiries (
     company    text NOT NULL DEFAULT '',
     category   text NOT NULL DEFAULT '',
     message    text NOT NULL,
-    created_at text NOT NULL
+    created_at text NOT NULL,
+    -- Stamped when the staff notification is delivered; stays NULL if delivery
+    -- fails, so a background job can retry pending enquiries. The enquiry row is
+    -- committed independently of notification, so a failed send never loses it.
+    notified_at text
 );
 
 CREATE INDEX idx_contact_enquiries_created ON contact_enquiries (site_id, created_at);

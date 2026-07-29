@@ -15,6 +15,7 @@ from flask import (
     abort,
     g,
     jsonify,
+    redirect,
     render_template,
     request,
     send_file,
@@ -91,6 +92,18 @@ limiter = Limiter(
 
 @app.errorhandler(429)
 def rate_limit_handler(e):
+    # The public contact form is an HTML page, so give it a friendly banner on
+    # the rendered page rather than raw JSON. API clients still get JSON.
+    if request.path == "/contact":
+        site = get_site(_site_slug())
+        return render_template(
+            "contact.html",
+            active_page="contact",
+            enquiry_categories=_enquiry_categories(site),
+            csrf_token=session.get("csrf_token", ""),
+            error="You've sent several messages in a short time. Please wait a "
+                  "little while before sending another.",
+        ), 429
     return jsonify({"error": "Too many requests. Please try again later."}), 429
 
 
@@ -340,15 +353,39 @@ def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
     )
 
 
-def _notify_contact_enquiry(enquiry_id, name, email, category):
-    """Background staff notification for a public contact-form enquiry. Email
-    delivery is not yet configured — this logs in the same console-mode pattern
-    as _notify_supplier_inquiry. Replace with an SMTP/SendGrid call when the
-    provider is wired."""
+def _send_enquiry_email(enquiry_id, name, email, category):
+    """Deliver the staff notification for a contact enquiry. Console-mode stub
+    for now (no SMTP provider is configured anywhere in the app yet); swap the
+    body for an SMTP/SendGrid call when one is wired. Raising here simulates a
+    delivery failure — callers treat any exception as "not delivered"."""
     app.logger.info(
         "contact_enquiry#%s from %s <%s> (category=%s) → notify sales",
         enquiry_id, name, email, category or "-",
     )
+
+
+def _notify_contact_enquiry(enquiry_id, site_id, name, email, category):
+    """Background staff notification for a public contact-form enquiry. Attempts
+    delivery, then stamps notified_at so pending/failed sends are distinguishable
+    and retryable. Runs in its own daemon thread with its own pooled connection;
+    contact_enquiries is RLS-scoped, so it sets app.site_id before the UPDATE.
+
+    The enquiry row is already committed by the request before this runs, so a
+    delivery failure only leaves notified_at NULL — it can never lose the lead
+    or surface as an error to the visitor."""
+    try:
+        _send_enquiry_email(enquiry_id, name, email, category)
+    except Exception:
+        app.logger.exception("contact enquiry notification failed for #%s", enquiry_id)
+        return
+    try:
+        with pool.connection() as db:
+            db.execute("SELECT set_config('app.site_id', %s, false)", (str(site_id),))
+            db.execute("UPDATE contact_enquiries SET notified_at = %s WHERE id = %s",
+                       (utc_now(), enquiry_id))
+            db.commit()
+    except Exception:
+        app.logger.exception("marking contact_enquiry#%s notified failed", enquiry_id)
 
 
 def _forward_lead_to_portal(payload):
@@ -731,9 +768,11 @@ def page_contact():
     }
     if request.method == "POST":
         # Honeypot: bots fill the hidden "website" field; a legitimate browser
-        # leaves it empty. Pretend success and persist nothing.
+        # leaves it empty. Show the same success flow (PRG) but persist nothing,
+        # so a bot can't tell it was dropped.
         if clean_str(request.form, "website"):
-            return render_template("contact.html", sent=True, **ctx)
+            session["contact_sent"] = True
+            return redirect(url_for("page_contact"))
 
         # Same-session CSRF check. verify_csrf_token only guards /api/*, so this
         # public form POST is otherwise uncovered. The token rides in a hidden
@@ -772,9 +811,12 @@ def page_contact():
                   f"enquiry from {form['email'].lower()}", actor_id=None)
         db.commit()
 
+        # Everything below is best-effort and off the critical path — the
+        # committed row above is the only thing the visitor's success depends on.
         threading.Thread(
             target=_notify_contact_enquiry,
-            args=(enquiry_id, form["name"], form["email"].lower(), form["category"]),
+            args=(enquiry_id, resolve_site_id(request.host),
+                  form["name"], form["email"].lower(), form["category"]),
             daemon=True,
         ).start()
 
@@ -786,8 +828,13 @@ def page_contact():
             "contactCompany": form["company"][:160],
         })
 
-        return render_template("contact.html", sent=True, **ctx)
-    return render_template("contact.html", **ctx)
+        # Post/Redirect/Get: redirect so a browser refresh re-issues the GET
+        # (showing the thank-you) instead of re-POSTing and duplicating the row.
+        session["contact_sent"] = True
+        return redirect(url_for("page_contact"))
+
+    sent = session.pop("contact_sent", False)
+    return render_template("contact.html", sent=sent, **ctx)
 
 
 @app.route("/api/auth/register", methods=["POST"])
