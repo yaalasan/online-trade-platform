@@ -3,8 +3,10 @@ import hmac
 import os
 import re
 import secrets
+import smtplib
 import threading
 from datetime import UTC, datetime, timedelta
+from email.message import EmailMessage
 from pathlib import Path
 
 from psycopg.rows import dict_row
@@ -51,6 +53,20 @@ _load_dotenv(BASE_DIR / ".env")
 
 IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
+
+# Contact-form staff notifications. Default "console" just logs (no provider
+# needed for dev); set CONTACT_EMAIL_MODE=smtp to deliver via SMTP. Tuned for
+# Namecheap Private Email (mail.privateemail.com:587, STARTTLS, username = the
+# full mailbox address). CONTACT_EMAIL_FROM/TO default to the authenticated
+# mailbox — Private Email requires the From to be that mailbox — and each
+# notification carries Reply-To: <buyer> so a staff reply reaches the buyer.
+CONTACT_EMAIL_MODE = os.environ.get("CONTACT_EMAIL_MODE", "console").strip().lower()
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+CONTACT_EMAIL_FROM = os.environ.get("CONTACT_EMAIL_FROM", "").strip() or SMTP_USER
+CONTACT_EMAIL_TO = os.environ.get("CONTACT_EMAIL_TO", "").strip() or SMTP_USER
 
 ALLOWED_ORIGINS = {
     "https://fastflow.global",
@@ -360,18 +376,56 @@ def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
     )
 
 
-def _send_inquiry_email(inquiry_id, name, email, category):
-    """Deliver the staff notification for a contact inquiry. Console-mode stub
-    for now (no SMTP provider is configured anywhere in the app yet); swap the
-    body for an SMTP/SendGrid call when one is wired. Raising here simulates a
-    delivery failure — callers treat any exception as "not delivered"."""
+def _send_inquiry_email(inquiry_id, name, email, category, company="", message=""):
+    """Deliver the staff notification for a contact inquiry.
+
+    In "console" mode (the default) this just logs — no provider needed for dev.
+    In "smtp" mode it sends via CONTACT_EMAIL_* / SMTP_* using STARTTLS. The mail
+    goes From the authenticated mailbox To the staff address, but Reply-To is the
+    buyer, so replying from the inbox reaches the buyer, not the mailbox itself.
+
+    Any exception propagates: callers (see _notify_contact_inquiry) treat a raise
+    as "not delivered" and leave contact_inquiries.notified_at NULL, so a broken
+    SMTP config can never lose the lead or surface an error to the visitor."""
+    if CONTACT_EMAIL_MODE != "smtp":
+        app.logger.info(
+            "contact_inquiry#%s from %s <%s> (category=%s) → notify sales [console]",
+            inquiry_id, name, email, category or "-",
+        )
+        return
+
+    if not (SMTP_HOST and SMTP_USER and SMTP_PASSWORD and CONTACT_EMAIL_TO):
+        raise RuntimeError(
+            "CONTACT_EMAIL_MODE=smtp but SMTP_HOST/SMTP_USER/SMTP_PASSWORD/"
+            "CONTACT_EMAIL_TO are not all set"
+        )
+
+    msg = EmailMessage()
+    msg["Subject"] = f"New enquiry #{inquiry_id}: {category or 'general'} — {name}"
+    msg["From"] = CONTACT_EMAIL_FROM
+    msg["To"] = CONTACT_EMAIL_TO
+    msg["Reply-To"] = email
+    msg.set_content(
+        f"New contact-form enquiry (#{inquiry_id})\n\n"
+        f"Name:     {name}\n"
+        f"Email:    {email}\n"
+        f"Company:  {company or '-'}\n"
+        f"Category: {category or '-'}\n\n"
+        f"Message:\n{message or '-'}\n\n"
+        f"Reply directly to this email to respond to the buyer."
+    )
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+        smtp.starttls()
+        smtp.login(SMTP_USER, SMTP_PASSWORD)
+        smtp.send_message(msg)
     app.logger.info(
-        "contact_inquiry#%s from %s <%s> (category=%s) → notify sales",
-        inquiry_id, name, email, category or "-",
+        "contact_inquiry#%s emailed to %s (reply-to %s) [smtp]",
+        inquiry_id, CONTACT_EMAIL_TO, email,
     )
 
 
-def _notify_contact_inquiry(inquiry_id, site_id, name, email, category):
+def _notify_contact_inquiry(inquiry_id, site_id, name, email, category,
+                            company="", message=""):
     """Background staff notification for a public contact-form inquiry. Attempts
     delivery, then stamps notified_at so pending/failed sends are distinguishable
     and retryable. Runs in its own daemon thread with its own pooled connection;
@@ -381,7 +435,7 @@ def _notify_contact_inquiry(inquiry_id, site_id, name, email, category):
     delivery failure only leaves notified_at NULL — it can never lose the lead
     or surface as an error to the visitor."""
     try:
-        _send_inquiry_email(inquiry_id, name, email, category)
+        _send_inquiry_email(inquiry_id, name, email, category, company, message)
     except Exception:
         app.logger.exception("contact inquiry notification failed for #%s", inquiry_id)
         return
@@ -823,7 +877,8 @@ def page_contact():
         threading.Thread(
             target=_notify_contact_inquiry,
             args=(inquiry_id, resolve_site_id(request.host),
-                  form["name"], form["email"].lower(), form["category"]),
+                  form["name"], form["email"].lower(), form["category"],
+                  form["company"], form["message"]),
             daemon=True,
         ).start()
 
