@@ -260,4 +260,20 @@ footer{background:var(--ink);color:#9A9A9A;padding:56px 0 26px}
   .spectable th{width:140px}
 }
 
+/* admin: contact inquiries table */
+.itable{width:100%;border-collapse:collapse;border:1px solid var(--line);font-size:14px}
+.itable th,.itable td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.itable thead th{font-weight:600;color:var(--ink);background:var(--paper);white-space:nowrap}
+.itable td{color:var(--body)}
+.itable tr:last-child td{border-bottom:0}
+.itable .when{white-space:nowrap;color:var(--muted)}
+.itable .msg{max-width:360px;line-height:1.5}
+.itable a{color:var(--brand-dark)}
+.itable .badge{display:inline-block;font-size:12px;font-weight:600;
+  color:var(--brand-dark);background:var(--brand-soft);padding:3px 9px;border-radius:3px}
+.itable .badge.warn{color:#8a5300;background:#fdf1d6}
+/* rows whose email never went out (notified_at NULL) stand out */
+.itable tr.pending{background:#fffaf0}
+.itable tr.pending td{border-bottom-color:#f0e2c4}
+
 :focus-visible{outline:2px solid var(--brand);outline-offset:2px}

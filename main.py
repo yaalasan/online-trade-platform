@@ -837,6 +837,28 @@ def page_contact():
     return render_template("contact.html", sent=sent, **ctx)
 
 
+@app.route("/admin/inquiries")
+def admin_inquiries():
+    """Server-rendered admin inbox for public contact-form leads. Its own page
+    (not merged into /api/admin/inquiries, which serves product inquiries) since
+    the two have different shapes. No login page exists yet, so logged-out users
+    are sent home; a proper admin login is deferred to the cutover."""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("page_home"))
+    if user["role"] != "admin":
+        abort(403)
+    # No WHERE site_id — RLS scopes the read to the current tenant.
+    rows = get_db().execute(
+        """SELECT id, name, company, email, category, message, created_at, notified_at
+           FROM contact_inquiries
+           ORDER BY created_at DESC, id DESC
+           LIMIT 100"""
+    ).fetchall()
+    inquiries = [row_to_dict(r) for r in rows]
+    return render_template("admin_inquiries.html", inquiries=inquiries)
+
+
 @app.route("/api/auth/register", methods=["POST"])
 @limiter.limit("10 per minute")
 def register():

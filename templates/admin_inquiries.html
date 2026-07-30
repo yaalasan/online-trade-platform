@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Contact inquiries &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}Admin: contact-form inquiries.{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>Contact inquiries</h1>
+    <div class="crumb">Admin / Contact inquiries</div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    {% if inquiries %}
+    <table class="itable">
+      <thead>
+        <tr>
+          <th>Received</th>
+          <th>Name</th>
+          <th>Company</th>
+          <th>Email</th>
+          <th>Category</th>
+          <th>Message</th>
+          <th>Status</th>
+          <th>Notified at</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for q in inquiries %}
+        <tr class="{{ 'pending' if not q.notified_at else '' }}">
+          <td class="when">{{ q.created_at }}</td>
+          <td>{{ q.name }}</td>
+          <td>{{ q.company or '&mdash;'|safe }}</td>
+          <td><a href="mailto:{{ q.email }}">{{ q.email }}</a></td>
+          <td>{{ q.category or '&mdash;'|safe }}</td>
+          <td class="msg">{{ q.message }}</td>
+          <td>
+            {% if q.notified_at %}
+              <span class="badge">Notified</span>
+            {% else %}
+              <span class="badge warn">Not sent</span>
+            {% endif %}
+          </td>
+          <td class="when">{{ q.notified_at or '&mdash;'|safe }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="meta" style="margin-top:16px;color:var(--muted)">
+      Showing the {{ inquiries|length }} most recent (max 100). Pagination is a later task.
+    </p>
+    {% else %}
+    <div class="empty">
+      <h3>No contact inquiries yet</h3>
+      <p>Submissions from the public contact form will appear here.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}
