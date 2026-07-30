@@ -353,39 +353,39 @@ def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
     )
 
 
-def _send_enquiry_email(enquiry_id, name, email, category):
-    """Deliver the staff notification for a contact enquiry. Console-mode stub
+def _send_inquiry_email(inquiry_id, name, email, category):
+    """Deliver the staff notification for a contact inquiry. Console-mode stub
     for now (no SMTP provider is configured anywhere in the app yet); swap the
     body for an SMTP/SendGrid call when one is wired. Raising here simulates a
     delivery failure — callers treat any exception as "not delivered"."""
     app.logger.info(
-        "contact_enquiry#%s from %s <%s> (category=%s) → notify sales",
-        enquiry_id, name, email, category or "-",
+        "contact_inquiry#%s from %s <%s> (category=%s) → notify sales",
+        inquiry_id, name, email, category or "-",
     )
 
 
-def _notify_contact_enquiry(enquiry_id, site_id, name, email, category):
-    """Background staff notification for a public contact-form enquiry. Attempts
+def _notify_contact_inquiry(inquiry_id, site_id, name, email, category):
+    """Background staff notification for a public contact-form inquiry. Attempts
     delivery, then stamps notified_at so pending/failed sends are distinguishable
     and retryable. Runs in its own daemon thread with its own pooled connection;
-    contact_enquiries is RLS-scoped, so it sets app.site_id before the UPDATE.
+    contact_inquiries is RLS-scoped, so it sets app.site_id before the UPDATE.
 
-    The enquiry row is already committed by the request before this runs, so a
+    The inquiry row is already committed by the request before this runs, so a
     delivery failure only leaves notified_at NULL — it can never lose the lead
     or surface as an error to the visitor."""
     try:
-        _send_enquiry_email(enquiry_id, name, email, category)
+        _send_inquiry_email(inquiry_id, name, email, category)
     except Exception:
-        app.logger.exception("contact enquiry notification failed for #%s", enquiry_id)
+        app.logger.exception("contact inquiry notification failed for #%s", inquiry_id)
         return
     try:
         with pool.connection() as db:
             db.execute("SELECT set_config('app.site_id', %s, false)", (str(site_id),))
-            db.execute("UPDATE contact_enquiries SET notified_at = %s WHERE id = %s",
-                       (utc_now(), enquiry_id))
+            db.execute("UPDATE contact_inquiries SET notified_at = %s WHERE id = %s",
+                       (utc_now(), inquiry_id))
             db.commit()
     except Exception:
-        app.logger.exception("marking contact_enquiry#%s notified failed", enquiry_id)
+        app.logger.exception("marking contact_inquiry#%s notified failed", inquiry_id)
 
 
 def _forward_lead_to_portal(payload):
@@ -800,22 +800,22 @@ def page_contact():
             return render_template("contact.html", form=form, error=error, **ctx)
 
         db = get_db()
-        enquiry_id = db.execute(
-            """INSERT INTO contact_enquiries
+        inquiry_id = db.execute(
+            """INSERT INTO contact_inquiries
                (name, email, company, category, message, created_at)
                VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
             (form["name"], form["email"].lower(), form["company"],
              form["category"], form["message"], utc_now()),
         ).fetchone()["id"]
-        log_audit("created", "contact_enquiry", enquiry_id,
-                  f"enquiry from {form['email'].lower()}", actor_id=None)
+        log_audit("created", "contact_inquiry", inquiry_id,
+                  f"inquiry from {form['email'].lower()}", actor_id=None)
         db.commit()
 
         # Everything below is best-effort and off the critical path — the
         # committed row above is the only thing the visitor's success depends on.
         threading.Thread(
-            target=_notify_contact_enquiry,
-            args=(enquiry_id, resolve_site_id(request.host),
+            target=_notify_contact_inquiry,
+            args=(inquiry_id, resolve_site_id(request.host),
                   form["name"], form["email"].lower(), form["category"]),
             daemon=True,
         ).start()
