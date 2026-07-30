@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Sign in &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}Sign in.{% endblock %}
+
+{% block content %}
+
+<section>
+  <div class="wrap">
+    <div class="form" style="max-width:420px;margin:64px auto">
+      <h3 style="font-size:22px;font-weight:600">Sign in</h3>
+
+      {% if error %}
+        <div class="err" style="display:block">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('page_login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required autofocus
+               value="{{ email or '' }}" placeholder="you@company.com">
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required
+               autocomplete="current-password">
+
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

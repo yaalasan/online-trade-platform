@@ -104,6 +104,13 @@ def rate_limit_handler(e):
             error="You've sent several messages in a short time. Please wait a "
                   "little while before sending another.",
         ), 429
+    if request.path == "/login":
+        return render_template(
+            "login.html",
+            error="Too many attempts. Please wait a minute and try again.",
+            email=clean_str(request.form, "email"),
+            csrf_token=session.get("csrf_token", ""),
+        ), 429
     return jsonify({"error": "Too many requests. Please try again later."}), 429
 
 
@@ -856,7 +863,56 @@ def admin_inquiries():
            LIMIT 100"""
     ).fetchall()
     inquiries = [row_to_dict(r) for r in rows]
-    return render_template("admin_inquiries.html", inquiries=inquiries)
+    return render_template("admin_inquiries.html", inquiries=inquiries,
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
+def page_login():
+    """Minimal server-rendered login. Not linked from the public nav/footer —
+    reached by direct URL, primarily to get an admin to /admin/inquiries. Brute
+    force is throttled harder here than anywhere else on the site."""
+    error = None
+    email = ""
+    if request.method == "POST":
+        # verify_csrf_token() only guards /api/*, so this form POST checks the
+        # hidden token itself — same pattern as /contact.
+        expected = session.get("csrf_token", "")
+        provided = request.form.get("csrf_token", "")
+        if not expected or not hmac.compare_digest(expected, provided):
+            return render_template(
+                "login.html", error="Your session expired. Please try again.",
+                email=clean_str(request.form, "email"),
+                csrf_token=session.get("csrf_token", ""),
+            ), 400
+
+        email = clean_str(request.form, "email")
+        password = request.form.get("password", "")
+        uid = _check_credentials(email, password)
+        if uid is None:
+            # One generic message for both unknown email and wrong password, so
+            # an attacker can't enumerate which accounts exist.
+            error = "Incorrect email or password."
+        else:
+            _login_user(uid)
+            user = get_current_user()
+            if user and user["role"] == "admin":
+                return redirect(url_for("admin_inquiries"))
+            return redirect(url_for("page_home"))
+
+    return render_template("login.html", error=error, email=email,
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/logout", methods=["POST"])
+def page_logout():
+    # CSRF-checked (same pattern) so a session can't be force-terminated.
+    expected = session.get("csrf_token", "")
+    provided = request.form.get("csrf_token", "")
+    if expected and hmac.compare_digest(expected, provided):
+        session.pop("user_id", None)
+    return redirect(url_for("page_home"))
 
 
 @app.route("/api/auth/register", methods=["POST"])
@@ -904,6 +960,30 @@ def register():
     return jsonify({"user": row_to_dict(user)})
 
 
+def _check_credentials(email, password):
+    """Single source of truth for password verification, shared by the JSON
+    /api/auth/login endpoint and the server-rendered /login page. Returns the
+    user id for valid credentials, else None. Broker-managed accounts have an
+    empty hash and can never authenticate."""
+    email = (email or "").strip().lower()
+    if not isinstance(password, str) or not email or not password:
+        return None
+    row = get_db().execute(
+        "SELECT id, password_hash FROM users WHERE email = %s", (email,)
+    ).fetchone()
+    if not row or not row["password_hash"] or not check_password_hash(row["password_hash"], password):
+        return None
+    return row["id"]
+
+
+def _login_user(user_id):
+    """Establish an authenticated session for user_id and audit it."""
+    session.permanent = True
+    session["user_id"] = user_id
+    log_audit("logged_in", "user", user_id, "Session started", user_id)
+    get_db().commit()
+
+
 @app.route("/api/auth/login", methods=["POST"])
 @limiter.limit("10 per minute")
 def login():
@@ -916,17 +996,14 @@ def login():
     if not email or not password:
         return jsonify({"error": "Email and password are required."}), 400
 
-    db = get_db()
-    row = db.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,)).fetchone()
-    # Broker-managed accounts have an empty hash — they can never log in.
-    if not row or not row["password_hash"] or not check_password_hash(row["password_hash"], password):
+    uid = _check_credentials(email, password)
+    if uid is None:
         return jsonify({"error": "Invalid email or password."}), 401
 
-    session.permanent = True
-    session["user_id"] = row["id"]
-    log_audit("logged_in", "user", row["id"], "Session started", row["id"])
-    db.commit()
-    user = db.execute("SELECT id, name, email, company, role FROM users WHERE id = %s", (row["id"],)).fetchone()
+    _login_user(uid)
+    user = get_db().execute(
+        "SELECT id, name, email, company, role FROM users WHERE id = %s", (uid,)
+    ).fetchone()
     return jsonify({"user": row_to_dict(user)})
 
 

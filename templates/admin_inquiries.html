@@ -9,6 +9,10 @@
   <div class="wrap">
     <h1>Contact inquiries</h1>
     <div class="crumb">Admin / Contact inquiries</div>
+    <form method="post" action="{{ url_for('page_logout') }}" style="margin-top:14px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="btn line" type="submit">Log out</button>
+    </form>
   </div>
 </div>
 
