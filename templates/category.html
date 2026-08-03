@@ -31,7 +31,6 @@
         <div class="body">
           {% if p.verified %}<span class="badge">Verified supplier</span>{% endif %}
           <h3>{{ p.name }}</h3>
-          <p class="meta">{{ p.supplier }}{% if p.location %} &middot; {{ p.location }}{% endif %}</p>
           {% if p.price %}<div class="price">{{ p.price }}</div>{% endif %}
           {% if p.moq or p.lead_time %}
           <div class="spec">

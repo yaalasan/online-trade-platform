@@ -1,0 +1,34 @@
+// NOTE: this is a template. Confirm the paths marked [CONFIRM] against the
+// Part 1 preflight output before installing. It runs the NEW Postgres-backed
+// app ALONGSIDE the old service (different name, different port) so rollback is
+// just: stop this unit, start the old one, revert nginx. Do NOT overwrite the
+// old fastflow-web.service — this is a new unit file.
+//
+// Install to: /etc/systemd/system/fastflow-web-v2.service
+// (strip these // comment lines — systemd unit files do not allow them)
+
+[Unit]
+Description=Fastflow buyer site (Flask/gunicorn, Postgres+RLS) — v2 cutover
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=fastflow
+Group=fastflow
+# [CONFIRM] new code dir, deployed alongside the old /opt/fastflow
+WorkingDirectory=/opt/fastflow-v2
+# Root-owned, chmod 600 — holds DATABASE_URL, SMTP_PASSWORD, SECRET_KEY
+EnvironmentFile=/etc/fastflow/web-v2.env
+# [CONFIRM] venv path; bind to a NEW port (8001) so the old service keeps 8000
+ExecStart=/opt/fastflow-v2/.venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8001 main:app
+Restart=on-failure
+RestartSec=3
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -51,7 +51,15 @@ def _load_dotenv(path):
 
 _load_dotenv(BASE_DIR / ".env")
 
-IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
+# APP_ENV=production is the canonical production switch (the systemd
+# EnvironmentFile sets it). PRODUCTION=1 is still honoured for back-compat, so
+# every prod behaviour — secure cookies, ProxyFix, and the unknown-host 404 in
+# resolve_site_id — keys off the single IS_PRODUCTION flag below.
+APP_ENV = os.environ.get("APP_ENV", "").strip().lower()
+IS_PRODUCTION = (
+    APP_ENV == "production"
+    or os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
+)
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 
 # Contact-form staff notifications. Default "console" just logs (no provider
@@ -555,6 +563,31 @@ def require_user():
     if not user:
         return None, (jsonify({"error": "Authentication required."}), 401)
     return user, None
+
+
+# Fields that reveal supplier identity. We are a trading company: if a buyer
+# learns which factory makes a product they can approach it directly and cut us
+# out. So these are stripped from public API responses — not just for anonymous
+# callers but for buyers too (buyers are the disintermediation threat). Only the
+# vetted internal roles (supplier, admin) receive them. Columns are unchanged;
+# this is a response-shaping guard, not a schema change.
+_SUPPLIER_PRIVATE_FIELDS = (
+    "supplier", "supplier_id", "location",
+    "supplier_contact_email", "supplier_contact_phone", "supplier_since",
+)
+
+
+def _caller_sees_supplier():
+    user = get_current_user()
+    return bool(user and user["role"] in ("supplier", "admin"))
+
+
+def _scrub_supplier_fields(item):
+    """Drop supplier-identifying keys from a product/supplier dict, in place."""
+    if item:
+        for field in _SUPPLIER_PRIVATE_FIELDS:
+            item.pop(field, None)
+    return item
 
 
 def _owns_product(user, product):
@@ -1236,16 +1269,20 @@ def marketplace():
     ).fetchall()
     all_locations = [r["location"] for r in loc_rows]
 
+    # Hide supplier identity (name/location/contact) from the public — only
+    # vetted internal roles see it. Also drop the location facet for them.
+    show_supplier = _caller_sees_supplier()
     return jsonify({
         "categories": [
             {
                 "name": name,
                 "display_name": _translated_category(name, target_lang, db),
-                "items": items,
+                "items": items if show_supplier
+                         else [_scrub_supplier_fields(i) for i in items],
             }
             for name, items in categories.items()
         ],
-        "all_locations": all_locations,
+        "all_locations": all_locations if show_supplier else [],
     })
 
 
@@ -1590,6 +1627,8 @@ def product_detail(product_id):
             product["supplier_contact_phone"] = owner["contact_phone"] or ""
             created = owner["created_at"] or ""
             product["supplier_since"] = created[:4] if len(created) >= 4 and created[:4].isdigit() else ""
+    if not _caller_sees_supplier():
+        _scrub_supplier_fields(product)
     return jsonify({"product": product})
 
 
@@ -1602,11 +1641,18 @@ def product_detail_portal(product_id):
     data = _portal_get(f"/api/public/products/{urllib.parse.quote(product_id[len('portal-'):])}")
     if not data or not data.get("product"):
         return jsonify({"error": "Product not found."}), 404
-    return jsonify({"product": portal_product_row(data["product"])})
+    product = portal_product_row(data["product"])
+    if not _caller_sees_supplier():
+        _scrub_supplier_fields(product)
+    return jsonify({"product": product})
 
 
 @app.route("/api/suppliers")
 def suppliers():
+    # This endpoint is a supplier directory (company names + locations) — it must
+    # never be public for a trading company. Only vetted internal roles see it.
+    if not _caller_sees_supplier():
+        return jsonify({"suppliers": []})
     query = request.args.get("q", "").strip()
     params = []
     where = ""

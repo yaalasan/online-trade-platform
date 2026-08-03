@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ product.name }} &mdash; {{ site.brand_name }}{% endblock %}
-{% block description %}{{ product.name }} from {{ product.supplier }}. {{ (product.description or '')[:150] }}{% endblock %}
+{% block description %}{{ product.name }}. {{ (product.description or '')[:150] }}{% endblock %}
 
 {% block content %}
 
@@ -33,7 +33,6 @@
     <div class="pdp-info">
       {% if product.verified %}<span class="badge">Verified supplier</span>{% endif %}
       <h2>{{ product.name }}</h2>
-      <p class="meta">{{ product.supplier }}{% if product.location %} &middot; {{ product.location }}{% endif %}</p>
       {% if product.price %}<div class="price big">{{ product.price }}</div>{% endif %}
       {% if product.description %}<p class="desc">{{ product.description }}</p>{% endif %}
 
