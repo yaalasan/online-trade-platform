@@ -20,11 +20,11 @@
 <section>
   <div class="wrap pdp">
     <div class="pdp-media">
-      <div class="ph main">{% if product.image %}<img src="{{ product.image }}" alt="{{ product.name }}">{% endif %}</div>
+      <div class="ph main product-shot">{% if product.image %}<img src="{{ product.image }}" alt="{{ product.name }}">{% endif %}</div>
       {% if product.media and product.media|length > 1 %}
       <div class="thumbs">
         {% for m in product.media %}
-        <div class="ph thumb">{% if m.url %}<img src="{{ m.thumb_url or m.url }}" alt="{{ m.alt_text or product.name }}">{% endif %}</div>
+        <div class="ph thumb product-shot">{% if m.url %}<img src="{{ m.thumb_url or m.url }}" alt="{{ m.alt_text or product.name }}" loading="lazy">{% endif %}</div>
         {% endfor %}
       </div>
       {% endif %}

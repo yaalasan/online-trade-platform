@@ -67,7 +67,7 @@ nav a.active{color:var(--brand);font-weight:500;border-bottom-color:var(--brand)
 
 /* ---------- hero ---------- */
 .hero{position:relative;min-height:440px;display:flex;align-items:center;
-      background:var(--photo);overflow:hidden}
+      background:var(--photo) center/cover no-repeat;overflow:hidden}
 .hero .shade{position:absolute;inset:0;
   background:linear-gradient(90deg,rgba(22,22,22,.78) 0%,rgba(22,22,22,.55) 42%,rgba(22,22,22,0) 78%)}
 .hero .wrap{position:relative;padding-top:60px;padding-bottom:60px}
@@ -221,12 +221,23 @@ footer{background:var(--ink);color:#9A9A9A;padding:56px 0 26px}
 }
 
 /* ---------- product listing + detail ---------- */
-.card .ph img,.pdp-media .ph img{width:100%;height:100%;object-fit:cover}
+/* Default card/media images fill the frame (category tiles, etc.). */
+.card .ph img,.pdp-media .ph img{width:100%;height:100%;object-fit:cover;object-position:center}
 .card .badge,.pdp-info .badge{display:inline-block;font-size:12px;font-weight:600;
   color:var(--brand-dark);background:var(--brand-soft);padding:3px 9px;
   border-radius:3px;margin-bottom:8px}
 .card .meta,.pdp-info .meta{font-size:13px;color:var(--muted);margin-top:6px}
 .card .price,.pdp-info .price{font-size:18px;font-weight:700;color:var(--brand);margin-top:10px}
+
+/* Product photos: square frame like industrial catalogues (e.g. Rippa), but
+   object-fit:contain so the full machine is visible instead of cropped. */
+.card .ph.product-shot,
+.pdp-media .ph.product-shot{
+  height:auto;aspect-ratio:1/1;background:#f3f5f8;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;padding:18px}
+.card .ph.product-shot img,
+.pdp-media .ph.product-shot img{
+  width:100%;height:100%;object-fit:contain;object-position:center;display:block}
 
 /* empty category state — the common case until listings exist */
 .empty{max-width:560px;margin:0 auto;text-align:center;padding:16px 0 8px}
@@ -238,8 +249,10 @@ footer{background:var(--ink);color:#9A9A9A;padding:56px 0 26px}
 /* product detail */
 .pdp{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:start}
 .pdp-media .ph.main{height:420px;background:var(--photo)}
+.pdp-media .ph.main.product-shot{height:auto;aspect-ratio:1/1;padding:28px}
 .pdp-media .thumbs{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
 .pdp-media .thumb{width:84px;height:84px;background:var(--photo)}
+.pdp-media .thumb.product-shot{width:84px;height:84px;aspect-ratio:auto;padding:8px;flex-shrink:0}
 .pdp-info h2{font-size:28px;font-weight:700;letter-spacing:-.02em;margin-top:4px}
 .pdp-info .price.big{font-size:26px;margin-top:14px}
 .pdp-info .desc{font-size:15px;color:var(--body);line-height:1.8;margin-top:18px}
@@ -257,6 +270,7 @@ footer{background:var(--ink);color:#9A9A9A;padding:56px 0 26px}
 @media(max-width:1000px){
   .pdp{grid-template-columns:1fr;gap:28px}
   .pdp-media .ph.main{height:320px}
+  .pdp-media .ph.main.product-shot{height:auto}
   .spectable th{width:140px}
 }
 
@@ -277,3 +291,66 @@ footer{background:var(--ink);color:#9A9A9A;padding:56px 0 26px}
 .itable tr.pending td{border-bottom-color:#f0e2c4}
 
 :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* ---- Admin dashboard ---------------------------------------------------- */
+.adminbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.adminbar form{margin:0}
+.flash{padding:12px 16px;border-radius:4px;font-size:14px;margin-bottom:16px;border:1px solid}
+.flash-ok{background:var(--brand-soft);border-color:#f3c9b8;color:var(--brand-dark)}
+.flash-err{background:#fdecec;border-color:#f3b7b7;color:#9a2020}
+.admintable td{vertical-align:middle}
+.admintable .thumb{display:inline-block;width:54px;height:54px;background:var(--photo);
+  border-radius:4px;overflow:hidden}
+.admintable .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.rowactions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rowactions form{margin:0}
+.btn.small{padding:7px 13px;font-size:13px}
+.btn.line.danger{color:#9a2020;border-color:#e6b3b3}
+.btn.line.danger:hover{border-color:#9a2020;color:#9a2020}
+
+/* Product form */
+.pform{max-width:860px;margin-top:8px}
+.pform label{display:block;font-size:14px;font-weight:500;margin:16px 0 6px}
+.pform input[type=text],.pform input:not([type]),.pform input[type=file],
+.pform textarea,.pform select{
+  width:100%;padding:11px 13px;border:1px solid var(--line-2);border-radius:4px;
+  font-family:inherit;font-size:15px;background:#fff}
+.pform textarea{resize:vertical}
+.pform input:focus,.pform textarea:focus,.pform select:focus{
+  outline:none;border-color:var(--brand)}
+.frow{display:flex;gap:16px;flex-wrap:wrap}
+.frow .fcol{flex:1 1 200px}
+.frow .fcol.grow{flex:2 1 320px}
+.pform .muted,.muted{color:var(--muted);font-weight:400}
+.hint{font-size:13px;color:var(--muted);margin-top:6px}
+.fchecks{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.chk{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:500;margin:0}
+.chk input{width:auto;margin:0}
+.photos{display:flex;gap:14px;flex-wrap:wrap;margin-top:4px}
+.photo{width:130px;border:1px solid var(--line);border-radius:6px;padding:8px;background:#fff}
+.photo img{width:100%;height:96px;object-fit:cover;border-radius:4px;display:block;background:var(--photo)}
+.photo .chk{font-size:12px;margin-top:6px}
+.photo .chk.del{color:#9a2020}
+.factions{display:flex;gap:12px;margin-top:28px}
+
+/* Public "Our team" grid (About page) */
+.teamgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;margin-top:8px}
+.teamgrid .member{text-align:center}
+.teamgrid .mphoto{width:100%;aspect-ratio:1/1;background:var(--photo);border-radius:8px;
+  overflow:hidden;margin-bottom:14px}
+.teamgrid .mphoto img{width:100%;height:100%;object-fit:cover;display:block}
+.teamgrid .member h3{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.teamgrid .mrole{font-size:14px;color:var(--brand-dark);font-weight:500;margin-top:3px}
+.teamgrid .member p{font-size:14px;color:var(--body);line-height:1.6;margin-top:10px}
+@media(max-width:900px){.teamgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.teamgrid{grid-template-columns:1fr}}
+
+/* About intro photo fills its slot */
+.split .ph{overflow:hidden}
+.split .ph img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* Admin panel (About-page photo) */
+.panel{border:1px solid var(--line);border-radius:8px;padding:22px 24px;background:#fff;max-width:860px}
+.panel h3{font-size:17px;font-weight:600}
+.panel .pform{margin-top:8px}
+.teamhead{font-size:20px;font-weight:600;margin:36px 0 16px}
