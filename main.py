@@ -251,6 +251,14 @@ STATIC_CATEGORY_IMAGES = {
     "custom-sourcing": "categories/custom sourcing.png",
 }
 
+SUBCATEGORY_BLURBS = {
+    "Excavator": "Mini and compact excavators for construction and earthmoving.",
+    "Forklift": "Electric and diesel forklifts for warehouse and industrial handling.",
+    "Mini Loader": "Compact loaders for tight job sites and multi-attachment work.",
+    "Mixer Truck": "Concrete mixer and self-loading mixer trucks for project delivery.",
+    "Crawler Transporter": "Tracked transporters and crawler dumpers for rough terrain.",
+}
+
 
 def expand_category_filter(category):
     """Return the list of category names a filter value should match. A parent
@@ -260,10 +268,33 @@ def expand_category_filter(category):
 
 
 def _default_category_images():
-    return {
-        slug: url_for("static", filename=filename)
-        for slug, filename in STATIC_CATEGORY_IMAGES.items()
-    }
+    images = {}
+    names = list(CATEGORY_GROUPS.keys())
+    for subs in CATEGORY_GROUPS.values():
+        names.extend(subs)
+    names.append("Custom sourcing")
+
+    for name in names:
+        slug = _slugify(name)
+        override = STATIC_CATEGORY_IMAGES.get(slug)
+        if override and (BASE_DIR / "static" / override).exists():
+            images[slug] = url_for("static", filename=override)
+            continue
+        candidates = []
+        base = slug
+        candidates.extend([base, base.replace("-", "_"), base.replace("-", " ")])
+        # try title-case stems too because current folder uses spaces in names.
+        spaced = " ".join(part.capitalize() for part in base.split("-"))
+        candidates.append(spaced)
+        for stem in candidates:
+            for ext in ("png", "jpg", "jpeg", "webp", "gif"):
+                rel = f"categories/{stem}.{ext}"
+                if (BASE_DIR / "static" / rel).exists():
+                    images[slug] = url_for("static", filename=rel)
+                    break
+            if slug in images:
+                break
+    return images
 
 
 def _classify_construction_product(product):
@@ -322,6 +353,54 @@ def _group_products_for_category(category_name, products):
             "products": extras,
         })
     return sections
+
+
+def _is_parent_category(name):
+    subs = CATEGORY_GROUPS.get(name, [])
+    # A parent category with one identical child behaves as a leaf.
+    return len(subs) > 1
+
+
+def _subcategory_counts(parent_name):
+    subs = CATEGORY_GROUPS.get(parent_name, [])
+    if not subs:
+        return {}
+    names = [*subs]
+    if parent_name == "Construction Machinery":
+        names.append(parent_name)
+    placeholders = ", ".join(["%s"] * len(names))
+    rows = get_db().execute(
+        f"SELECT category, name, description, capacity FROM products "
+        f"WHERE is_published = 1 AND category IN ({placeholders})",
+        tuple(names),
+    ).fetchall()
+    counts = {sub: 0 for sub in subs}
+    for row in rows:
+        product = dict(row)
+        bucket = (
+            _classify_construction_product(product)
+            if parent_name == "Construction Machinery"
+            else product.get("category")
+        )
+        if bucket in counts:
+            counts[bucket] += 1
+    return counts
+
+
+def _parent_subcategory_cards(parent_name):
+    counts = _subcategory_counts(parent_name)
+    images = _category_images()
+    cards = []
+    for sub in CATEGORY_GROUPS.get(parent_name, []):
+        slug = _slugify(sub)
+        cards.append({
+            "name": sub,
+            "slug": slug,
+            "count": counts.get(sub, 0),
+            "blurb": SUBCATEGORY_BLURBS.get(sub, ""),
+            "image": images.get(slug, ""),
+        })
+    return cards
 
 
 def clean_str(data, key, default=""):
@@ -945,6 +1024,15 @@ def page_category(slug):
     )
     if not cat:
         abort(404)
+    if _is_parent_category(cat["name"]):
+        subs = _parent_subcategory_cards(cat["name"])
+        for sub in subs:
+            sub["url"] = url_for("page_subcategory", slug=slug, subslug=sub["slug"])
+        return render_template(
+            "category.html", active_page="products",
+            category=cat, products=[],
+            subcategories=subs, is_subcategory_page=False,
+        )
     db = get_db()
     names = expand_category_filter(cat["name"])
     placeholders = ", ".join(["%s"] * len(names))
@@ -964,6 +1052,69 @@ def page_category(slug):
     return render_template(
         "category.html", active_page="products",
         category=cat, products=products, product_sections=sections,
+        subcategories=[], is_subcategory_page=False,
+    )
+
+
+@app.route("/products/<slug>/<subslug>")
+def page_subcategory(slug, subslug):
+    site = get_site(_site_slug())
+    cat = next(
+        (c for c in _categories_with_counts(site)
+         if c["slug"] == slug and not c["is_cta"]),
+        None,
+    )
+    if not cat or not _is_parent_category(cat["name"]):
+        abort(404)
+    sub_name = next(
+        (name for name in CATEGORY_GROUPS.get(cat["name"], [])
+         if _slugify(name) == subslug),
+        None,
+    )
+    if not sub_name:
+        abort(404)
+
+    db = get_db()
+    if cat["name"] == "Construction Machinery":
+        names = CATEGORY_GROUPS["Construction Machinery"] + ["Construction Machinery"]
+        placeholders = ", ".join(["%s"] * len(names))
+        rows = db.execute(
+            f"SELECT id, name, supplier, location, price, moq, lead_time, verified, "
+            f"category, description, capacity FROM products "
+            f"WHERE category IN ({placeholders}) AND is_published = 1 "
+            f"ORDER BY verified DESC, name",
+            tuple(names),
+        ).fetchall()
+        products = []
+        for row in rows:
+            p = dict(row)
+            if _classify_construction_product(p) != sub_name:
+                continue
+            p["image"] = _primary_image(db, row["id"])
+            products.append(p)
+    else:
+        rows = db.execute(
+            "SELECT id, name, supplier, location, price, moq, lead_time, verified, "
+            "category, description, capacity FROM products "
+            "WHERE category = %s AND is_published = 1 "
+            "ORDER BY verified DESC, name",
+            (sub_name,),
+        ).fetchall()
+        products = []
+        for row in rows:
+            p = dict(row)
+            p["image"] = _primary_image(db, row["id"])
+            products.append(p)
+
+    category_view = dict(cat)
+    category_view["name"] = sub_name
+    category_view["blurb"] = SUBCATEGORY_BLURBS.get(sub_name, cat.get("blurb", ""))
+    category_view["slug"] = _slugify(sub_name)
+    sections = _group_products_for_category(sub_name, products)
+    return render_template(
+        "category.html", active_page="products",
+        category=category_view, products=products, product_sections=sections,
+        subcategories=[], is_subcategory_page=True, parent_category=cat,
     )
 
 
