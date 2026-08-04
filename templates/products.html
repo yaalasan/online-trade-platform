@@ -23,7 +23,9 @@
     <div class="grid3">
       {% for item in categories %}
       <a class="card" href="{{ item.url }}">
-        <div class="ph"></div>
+        <div class="ph">
+          {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">{% endif %}
+        </div>
         <div class="body">
           <h3>{{ item.name }}</h3>
           <p>{{ item.blurb }}</p>

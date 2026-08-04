@@ -113,6 +113,12 @@ section.alt{background:var(--paper);border-top:1px solid var(--line);
 .spec{display:flex;gap:18px;margin-top:12px;font-size:13px;
       color:var(--body);flex-wrap:wrap}
 .spec b{font-weight:600;color:var(--ink)}
+.subcatnav{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:0 0 28px}
+.subcatnav a{padding:9px 14px;border:1px solid var(--line);border-radius:999px;
+  font-size:14px;color:var(--body);background:#fff}
+.subcatnav a:hover{color:var(--brand);border-color:var(--brand)}
+.subcatblock + .subcatblock{margin-top:40px}
+.subcatblock h3{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-bottom:18px}
 
 /* ---------- split block ---------- */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:center}

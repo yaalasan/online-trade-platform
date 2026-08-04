@@ -24,25 +24,38 @@
     </div>
 
     {% if products %}
-    <div class="grid3">
-      {% for p in products %}
-      <a class="card" href="{{ url_for('page_product', id=p.id) }}">
-        <div class="ph product-shot">{% if p.image %}<img src="{{ p.image }}" alt="{{ p.name }}" loading="lazy">{% endif %}</div>
-        <div class="body">
-          {% if p.verified %}<span class="badge">Verified supplier</span>{% endif %}
-          <h3>{{ p.name }}</h3>
-          {% if p.price %}<div class="price">{{ p.price }}</div>{% endif %}
-          {% if p.moq or p.lead_time %}
-          <div class="spec">
-            {% if p.moq %}<span>MOQ <b>{{ p.moq }}</b></span>{% endif %}
-            {% if p.lead_time %}<span>Lead time <b>{{ p.lead_time }}</b></span>{% endif %}
-          </div>
-          {% endif %}
-          <span class="more">View details &rarr;</span>
-        </div>
-      </a>
+    {% if product_sections|length > 1 %}
+    <div class="subcatnav">
+      {% for section in product_sections %}
+      <a href="#{{ section.slug }}">{{ section.name }}</a>
       {% endfor %}
     </div>
+    {% endif %}
+
+    {% for section in product_sections %}
+    <div class="subcatblock" id="{{ section.slug }}">
+      {% if product_sections|length > 1 %}<h3>{{ section.name }}</h3>{% endif %}
+      <div class="grid3">
+        {% for p in section.products %}
+        <a class="card" href="{{ url_for('page_product', id=p.id) }}">
+          <div class="ph product-shot">{% if p.image %}<img src="{{ p.image }}" alt="{{ p.name }}" loading="lazy">{% endif %}</div>
+          <div class="body">
+            {% if p.verified %}<span class="badge">Verified supplier</span>{% endif %}
+            <h3>{{ p.name }}</h3>
+            {% if p.price %}<div class="price">{{ p.price }}</div>{% endif %}
+            {% if p.moq or p.lead_time %}
+            <div class="spec">
+              {% if p.moq %}<span>MOQ <b>{{ p.moq }}</b></span>{% endif %}
+              {% if p.lead_time %}<span>Lead time <b>{{ p.lead_time }}</b></span>{% endif %}
+            </div>
+            {% endif %}
+            <span class="more">View details &rarr;</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
     {% else %}
     <div class="empty">
       <div class="ph"></div>

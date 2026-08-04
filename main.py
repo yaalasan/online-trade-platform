@@ -15,18 +15,21 @@ from psycopg_pool import ConnectionPool
 from flask import (
     Flask,
     abort,
+    flash,
     g,
     jsonify,
     redirect,
     render_template,
     request,
     send_file,
+    send_from_directory,
     session,
     url_for,
 )
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
 
 from site_config import get_site
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -76,6 +79,18 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 CONTACT_EMAIL_FROM = os.environ.get("CONTACT_EMAIL_FROM", "").strip() or SMTP_USER
 CONTACT_EMAIL_TO = os.environ.get("CONTACT_EMAIL_TO", "").strip() or SMTP_USER
 
+# Supplier-portal bridge toggle. The site was originally a multi-supplier B2B
+# marketplace that pulled live products from the Next.js portal. We are now a
+# single-company, admin-curated catalogue, so the portal merge is OFF by
+# default; set PORTAL_ENABLED=1 to re-enable the read-only bridge.
+PORTAL_ENABLED = os.environ.get("PORTAL_ENABLED", "").strip().lower() in ("1", "true", "yes")
+
+# Admin product-photo uploads. Files are stored OUTSIDE the code tree (so a
+# redeploy/rsync never wipes them) and served same-origin at /media/<name>.
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "").strip() or str(BASE_DIR / "uploads")
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024  # 8 MB per image
+ALLOWED_IMAGE_EXT = {"jpg", "jpeg", "png", "webp", "gif"}
+
 ALLOWED_ORIGINS = {
     "https://fastflow.global",
     "https://www.fastflow.global",
@@ -101,6 +116,8 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=IS_PRODUCTION,
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+    # Cap total request body so a batch of product photos can't exhaust memory.
+    MAX_CONTENT_LENGTH=40 * 1024 * 1024,
 )
 
 # 30 req/min default on all routes; auth + contact endpoints override to 10/min.
@@ -199,22 +216,112 @@ from portal import (  # noqa: E402
 # name; filtering by the parent matches the parent itself plus all its subs.
 # Mirrored in static/app.js (CATEGORY_TREE) for the category rail dropdown.
 CATEGORY_GROUPS = {
-    "Machinery": [
-        "Construction Machinery",
+    "Construction Machinery": [
+        "Excavator",
+        "Forklift",
+        "Mini Loader",
+        "Mixer Truck",
+        "Crawler Transporter",
     ],
-
-    "Vehicles": [
+    "Electric Bikes": [
         "Electric Bikes",
-        "Motorbikes",
-        "Auto Spare Parts",
-        "Moto Spare Parts"
     ],
+    "Motorbikes": [
+        "Motorbikes",
+    ],
+    "Auto Spare Parts": [
+        "Auto Spare Parts",
+    ],
+    "Moto Spare Parts": [
+        "Moto Spare Parts",
+    ],
+}
+
+# Flat, ordered list of the real (sub)category names products are tagged with —
+# the single source of truth for the admin category dropdown. Kept in sync with
+# CATEGORY_GROUPS; parent names are display groupings, never stored on a product.
+PRODUCT_CATEGORIES = [sub for subs in CATEGORY_GROUPS.values() for sub in subs]
+
+STATIC_CATEGORY_IMAGES = {
+    "construction-machinery": "categories/construction_machinery.png",
+    "electric-bikes": "categories/electric bike.png",
+    "motorbikes": "categories/motorbike.png",
+    "auto-spare-parts": "categories/auto_parts.png",
+    "moto-spare-parts": "categories/moto spare parts.png",
+    "custom-sourcing": "categories/custom sourcing.png",
 }
 
 
 def expand_category_filter(category):
-    """Return the list of category names a filter value should match."""
+    """Return the list of category names a filter value should match. A parent
+    name (e.g. 'Vehicles') expands to its subcategories; a leaf name matches
+    itself."""
     return [category, *CATEGORY_GROUPS.get(category, [])]
+
+
+def _default_category_images():
+    return {
+        slug: url_for("static", filename=filename)
+        for slug, filename in STATIC_CATEGORY_IMAGES.items()
+    }
+
+
+def _classify_construction_product(product):
+    """Map legacy 'Construction Machinery' listings into the new public
+    subcategories using product text, so old rows remain browsable until they
+    are retagged in admin."""
+    category = (product.get("category") or "").strip()
+    if category in CATEGORY_GROUPS["Construction Machinery"]:
+        return category
+    if category != "Construction Machinery":
+        return category
+    text = " ".join([
+        product.get("name") or "",
+        product.get("description") or "",
+        product.get("capacity") or "",
+    ]).lower()
+    if "excavator" in text or "digger" in text:
+        return "Excavator"
+    if "forklift" in text:
+        return "Forklift"
+    if ("mini loader" in text or "skid steer" in text
+            or ("loader" in text and "wheel loader" not in text)):
+        return "Mini Loader"
+    if "mixer truck" in text or "concrete mixer" in text:
+        return "Mixer Truck"
+    if ("crawler transporter" in text or "crawler dumper" in text
+            or "tracked transporter" in text):
+        return "Crawler Transporter"
+    return "Construction Machinery"
+
+
+def _group_products_for_category(category_name, products):
+    order = CATEGORY_GROUPS.get(category_name, [])
+    if not order:
+        return [{"name": category_name, "slug": _slugify(category_name), "products": products}]
+    grouped = {name: [] for name in order}
+    extras = []
+    for product in products:
+        if category_name == "Construction Machinery":
+            bucket = _classify_construction_product(product)
+        else:
+            bucket = product.get("category") or category_name
+        if bucket in grouped:
+            grouped[bucket].append(product)
+        else:
+            extras.append(product)
+    sections = [
+        {"name": name, "slug": _slugify(name), "products": grouped[name]}
+        for name in order
+        if grouped[name]
+    ]
+    if extras:
+        sections.append({
+            "name": f"More {category_name}",
+            "slug": _slugify(f"more-{category_name}"),
+            "products": extras,
+        })
+    return sections
 
 
 def clean_str(data, key, default=""):
@@ -466,6 +573,10 @@ def _forward_lead_to_portal(payload):
     The visitor's IP is passed along so the portal rate-limits per client
     rather than lumping every forwarded lead under the server's own IP.
     Must be called from a request context (reads request.remote_addr)."""
+    # Portal decommissioned for the admin-curated catalogue: leads live in the
+    # local contact_inquiries table + email only. Re-enable with PORTAL_ENABLED.
+    if not PORTAL_ENABLED:
+        return
     client_ip = request.remote_addr or ""
 
     def _send():
@@ -719,12 +830,40 @@ def _slugify(name):
 
 
 def _category_counts():
-    """{category_name: count} across the tenant's products. No site_id clause —
-    RLS scopes it to the current site."""
+    """{public_category_name: count} across the tenant's products. Counts are
+    rolled up from subcategories into the parent tile (e.g. Excavator ->
+    Construction Machinery). No site_id clause — RLS scopes it to the current
+    site."""
     rows = get_db().execute(
-        "SELECT category, COUNT(*) AS n FROM products GROUP BY category"
+        "SELECT category, COUNT(*) AS n FROM products "
+        "WHERE is_published = 1 GROUP BY category"
     ).fetchall()
-    return {r["category"]: r["n"] for r in rows}
+    counts = {}
+    for row in rows:
+        name = row["category"]
+        count = row["n"]
+        parent = next(
+            (parent_name for parent_name, subs in CATEGORY_GROUPS.items() if name in subs),
+            name,
+        )
+        counts[parent] = counts.get(parent, 0) + count
+    return counts
+
+
+def _category_images():
+    """{slug: photo_url} for category tiles, from admin uploads (site_settings
+    keys 'category_photo:<slug>'). One query, tolerant if the table is absent."""
+    images = _default_category_images()
+    try:
+        rows = get_db().execute(
+            "SELECT key, value FROM site_settings WHERE key LIKE 'category_photo:%'"
+        ).fetchall()
+    except Exception:
+        return images
+    for row in rows:
+        if row["value"]:
+            images[row["key"].split(":", 1)[1]] = row["value"]
+    return images
 
 
 def _categories_with_counts(site):
@@ -732,6 +871,7 @@ def _categories_with_counts(site):
     display) with live DB counts (how many are listed). The trailing
     'Custom sourcing' entry is a CTA to the contact form, not a listing page."""
     counts = _category_counts()
+    images = _category_images()
     out = []
     for name, blurb, moq, lead_time in site["categories"]:
         is_cta = name == "Custom sourcing"
@@ -744,6 +884,7 @@ def _categories_with_counts(site):
             "slug": slug,
             "is_cta": is_cta,
             "count": 0 if is_cta else counts.get(name, 0),
+            "image": images.get(slug, ""),
             "url": url_for("page_contact") if is_cta
                    else url_for("page_category", slug=slug),
         })
@@ -781,6 +922,7 @@ def page_home():
     return render_template(
         "home.html", active_page="home",
         categories=_categories_with_counts(site),
+        about_image=get_setting("about_image"),
     )
 
 
@@ -804,19 +946,24 @@ def page_category(slug):
     if not cat:
         abort(404)
     db = get_db()
+    names = expand_category_filter(cat["name"])
+    placeholders = ", ".join(["%s"] * len(names))
     rows = db.execute(
-        "SELECT id, name, supplier, location, price, moq, lead_time, verified "
-        "FROM products WHERE category = %s ORDER BY verified DESC, name",
-        (cat["name"],),
+        f"SELECT id, name, supplier, location, price, moq, lead_time, verified, "
+        f"category, description, capacity FROM products "
+        f"WHERE category IN ({placeholders}) AND is_published = 1 "
+        f"ORDER BY verified DESC, name",
+        tuple(names),
     ).fetchall()
     products = []
     for r in rows:
         p = dict(r)
         p["image"] = _primary_image(db, r["id"])
         products.append(p)
+    sections = _group_products_for_category(cat["name"], products)
     return render_template(
         "category.html", active_page="products",
-        category=cat, products=products,
+        category=cat, products=products, product_sections=sections,
     )
 
 
@@ -826,6 +973,12 @@ def page_product(id):
     row = db.execute("SELECT * FROM products WHERE id = %s", (id,)).fetchone()
     if not row:
         abort(404)
+    # Unpublished products are invisible to the public; only an admin previewing
+    # from the dashboard may open them.
+    if not row["is_published"]:
+        u = get_current_user()
+        if not (u and u["role"] == "admin"):
+            abort(404)
     product = dict(row)
     product["image"] = _primary_image(db, id)
     product["media"] = _get_media(db, id)
@@ -842,7 +995,13 @@ def page_product(id):
 
 @app.route("/about")
 def page_about():
-    return render_template("about.html", active_page="about")
+    team = get_db().execute(
+        "SELECT name, role, bio, photo_url FROM team_members "
+        "WHERE is_published = 1 ORDER BY sort_order, id"
+    ).fetchall()
+    return render_template("about.html", active_page="about",
+                           team=[dict(t) for t in team],
+                           about_image=get_setting("about_image"))
 
 
 @app.route("/faq")
@@ -955,6 +1114,544 @@ def admin_inquiries():
                            csrf_token=session.get("csrf_token", ""))
 
 
+# --- Admin dashboard: product management (admin-only, server-rendered) --------
+
+def _require_admin_page():
+    """Gate for server-rendered admin pages. Returns (user, None) for an admin,
+    else (None, response): a redirect to /login when logged out, or aborts 403
+    when logged in without the admin role."""
+    user = get_current_user()
+    if not user:
+        return None, redirect(url_for("page_login", next=request.path))
+    if user["role"] != "admin":
+        abort(403)
+    return user, None
+
+
+def _check_form_csrf():
+    """Manual CSRF check for server-rendered admin form POSTs (the global
+    verify_csrf_token only guards /api/*). Same hmac pattern as /login."""
+    expected = session.get("csrf_token", "")
+    provided = request.form.get("csrf_token", "")
+    return bool(expected and hmac.compare_digest(expected, provided))
+
+
+@app.route("/media/<path:filename>")
+def media(filename):
+    """Serve an admin-uploaded product photo from UPLOAD_DIR (kept outside the
+    code tree so redeploys never wipe it). send_from_directory blocks traversal."""
+    return send_from_directory(UPLOAD_DIR, filename)
+
+
+def _save_uploaded_photos(db, product_id, files, now, start_order=0):
+    """Validate + store uploaded image files under UPLOAD_DIR, one product_media
+    row each. Skips files with a disallowed extension or over MAX_UPLOAD_BYTES.
+    site_id is filled by the column default (current app.site_id) so RLS passes."""
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    saved = 0
+    order = start_order
+    for f in files:
+        if not f or not f.filename:
+            continue
+        ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+        if ext not in ALLOWED_IMAGE_EXT:
+            continue
+        data = f.read(MAX_UPLOAD_BYTES + 1)
+        if not data or len(data) > MAX_UPLOAD_BYTES:
+            continue
+        base = secure_filename(f.filename) or f"photo.{ext}"
+        fname = f"{secrets.token_hex(8)}-{base}"
+        with open(os.path.join(UPLOAD_DIR, fname), "wb") as out:
+            out.write(data)
+        url = f"/media/{fname}"
+        db.execute(
+            "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
+            "VALUES (%s, 'image', %s, %s, %s, 0, %s)",
+            (product_id, url, url, order, now),
+        )
+        saved += 1
+        order += 1
+    return saved
+
+
+def _delete_media_row(db, media_id, product_id):
+    """Delete one product_media row and best-effort remove its file from disk."""
+    row = db.execute(
+        "SELECT url FROM product_media WHERE id = %s AND product_id = %s",
+        (media_id, product_id),
+    ).fetchone()
+    if not row:
+        return
+    db.execute("DELETE FROM product_media WHERE id = %s AND product_id = %s",
+               (media_id, product_id))
+    url = row["url"] or ""
+    if url.startswith("/media/"):
+        fp = os.path.abspath(os.path.join(UPLOAD_DIR, url[len("/media/"):]))
+        try:
+            if os.path.commonpath([fp, os.path.abspath(UPLOAD_DIR)]) == os.path.abspath(UPLOAD_DIR):
+                os.remove(fp)
+        except OSError:
+            pass
+
+
+def _set_primary(db, product_id, media_id):
+    db.execute("UPDATE product_media SET is_primary = 0 WHERE product_id = %s", (product_id,))
+    db.execute("UPDATE product_media SET is_primary = 1 WHERE id = %s AND product_id = %s",
+               (media_id, product_id))
+
+
+def _ensure_primary(db, product_id):
+    """Guarantee exactly one primary image if any media exists."""
+    if db.execute("SELECT 1 FROM product_media WHERE product_id = %s AND is_primary = 1",
+                  (product_id,)).fetchone():
+        return
+    first = db.execute(
+        "SELECT id FROM product_media WHERE product_id = %s ORDER BY sort_order, id LIMIT 1",
+        (product_id,),
+    ).fetchone()
+    if first:
+        db.execute("UPDATE product_media SET is_primary = 1 WHERE id = %s", (first["id"],))
+
+
+def _admin_product_payload(form):
+    """Validate the product fields shared by add + edit. Returns (fields, error)."""
+    category = clean_str(form, "category")
+    name = clean_str(form, "name")
+    price = clean_str(form, "price")
+    if category not in PRODUCT_CATEGORIES:
+        return None, "Choose a valid category."
+    if not name:
+        return None, "Product name is required."
+    if not price:
+        return None, "Price is required (a figure or 'On request')."
+    return {
+        "category": category,
+        "name": name,
+        "price": price,
+        "description": clean_str(form, "description") or name,
+        "location": clean_str(form, "location") or "China",
+        "moq": clean_str(form, "moq"),
+        "lead_time": clean_str(form, "lead_time"),
+        "capacity": clean_str(form, "capacity"),
+        "certifications": clean_str(form, "certifications"),
+        "verified": 1 if form.get("verified") else 0,
+        "is_published": 1 if form.get("is_published") else 0,
+    }, None
+
+
+@app.route("/admin")
+def admin_home():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    return redirect(url_for("admin_products"))
+
+
+@app.route("/admin/products")
+def admin_products():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, name, category, price, verified, is_published, created_at "
+        "FROM products ORDER BY is_published DESC, category, name"
+    ).fetchall()
+    products = []
+    for r in rows:
+        p = dict(r)
+        p["image"] = _primary_image(db, r["id"])
+        products.append(p)
+    return render_template(
+        "admin_products.html", products=products,
+        csrf_token=session.get("csrf_token", ""),
+    )
+
+
+@app.route("/admin/products/new", methods=["GET", "POST"])
+def admin_product_new():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if request.method == "POST":
+        if not _check_form_csrf():
+            abort(400)
+        fields, error = _admin_product_payload(request.form)
+        if error:
+            return render_template(
+                "admin_product_form.html", mode="new", error=error,
+                form=request.form, categories=CATEGORY_GROUPS, media=[],
+                csrf_token=session.get("csrf_token", "")), 400
+        db = get_db()
+        now = utc_now()
+        pid = db.execute(
+            "INSERT INTO products (category, name, supplier, supplier_id, location, "
+            "description, price, moq, lead_time, capacity, certifications, image_url, "
+            "verified, is_published, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+            (fields["category"], fields["name"], (user["company"] or "Fast Flow"),
+             user["id"], fields["location"], fields["description"], fields["price"],
+             fields["moq"], fields["lead_time"], fields["capacity"],
+             fields["certifications"], "", fields["verified"], fields["is_published"], now),
+        ).fetchone()["id"]
+        _save_uploaded_photos(db, pid, request.files.getlist("photos"), now)
+        _ensure_primary(db, pid)
+        log_audit("created", "product", pid, f"admin added {fields['name']}")
+        db.commit()
+        flash(f"Product “{fields['name']}” created.")
+        return redirect(url_for("admin_products"))
+    return render_template(
+        "admin_product_form.html", mode="new", error=None, form={},
+        categories=CATEGORY_GROUPS, media=[],
+        csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/products/<int:id>/edit", methods=["GET", "POST"])
+def admin_product_edit(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    if request.method == "POST":
+        if not _check_form_csrf():
+            abort(400)
+        fields, error = _admin_product_payload(request.form)
+        if error:
+            return render_template(
+                "admin_product_form.html", mode="edit", product=dict(row), error=error,
+                form=request.form, categories=CATEGORY_GROUPS,
+                media=_get_media(db, id), csrf_token=session.get("csrf_token", "")), 400
+        now = utc_now()
+        db.execute(
+            "UPDATE products SET category=%s, name=%s, location=%s, description=%s, "
+            "price=%s, moq=%s, lead_time=%s, capacity=%s, certifications=%s, "
+            "verified=%s, is_published=%s WHERE id=%s",
+            (fields["category"], fields["name"], fields["location"], fields["description"],
+             fields["price"], fields["moq"], fields["lead_time"], fields["capacity"],
+             fields["certifications"], fields["verified"], fields["is_published"], id),
+        )
+        for mid in request.form.getlist("delete_media"):
+            if mid.isdigit():
+                _delete_media_row(db, int(mid), id)
+        nxt = db.execute(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM product_media WHERE product_id=%s",
+            (id,)).fetchone()["n"]
+        _save_uploaded_photos(db, id, request.files.getlist("photos"), now, start_order=nxt)
+        primary = request.form.get("primary_media", "")
+        if primary.isdigit():
+            _set_primary(db, id, int(primary))
+        _ensure_primary(db, id)
+        log_audit("updated", "product", id, f"admin edited {fields['name']}")
+        db.commit()
+        flash(f"Product “{fields['name']}” saved.")
+        return redirect(url_for("admin_products"))
+    return render_template(
+        "admin_product_form.html", mode="edit", product=dict(row), error=None,
+        form=dict(row), categories=CATEGORY_GROUPS, media=_get_media(db, id),
+        csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/products/<int:id>/toggle", methods=["POST"])
+def admin_product_toggle(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT is_published FROM products WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    new = 0 if row["is_published"] else 1
+    db.execute("UPDATE products SET is_published = %s WHERE id = %s", (new, id))
+    log_audit("published" if new else "unpublished", "product", id, "")
+    db.commit()
+    return redirect(url_for("admin_products"))
+
+
+@app.route("/admin/products/<int:id>/delete", methods=["POST"])
+def admin_product_delete(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT name FROM products WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    try:
+        for m in _get_media(db, id):
+            _delete_media_row(db, m["id"], id)
+        db.execute("DELETE FROM product_specs WHERE product_id = %s", (id,))
+        db.execute("DELETE FROM product_inquiries WHERE product_id = %s", (id,))
+        db.execute("DELETE FROM products WHERE id = %s", (id,))
+        log_audit("deleted", "product", id, f"admin deleted {row['name']}")
+        db.commit()
+        flash("Product deleted.")
+    except Exception:
+        db.rollback()
+        flash("Couldn't delete — this product has linked quotes/inquiries. Hide it instead.", "error")
+    return redirect(url_for("admin_products"))
+
+
+# --- Admin dashboard: team members (About page, admin-only) -------------------
+
+def _int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _remove_media_file(url):
+    """Best-effort delete of an uploaded file behind a /media/<name> URL."""
+    if not url or not url.startswith("/media/"):
+        return
+    fp = os.path.abspath(os.path.join(UPLOAD_DIR, url[len("/media/"):]))
+    try:
+        if os.path.commonpath([fp, os.path.abspath(UPLOAD_DIR)]) == os.path.abspath(UPLOAD_DIR):
+            os.remove(fp)
+    except OSError:
+        pass
+
+
+def _save_one_photo(files):
+    """Save the first valid uploaded image and return its /media URL, else None."""
+    for f in files:
+        if not f or not f.filename:
+            continue
+        ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+        if ext not in ALLOWED_IMAGE_EXT:
+            continue
+        data = f.read(MAX_UPLOAD_BYTES + 1)
+        if not data or len(data) > MAX_UPLOAD_BYTES:
+            continue
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        base = secure_filename(f.filename) or f"photo.{ext}"
+        fname = f"{secrets.token_hex(8)}-{base}"
+        with open(os.path.join(UPLOAD_DIR, fname), "wb") as out:
+            out.write(data)
+        return f"/media/{fname}"
+    return None
+
+
+@app.route("/admin/team")
+def admin_team():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    rows = get_db().execute(
+        "SELECT * FROM team_members ORDER BY sort_order, id"
+    ).fetchall()
+    return render_template("admin_team.html", members=[dict(r) for r in rows],
+                           about_image=get_setting("about_image"),
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/team/new", methods=["GET", "POST"])
+def admin_team_new():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if request.method == "POST":
+        if not _check_form_csrf():
+            abort(400)
+        name = clean_str(request.form, "name")
+        role = clean_str(request.form, "role")
+        if not name or not role:
+            return render_template(
+                "admin_team_form.html", mode="new", error="Name and role are required.",
+                form=request.form, csrf_token=session.get("csrf_token", "")), 400
+        db = get_db()
+        photo = _save_one_photo(request.files.getlist("photo")) or ""
+        db.execute(
+            "INSERT INTO team_members (name, role, bio, photo_url, sort_order, is_published, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (name, role, clean_str(request.form, "bio"), photo,
+             _int(request.form.get("sort_order"), 0),
+             1 if request.form.get("is_published") else 0, utc_now()),
+        )
+        db.commit()
+        flash(f"Team member “{name}” added.")
+        return redirect(url_for("admin_team"))
+    return render_template("admin_team_form.html", mode="new", error=None, form={},
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/team/<int:id>/edit", methods=["GET", "POST"])
+def admin_team_edit(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    db = get_db()
+    row = db.execute("SELECT * FROM team_members WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    if request.method == "POST":
+        if not _check_form_csrf():
+            abort(400)
+        name = clean_str(request.form, "name")
+        role = clean_str(request.form, "role")
+        if not name or not role:
+            return render_template(
+                "admin_team_form.html", mode="edit", error="Name and role are required.",
+                form=request.form, mid=id, csrf_token=session.get("csrf_token", "")), 400
+        photo_url = row["photo_url"]
+        if request.form.get("delete_photo") and photo_url:
+            _remove_media_file(photo_url)
+            photo_url = ""
+        new_photo = _save_one_photo(request.files.getlist("photo"))
+        if new_photo:
+            if photo_url:
+                _remove_media_file(photo_url)
+            photo_url = new_photo
+        db.execute(
+            "UPDATE team_members SET name=%s, role=%s, bio=%s, photo_url=%s, "
+            "sort_order=%s, is_published=%s WHERE id=%s",
+            (name, role, clean_str(request.form, "bio"), photo_url,
+             _int(request.form.get("sort_order"), 0),
+             1 if request.form.get("is_published") else 0, id),
+        )
+        db.commit()
+        flash(f"Team member “{name}” saved.")
+        return redirect(url_for("admin_team"))
+    return render_template("admin_team_form.html", mode="edit", error=None,
+                           form=dict(row), mid=id, csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/team/<int:id>/toggle", methods=["POST"])
+def admin_team_toggle(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT is_published FROM team_members WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    db.execute("UPDATE team_members SET is_published = %s WHERE id = %s",
+               (0 if row["is_published"] else 1, id))
+    db.commit()
+    return redirect(url_for("admin_team"))
+
+
+@app.route("/admin/team/<int:id>/delete", methods=["POST"])
+def admin_team_delete(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT photo_url FROM team_members WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    db.execute("DELETE FROM team_members WHERE id = %s", (id,))
+    _remove_media_file(row["photo_url"])
+    db.commit()
+    flash("Team member removed.")
+    return redirect(url_for("admin_team"))
+
+
+# --- Per-site settings (admin-managed single values, e.g. About intro photo) --
+
+def get_setting(key, default=""):
+    row = get_db().execute(
+        "SELECT value FROM site_settings WHERE key = %s", (key,)
+    ).fetchone()
+    return row["value"] if row and row["value"] else default
+
+
+def set_setting(db, key, value):
+    db.execute(
+        "INSERT INTO site_settings (key, value) VALUES (%s, %s) "
+        "ON CONFLICT (site_id, key) DO UPDATE SET value = EXCLUDED.value",
+        (key, value),
+    )
+
+
+@app.route("/admin/about-image", methods=["POST"])
+def admin_about_image():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    current = get_setting("about_image")
+    if request.form.get("delete_photo") and current:
+        _remove_media_file(current)
+        set_setting(db, "about_image", "")
+        db.commit()
+        flash("About-page photo removed.")
+        return redirect(url_for("admin_team"))
+    new_photo = _save_one_photo(request.files.getlist("photo"))
+    if new_photo:
+        if current:
+            _remove_media_file(current)
+        set_setting(db, "about_image", new_photo)
+        db.commit()
+        flash("About-page photo updated.")
+    else:
+        flash("No image was uploaded (check the file type/size).", "error")
+    return redirect(url_for("admin_team"))
+
+
+@app.route("/admin/categories")
+def admin_categories():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    site = get_site(_site_slug())
+    imgs = _category_images()
+    cats = []
+    for entry in site["categories"]:
+        name = entry[0]
+        slug = _slugify(name)
+        cats.append({"name": name, "slug": slug, "image": imgs.get(slug, ""),
+                     "is_cta": name == "Custom sourcing"})
+    return render_template("admin_categories.html", cats=cats,
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/category-image", methods=["POST"])
+def admin_category_image():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    site = get_site(_site_slug())
+    valid = {_slugify(entry[0]) for entry in site["categories"]}
+    slug = clean_str(request.form, "slug")
+    if slug not in valid:
+        abort(400)
+    db = get_db()
+    key = f"category_photo:{slug}"
+    current = get_setting(key)
+    if request.form.get("delete_photo") and current:
+        _remove_media_file(current)
+        set_setting(db, key, "")
+        db.commit()
+        flash("Category photo removed.")
+        return redirect(url_for("admin_categories"))
+    new_photo = _save_one_photo(request.files.getlist("photo"))
+    if new_photo:
+        if current:
+            _remove_media_file(current)
+        set_setting(db, key, new_photo)
+        db.commit()
+        flash("Category photo updated.")
+    else:
+        flash("No image was uploaded (check the file type/size).", "error")
+    return redirect(url_for("admin_categories"))
+
+
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("5 per minute", methods=["POST"])
 def page_login():
@@ -972,6 +1669,7 @@ def page_login():
             return render_template(
                 "login.html", error="Your session expired. Please try again.",
                 email=clean_str(request.form, "email"),
+                next=request.form.get("next", ""),
                 csrf_token=session.get("csrf_token", ""),
             ), 400
 
@@ -985,11 +1683,15 @@ def page_login():
         else:
             _login_user(uid)
             user = get_current_user()
+            nxt = request.form.get("next", "")
+            if nxt.startswith("/") and not nxt.startswith("//"):
+                return redirect(nxt)
             if user and user["role"] == "admin":
-                return redirect(url_for("admin_inquiries"))
+                return redirect(url_for("admin_products"))
             return redirect(url_for("page_home"))
 
     return render_template("login.html", error=error, email=email,
+                           next=request.args.get("next", ""),
                            csrf_token=session.get("csrf_token", ""))
 
 
@@ -1211,6 +1913,10 @@ def marketplace():
         params.append(f"%{location}%")
     if verified_only:
         filters.append("verified = 1")
+    # Public callers only ever see published products; admins see everything.
+    _u = get_current_user()
+    if not (_u and _u["role"] == "admin"):
+        filters.append("is_published = 1")
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
     products = db.execute(f"SELECT * FROM products {where} ORDER BY verified DESC, category, name", params).fetchall()
 
@@ -1245,7 +1951,8 @@ def marketplace():
         categories.setdefault(product["category"], []).append(product)
 
     # Merge in live products published from the supplier portal (best-effort).
-    for prow in fetch_portal_products(query=query):
+    # Disabled by default now the catalogue is admin-curated (PORTAL_ENABLED).
+    for prow in (fetch_portal_products(query=query) if PORTAL_ENABLED else []):
         if category and prow["category"] not in expand_category_filter(category):
             continue
         if location and location.lower() not in (prow.get("location") or "").lower():
@@ -1297,6 +2004,7 @@ def categories():
         SELECT category AS name, COUNT(*) AS product_count,
                SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) AS verified_count
         FROM products
+        WHERE is_published = 1
         GROUP BY category
         ORDER BY product_count DESC, category ASC
         """
@@ -1305,7 +2013,7 @@ def categories():
 
     # Fold in portal product counts so portal-only categories show in the rail.
     by_name = {c["name"]: c for c in cats}
-    for prow in fetch_portal_products():
+    for prow in (fetch_portal_products() if PORTAL_ENABLED else []):
         bucket = by_name.get(prow["category"])
         if bucket is None:
             bucket = {"name": prow["category"], "product_count": 0, "verified_count": 0}
