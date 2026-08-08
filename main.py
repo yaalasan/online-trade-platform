@@ -643,10 +643,11 @@ def handle_unexpected_error(error):
     return jsonify({"error": "An unexpected server error occurred."}), 500
 
 from flask import render_template
-
 @app.route("/legacy")
 def home():
-    categories = get_all_categories() # reuse same function as products page
+    categories = get_all_categories()
+    print("==== LOADED CATEGORIES COUNT:", len(categories))
+    print("CATEGORY DATA:", categories)
     return render_template("home.html", site=site, categories=categories)
 
 
