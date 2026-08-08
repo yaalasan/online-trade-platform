@@ -3,21 +3,6 @@
 
 {% block content %}
 
-<style>
-.grid3 .card .ph {
-    width: 100%;
-    height: 225px;
-    background: #eee;
-    overflow: hidden;
-}
-.grid3 .card .ph img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-}
-</style>
-
 <div class="hero" style="background-image:url('{{ url_for('static', filename='hero.jpg') }}')">
   <div class="shade"></div>
   <div class="wrap">
@@ -38,25 +23,23 @@
       <p>Machinery, components, and industrial goods sourced from audited
          manufacturers across China.</p>
     </div>
+
     <div class="grid3">
       {% for item in categories %}
       <a class="card" href="{{ item.url }}">
         <div class="ph">
-          {% if item.image %}
-            <img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">
-          {% endif %}
+          {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">{% endif %}
         </div>
         <div class="body">
           <h3>{{ item.name }}</h3>
           <p>{{ item.blurb }}</p>
-          <span class="more">View category &rarr;</span>
+          <span class="more">{{ 'Send an enquiry' if item.is_cta else 'View category' }} &rarr;</span>
         </div>
       </a>
       {% endfor %}
     </div>
   </div>
 </section>
-
 
 <section class="alt">
   <div class="wrap split">

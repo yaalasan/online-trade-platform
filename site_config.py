@@ -61,15 +61,15 @@ _BASE = {
     # it fills the 6th slot so the grid sits as a tidy 3x2. Remove it if you
     # would rather show five.
     "categories": [
-        ("Construction machinery", "Loaders, excavators, forklifts and mixer trucks",
+        ("Construction Machinery", "Loaders, excavators, forklifts and mixer trucks",
          "1 unit", "~1 month"),
-        ("Auto spare parts", "Replacement and wear parts for vehicles",
+        ("Electric Bikes", "Electric bicycles and drive components",
          "On request", ""),
-        ("E-bike", "Electric bicycles and drive components",
+        ("Motorbikes", "Motorcycles and scooters",
          "On request", ""),
-        ("Motorbike", "Motorcycles and scooters",
+        ("Auto Spare Parts", "Replacement and wear parts for vehicles",
          "On request", ""),
-        ("Moto spare parts", "Motorcycle replacement and wear parts",
+        ("Moto Spare Parts", "Motorcycle replacement and wear parts",
          "On request", ""),
         ("Custom sourcing", "Send us a specification, drawing or sample",
          "", "Quote within 48h"),

@@ -3,22 +3,35 @@ import hmac
 import os
 import re
 import secrets
+import smtplib
 import threading
 from datetime import UTC, datetime, timedelta
+from email.message import EmailMessage
 from pathlib import Path
-
-import re
-from datetime import datetime
-from flask import render_template, abort
-from site_config import get_site
 
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-from flask import Flask, Response, abort, g, jsonify, request, send_file, session
+from flask import (
+    Flask,
+    abort,
+    flash,
+    g,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    send_from_directory,
+    session,
+    url_for,
+)
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
+
+from site_config import get_site
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -41,8 +54,42 @@ def _load_dotenv(path):
 
 _load_dotenv(BASE_DIR / ".env")
 
-IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
+# APP_ENV=production is the canonical production switch (the systemd
+# EnvironmentFile sets it). PRODUCTION=1 is still honoured for back-compat, so
+# every prod behaviour — secure cookies, ProxyFix, and the unknown-host 404 in
+# resolve_site_id — keys off the single IS_PRODUCTION flag below.
+APP_ENV = os.environ.get("APP_ENV", "").strip().lower()
+IS_PRODUCTION = (
+    APP_ENV == "production"
+    or os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
+)
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
+
+# Contact-form staff notifications. Default "console" just logs (no provider
+# needed for dev); set CONTACT_EMAIL_MODE=smtp to deliver via SMTP. Tuned for
+# Namecheap Private Email (mail.privateemail.com:587, STARTTLS, username = the
+# full mailbox address). CONTACT_EMAIL_FROM/TO default to the authenticated
+# mailbox — Private Email requires the From to be that mailbox — and each
+# notification carries Reply-To: <buyer> so a staff reply reaches the buyer.
+CONTACT_EMAIL_MODE = os.environ.get("CONTACT_EMAIL_MODE", "console").strip().lower()
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+CONTACT_EMAIL_FROM = os.environ.get("CONTACT_EMAIL_FROM", "").strip() or SMTP_USER
+CONTACT_EMAIL_TO = os.environ.get("CONTACT_EMAIL_TO", "").strip() or SMTP_USER
+
+# Supplier-portal bridge toggle. The site was originally a multi-supplier B2B
+# marketplace that pulled live products from the Next.js portal. We are now a
+# single-company, admin-curated catalogue, so the portal merge is OFF by
+# default; set PORTAL_ENABLED=1 to re-enable the read-only bridge.
+PORTAL_ENABLED = os.environ.get("PORTAL_ENABLED", "").strip().lower() in ("1", "true", "yes")
+
+# Admin product-photo uploads. Files are stored OUTSIDE the code tree (so a
+# redeploy/rsync never wipes them) and served same-origin at /media/<name>.
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "").strip() or str(BASE_DIR / "uploads")
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024  # 8 MB per image
+ALLOWED_IMAGE_EXT = {"jpg", "jpeg", "png", "webp", "gif"}
 
 ALLOWED_ORIGINS = {
     "https://fastflow.global",
@@ -69,6 +116,8 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=IS_PRODUCTION,
     PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+    # Cap total request body so a batch of product photos can't exhaust memory.
+    MAX_CONTENT_LENGTH=40 * 1024 * 1024,
 )
 
 # 30 req/min default on all routes; auth + contact endpoints override to 10/min.
@@ -84,6 +133,25 @@ limiter = Limiter(
 
 @app.errorhandler(429)
 def rate_limit_handler(e):
+    # The public contact form is an HTML page, so give it a friendly banner on
+    # the rendered page rather than raw JSON. API clients still get JSON.
+    if request.path == "/contact":
+        site = get_site(_site_slug())
+        return render_template(
+            "contact.html",
+            active_page="contact",
+            enquiry_categories=_enquiry_categories(site),
+            csrf_token=session.get("csrf_token", ""),
+            error="You've sent several messages in a short time. Please wait a "
+                  "little while before sending another.",
+        ), 429
+    if request.path == "/login":
+        return render_template(
+            "login.html",
+            error="Too many attempts. Please wait a minute and try again.",
+            email=clean_str(request.form, "email"),
+            csrf_token=session.get("csrf_token", ""),
+        ), 429
     return jsonify({"error": "Too many requests. Please try again later."}), 429
 
 
@@ -132,144 +200,207 @@ def resolve_site_id(host):
 
 
 # --- Supplier portal integration ---------------------------------------------
-# The buyer-facing Flask site reads the Next.js portal's published catalog over a
-# small read-only JSON bridge, so a manufacturer who registers in the portal and
-# publishes ACTIVE products shows up here automatically. Buyer sourcing requests
-# flow the other way (into the portal's broker queue). All calls are best-effort:
-# if the portal is unreachable, the site falls back to local SQLite data.
-import json  # noqa: E402
-import urllib.error  # noqa: E402
-import urllib.parse  # noqa: E402
-import urllib.request  # noqa: E402
+# The portal HTTP bridge (read-only JSON, best-effort, falls back to local data)
+# lives in portal.py — self-contained, stdlib only, so it imports cleanly here.
+import urllib.parse  # noqa: E402  (still used by product_detail_portal below)
 
-PORTAL_API_URL = os.environ.get("PORTAL_API_URL", "http://localhost:3000").rstrip("/")
-PORTAL_URL = os.environ.get("PORTAL_URL", PORTAL_API_URL)
-PORTAL_TIMEOUT = float(os.environ.get("PORTAL_TIMEOUT", "2.5"))
+from portal import (  # noqa: E402
+    _portal_get,
+    _portal_post,
+    fetch_portal_products,
+    fetch_portal_suppliers,
+    portal_product_row,
+)
 
 # Category taxonomy: parent -> subcategories. Products store the subcategory
 # name; filtering by the parent matches the parent itself plus all its subs.
 # Mirrored in static/app.js (CATEGORY_TREE) for the category rail dropdown.
 CATEGORY_GROUPS = {
-    "Machinery": [
-        "Construction Machinery",
+    "Construction Machinery": [
+        "Excavator",
+        "Forklift",
+        "Mini Loader",
+        "Mixer Truck",
+        "Crawler Transporter",
     ],
-
-    "Vehicles": [
+    "Electric Bikes": [
         "Electric Bikes",
-        "Motorbikes",
-        "Auto Spare Parts",
-        "Moto Spare Parts"
     ],
+    "Motorbikes": [
+        "Motorbikes",
+    ],
+    "Auto Spare Parts": [
+        "Auto Spare Parts",
+    ],
+    "Moto Spare Parts": [
+        "Moto Spare Parts",
+    ],
+}
+
+# Flat, ordered list of the real (sub)category names products are tagged with —
+# the single source of truth for the admin category dropdown. Kept in sync with
+# CATEGORY_GROUPS; parent names are display groupings, never stored on a product.
+PRODUCT_CATEGORIES = [sub for subs in CATEGORY_GROUPS.values() for sub in subs]
+
+STATIC_CATEGORY_IMAGES = {
+    "construction-machinery": "categories/construction_machinery.png",
+    "electric-bikes": "categories/electric_bike.png",
+    "motorbikes": "categories/motorbike.png",
+    "auto-spare-parts": "categories/auto_parts.png",
+    "moto-spare-parts": "categories/moto_spare_parts.png",
+    "custom-sourcing": "categories/custom_sourcing.png",
+}
+
+SUBCATEGORY_BLURBS = {
+    "Excavator": "Mini and compact excavators for construction and earthmoving.",
+    "Forklift": "Electric and diesel forklifts for warehouse and industrial handling.",
+    "Mini Loader": "Compact loaders for tight job sites and multi-attachment work.",
+    "Mixer Truck": "Concrete mixer and self-loading mixer trucks for project delivery.",
+    "Crawler Transporter": "Tracked transporters and crawler dumpers for rough terrain.",
 }
 
 
 def expand_category_filter(category):
-    """Return the list of category names a filter value should match."""
+    """Return the list of category names a filter value should match. A parent
+    name (e.g. 'Vehicles') expands to its subcategories; a leaf name matches
+    itself."""
     return [category, *CATEGORY_GROUPS.get(category, [])]
 
 
-def _portal_get(path):
-    try:
-        req = urllib.request.Request(f"{PORTAL_API_URL}{path}", headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=PORTAL_TIMEOUT) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError, TimeoutError):
-        return None
+def _default_category_images():
+    images = {}
+    names = list(CATEGORY_GROUPS.keys())
+    for subs in CATEGORY_GROUPS.values():
+        names.extend(subs)
+    names.append("Custom sourcing")
 
-
-def _portal_post(path, payload, headers=None):
-    try:
-        body = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            f"{PORTAL_API_URL}{path}",
-            data=body,
-            headers={"Content-Type": "application/json", "Accept": "application/json", **(headers or {})},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=PORTAL_TIMEOUT) as resp:
-            return resp.status, json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        try:
-            return exc.code, json.loads(exc.read().decode("utf-8"))
-        except Exception:
-            return exc.code, {}
-    except (urllib.error.URLError, OSError, ValueError, TimeoutError):
-        return None, None
-
-
-def _portal_price(pmin, pmax, currency):
-    cur = f" {currency}" if currency else ""
-    if pmin and pmax and pmin != pmax:
-        return f"{pmin} - {pmax}{cur}"
-    if pmin or pmax:
-        return f"{pmin or pmax}{cur}"
-    return "On request"
-
-
-def portal_product_row(p):
-    """Map a portal product (card or detail JSON) to the Flask product dict shape."""
-    moq = p.get("moq")
-    unit = p.get("unit") or ""
-    lead = p.get("leadTimeDays")
-    certs = p.get("certifications")
-    return {
-        "id": f"portal-{p['id']}",
-        "category": p.get("category") or "Marketplace",
-        "name": p.get("name") or "",
-        "supplier": p.get("supplier") or "",
-        "location": p.get("country") or "",
-        "description": p.get("description") or "",
-        "price": _portal_price(p.get("priceMin"), p.get("priceMax"), p.get("currency")),
-        "moq": (f"{moq} {unit}".strip() if moq is not None else ""),
-        "lead_time": (f"{lead} days" if lead else ""),
-        "capacity": "",
-        "certifications": (
-            ", ".join(c["name"] for c in certs if c.get("name")) if isinstance(certs, list) else ""
-        ),
-        "image_url": p.get("image") or "",
-        "verified": 1 if p.get("verified") else 0,
-        "source": "portal",
-    }
-
-
-def fetch_portal_products(query=""):
-    """All ACTIVE portal products (following the paginated bridge), as Flask rows."""
-    rows = []
-    page = 1
-    while page <= 20:  # safety cap
-        params = [f"page={page}"]
-        if query:
-            params.append("q=" + urllib.parse.quote(query))
-        data = _portal_get("/api/public/products?" + "&".join(params))
-        if not data or not data.get("products"):
-            break
-        rows.extend(portal_product_row(p) for p in data["products"])
-        if page >= (data.get("totalPages") or 1):
-            break
-        page += 1
-    return rows
-
-
-def fetch_portal_suppliers(query=""):
-    data = _portal_get("/api/public/suppliers")
-    if not data:
-        return []
-    out = []
-    for s in data.get("suppliers", []):
-        name = s.get("name") or ""
-        if query and query.lower() not in name.lower():
+    for name in names:
+        slug = _slugify(name)
+        override = STATIC_CATEGORY_IMAGES.get(slug)
+        if override and (BASE_DIR / "static" / override).exists():
+            images[slug] = url_for("static", filename=override)
             continue
-        out.append({
-            "company": name,
-            "location": s.get("country") or s.get("city") or "",
-            "product_count": s.get("productCount") or 0,
-            "verified": 1 if s.get("verified") else 0,
-            "categories": "",
-            "certifications": "",
-            "verification_status": "verified" if s.get("verified") else "listed",
-            "source": "portal",
+        candidates = []
+        base = slug
+        candidates.extend([base, base.replace("-", "_"), base.replace("-", " ")])
+        # try title-case stems too because current folder uses spaces in names.
+        spaced = " ".join(part.capitalize() for part in base.split("-"))
+        candidates.append(spaced)
+        for stem in candidates:
+            for ext in ("png", "jpg", "jpeg", "webp", "gif"):
+                rel = f"categories/{stem}.{ext}"
+                if (BASE_DIR / "static" / rel).exists():
+                    images[slug] = url_for("static", filename=rel)
+                    break
+            if slug in images:
+                break
+    return images
+
+
+def _classify_construction_product(product):
+    """Map legacy 'Construction Machinery' listings into the new public
+    subcategories using product text, so old rows remain browsable until they
+    are retagged in admin."""
+    category = (product.get("category") or "").strip()
+    if category in CATEGORY_GROUPS["Construction Machinery"]:
+        return category
+    if category != "Construction Machinery":
+        return category
+    text = " ".join([
+        product.get("name") or "",
+        product.get("description") or "",
+        product.get("capacity") or "",
+    ]).lower()
+    if "excavator" in text or "digger" in text:
+        return "Excavator"
+    if "forklift" in text:
+        return "Forklift"
+    if ("mini loader" in text or "skid steer" in text
+            or ("loader" in text and "wheel loader" not in text)):
+        return "Mini Loader"
+    if "mixer truck" in text or "concrete mixer" in text:
+        return "Mixer Truck"
+    if ("crawler transporter" in text or "crawler dumper" in text
+            or "tracked transporter" in text):
+        return "Crawler Transporter"
+    return "Construction Machinery"
+
+
+def _group_products_for_category(category_name, products):
+    order = CATEGORY_GROUPS.get(category_name, [])
+    if not order:
+        return [{"name": category_name, "slug": _slugify(category_name), "products": products}]
+    grouped = {name: [] for name in order}
+    extras = []
+    for product in products:
+        if category_name == "Construction Machinery":
+            bucket = _classify_construction_product(product)
+        else:
+            bucket = product.get("category") or category_name
+        if bucket in grouped:
+            grouped[bucket].append(product)
+        else:
+            extras.append(product)
+    sections = [
+        {"name": name, "slug": _slugify(name), "products": grouped[name]}
+        for name in order
+        if grouped[name]
+    ]
+    if extras:
+        sections.append({
+            "name": f"More {category_name}",
+            "slug": _slugify(f"more-{category_name}"),
+            "products": extras,
         })
-    return out
+    return sections
+
+
+def _is_parent_category(name):
+    subs = CATEGORY_GROUPS.get(name, [])
+    # A parent category with one identical child behaves as a leaf.
+    return len(subs) > 1
+
+
+def _subcategory_counts(parent_name):
+    subs = CATEGORY_GROUPS.get(parent_name, [])
+    if not subs:
+        return {}
+    names = [*subs]
+    if parent_name == "Construction Machinery":
+        names.append(parent_name)
+    placeholders = ", ".join(["%s"] * len(names))
+    rows = get_db().execute(
+        f"SELECT category, name, description, capacity FROM products "
+        f"WHERE is_published = 1 AND category IN ({placeholders})",
+        tuple(names),
+    ).fetchall()
+    counts = {sub: 0 for sub in subs}
+    for row in rows:
+        product = dict(row)
+        bucket = (
+            _classify_construction_product(product)
+            if parent_name == "Construction Machinery"
+            else product.get("category")
+        )
+        if bucket in counts:
+            counts[bucket] += 1
+    return counts
+
+
+def _parent_subcategory_cards(parent_name):
+    counts = _subcategory_counts(parent_name)
+    images = _category_images()
+    cards = []
+    for sub in CATEGORY_GROUPS.get(parent_name, []):
+        slug = _slugify(sub)
+        cards.append({
+            "name": sub,
+            "slug": slug,
+            "count": counts.get(sub, 0),
+            "blurb": SUBCATEGORY_BLURBS.get(sub, ""),
+            "image": images.get(slug, ""),
+        })
+    return cards
 
 
 def clean_str(data, key, default=""):
@@ -439,6 +570,79 @@ def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
     )
 
 
+def _send_inquiry_email(inquiry_id, name, email, category, company="", message=""):
+    """Deliver the staff notification for a contact inquiry.
+
+    In "console" mode (the default) this just logs — no provider needed for dev.
+    In "smtp" mode it sends via CONTACT_EMAIL_* / SMTP_* using STARTTLS. The mail
+    goes From the authenticated mailbox To the staff address, but Reply-To is the
+    buyer, so replying from the inbox reaches the buyer, not the mailbox itself.
+
+    Any exception propagates: callers (see _notify_contact_inquiry) treat a raise
+    as "not delivered" and leave contact_inquiries.notified_at NULL, so a broken
+    SMTP config can never lose the lead or surface an error to the visitor."""
+    if CONTACT_EMAIL_MODE != "smtp":
+        app.logger.info(
+            "contact_inquiry#%s from %s <%s> (category=%s) → notify sales [console]",
+            inquiry_id, name, email, category or "-",
+        )
+        return
+
+    if not (SMTP_HOST and SMTP_USER and SMTP_PASSWORD and CONTACT_EMAIL_TO):
+        raise RuntimeError(
+            "CONTACT_EMAIL_MODE=smtp but SMTP_HOST/SMTP_USER/SMTP_PASSWORD/"
+            "CONTACT_EMAIL_TO are not all set"
+        )
+
+    msg = EmailMessage()
+    msg["Subject"] = f"New enquiry #{inquiry_id}: {category or 'general'} — {name}"
+    msg["From"] = CONTACT_EMAIL_FROM
+    msg["To"] = CONTACT_EMAIL_TO
+    msg["Reply-To"] = email
+    msg.set_content(
+        f"New contact-form enquiry (#{inquiry_id})\n\n"
+        f"Name:     {name}\n"
+        f"Email:    {email}\n"
+        f"Company:  {company or '-'}\n"
+        f"Category: {category or '-'}\n\n"
+        f"Message:\n{message or '-'}\n\n"
+        f"Reply directly to this email to respond to the buyer."
+    )
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as smtp:
+        smtp.starttls()
+        smtp.login(SMTP_USER, SMTP_PASSWORD)
+        smtp.send_message(msg)
+    app.logger.info(
+        "contact_inquiry#%s emailed to %s (reply-to %s) [smtp]",
+        inquiry_id, CONTACT_EMAIL_TO, email,
+    )
+
+
+def _notify_contact_inquiry(inquiry_id, site_id, name, email, category,
+                            company="", message=""):
+    """Background staff notification for a public contact-form inquiry. Attempts
+    delivery, then stamps notified_at so pending/failed sends are distinguishable
+    and retryable. Runs in its own daemon thread with its own pooled connection;
+    contact_inquiries is RLS-scoped, so it sets app.site_id before the UPDATE.
+
+    The inquiry row is already committed by the request before this runs, so a
+    delivery failure only leaves notified_at NULL — it can never lose the lead
+    or surface as an error to the visitor."""
+    try:
+        _send_inquiry_email(inquiry_id, name, email, category, company, message)
+    except Exception:
+        app.logger.exception("contact inquiry notification failed for #%s", inquiry_id)
+        return
+    try:
+        with pool.connection() as db:
+            db.execute("SELECT set_config('app.site_id', %s, false)", (str(site_id),))
+            db.execute("UPDATE contact_inquiries SET notified_at = %s WHERE id = %s",
+                       (utc_now(), inquiry_id))
+            db.commit()
+    except Exception:
+        app.logger.exception("marking contact_inquiry#%s notified failed", inquiry_id)
+
+
 def _forward_lead_to_portal(payload):
     """Best-effort forward of a marketplace lead (contact form, product inquiry,
     RFQ) to the portal broker queue, so staff have a single inbox. Runs in a
@@ -448,6 +652,10 @@ def _forward_lead_to_portal(payload):
     The visitor's IP is passed along so the portal rate-limits per client
     rather than lumping every forwarded lead under the server's own IP.
     Must be called from a request context (reads request.remote_addr)."""
+    # Portal decommissioned for the admin-curated catalogue: leads live in the
+    # local contact_inquiries table + email only. Re-enable with PORTAL_ENABLED.
+    if not PORTAL_ENABLED:
+        return
     client_ip = request.remote_addr or ""
 
     def _send():
@@ -547,6 +755,31 @@ def require_user():
     return user, None
 
 
+# Fields that reveal supplier identity. We are a trading company: if a buyer
+# learns which factory makes a product they can approach it directly and cut us
+# out. So these are stripped from public API responses — not just for anonymous
+# callers but for buyers too (buyers are the disintermediation threat). Only the
+# vetted internal roles (supplier, admin) receive them. Columns are unchanged;
+# this is a response-shaping guard, not a schema change.
+_SUPPLIER_PRIVATE_FIELDS = (
+    "supplier", "supplier_id", "location",
+    "supplier_contact_email", "supplier_contact_phone", "supplier_since",
+)
+
+
+def _caller_sees_supplier():
+    user = get_current_user()
+    return bool(user and user["role"] in ("supplier", "admin"))
+
+
+def _scrub_supplier_fields(item):
+    """Drop supplier-identifying keys from a product/supplier dict, in place."""
+    if item:
+        for field in _SUPPLIER_PRIVATE_FIELDS:
+            item.pop(field, None)
+    return item
+
+
 def _owns_product(user, product):
     """Return True when the user may mutate this product (IDOR guard).
     Ownership requires a numeric supplier_id match; the free-text company-name
@@ -642,13 +875,985 @@ def handle_unexpected_error(error):
     app.logger.exception("Unhandled error: %s", error)
     return jsonify({"error": "An unexpected server error occurred."}), 500
 
-from flask import render_template
-@app.route("/legacy")
-def home():
-    categories = get_all_categories()
-    print("==== LOADED CATEGORIES COUNT:", len(categories))
-    print("CATEGORY DATA:", categories)
-    return render_template("home.html", site=site, categories=categories)
+
+# --- Server-rendered public site ---------------------------------------------
+# Five pages at real URLs (Home / Products / About / Contact / FAQ) plus a
+# per-category listing page and a product detail page. All site-specific text
+# comes from site_config.py; nothing about the company is hardcoded here.
+
+# request host -> site_config slug. RLS tenant resolution lives in open_db();
+# this only picks which config dict to render with.
+_HOST_SLUG = {
+    "fastflow.global": "fastflow",
+    "fastflow.asia": "asia",
+    "fastflow.tools": "tools",
+}
+
+
+def _site_slug():
+    host = (request.host or "").split(":")[0].lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return _HOST_SLUG.get(host, "fastflow")
+
+
+@app.context_processor
+def inject_site():
+    """Make `site` config and `current_year` available in every template."""
+    return {"site": get_site(_site_slug()), "current_year": datetime.now(UTC).year}
+
+
+def _slugify(name):
+    """'Construction machinery' -> 'construction-machinery'."""
+    return re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+
+
+def _category_counts():
+    """{public_category_name: count} across the tenant's products. Counts are
+    rolled up from subcategories into the parent tile (e.g. Excavator ->
+    Construction Machinery). No site_id clause — RLS scopes it to the current
+    site."""
+    rows = get_db().execute(
+        "SELECT category, COUNT(*) AS n FROM products "
+        "WHERE is_published = 1 GROUP BY category"
+    ).fetchall()
+    counts = {}
+    for row in rows:
+        name = row["category"]
+        count = row["n"]
+        parent = next(
+            (parent_name for parent_name, subs in CATEGORY_GROUPS.items() if name in subs),
+            name,
+        )
+        counts[parent] = counts.get(parent, 0) + count
+    return counts
+
+
+def _category_images():
+    """{slug: photo_url} for category tiles, from admin uploads (site_settings
+    keys 'category_photo:<slug>'). One query, tolerant if the table is absent."""
+    images = _default_category_images()
+    try:
+        rows = get_db().execute(
+            "SELECT key, value FROM site_settings WHERE key LIKE 'category_photo:%'"
+        ).fetchall()
+    except Exception:
+        return images
+    for row in rows:
+        if row["value"]:
+            images[row["key"].split(":", 1)[1]] = row["value"]
+    return images
+
+
+def _categories_with_counts(site):
+    """Merge the config category list (what to show — source of truth for
+    display) with live DB counts (how many are listed). The trailing
+    'Custom sourcing' entry is a CTA to the contact form, not a listing page."""
+    counts = _category_counts()
+    images = _category_images()
+    out = []
+    for name, blurb, moq, lead_time in site["categories"]:
+        is_cta = name == "Custom sourcing"
+        slug = _slugify(name)
+        out.append({
+            "name": name,
+            "blurb": blurb,
+            "moq": moq,
+            "lead_time": lead_time,
+            "slug": slug,
+            "is_cta": is_cta,
+            "count": 0 if is_cta else counts.get(name, 0),
+            "image": images.get(slug, ""),
+            "url": url_for("page_contact") if is_cta
+                   else url_for("page_category", slug=slug),
+        })
+    return out
+
+
+def _enquiry_categories(site):
+    """Real category names + 'Other' for the contact-form dropdown, so it can
+    never drift from the catalogue. Excludes the 'Custom sourcing' CTA tile."""
+    names = [name for (name, *_rest) in site["categories"] if name != "Custom sourcing"]
+    return names + ["Other"]
+
+
+def _primary_image(db, product_id):
+    """Best display image: primary product_media, else lowest sort_order, else
+    the legacy products.image_url, else None."""
+    row = db.execute(
+        "SELECT url FROM product_media WHERE product_id = %s "
+        "ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1",
+        (product_id,),
+    ).fetchone()
+    if row and row["url"]:
+        return row["url"]
+    legacy = db.execute(
+        "SELECT image_url FROM products WHERE id = %s", (product_id,)
+    ).fetchone()
+    if legacy and legacy["image_url"]:
+        return legacy["image_url"]
+    return None
+
+
+@app.route("/")
+def page_home():
+    site = get_site(_site_slug())
+    return render_template(
+        "home.html", active_page="home",
+        categories=_categories_with_counts(site),
+        about_image=get_setting("about_image"),
+    )
+
+
+@app.route("/products")
+def page_products():
+    site = get_site(_site_slug())
+    return render_template(
+        "products.html", active_page="products",
+        categories=_categories_with_counts(site),
+    )
+
+
+@app.route("/products/<slug>")
+def page_category(slug):
+    site = get_site(_site_slug())
+    cat = next(
+        (c for c in _categories_with_counts(site)
+         if c["slug"] == slug and not c["is_cta"]),
+        None,
+    )
+    if not cat:
+        abort(404)
+    if _is_parent_category(cat["name"]):
+        subs = _parent_subcategory_cards(cat["name"])
+        for sub in subs:
+            sub["url"] = url_for("page_subcategory", slug=slug, subslug=sub["slug"])
+        return render_template(
+            "category.html", active_page="products",
+            category=cat, products=[],
+            subcategories=subs, is_subcategory_page=False,
+        )
+    db = get_db()
+    names = expand_category_filter(cat["name"])
+    placeholders = ", ".join(["%s"] * len(names))
+    rows = db.execute(
+        f"SELECT id, name, supplier, location, price, moq, lead_time, verified, "
+        f"category, description, capacity FROM products "
+        f"WHERE category IN ({placeholders}) AND is_published = 1 "
+        f"ORDER BY verified DESC, name",
+        tuple(names),
+    ).fetchall()
+    products = []
+    for r in rows:
+        p = dict(r)
+        p["image"] = _primary_image(db, r["id"])
+        products.append(p)
+    sections = _group_products_for_category(cat["name"], products)
+    return render_template(
+        "category.html", active_page="products",
+        category=cat, products=products, product_sections=sections,
+        subcategories=[], is_subcategory_page=False,
+    )
+
+
+@app.route("/products/<slug>/<subslug>")
+def page_subcategory(slug, subslug):
+    site = get_site(_site_slug())
+    cat = next(
+        (c for c in _categories_with_counts(site)
+         if c["slug"] == slug and not c["is_cta"]),
+        None,
+    )
+    if not cat or not _is_parent_category(cat["name"]):
+        abort(404)
+    sub_name = next(
+        (name for name in CATEGORY_GROUPS.get(cat["name"], [])
+         if _slugify(name) == subslug),
+        None,
+    )
+    if not sub_name:
+        abort(404)
+
+    db = get_db()
+    if cat["name"] == "Construction Machinery":
+        names = CATEGORY_GROUPS["Construction Machinery"] + ["Construction Machinery"]
+        placeholders = ", ".join(["%s"] * len(names))
+        rows = db.execute(
+            f"SELECT id, name, supplier, location, price, moq, lead_time, verified, "
+            f"category, description, capacity FROM products "
+            f"WHERE category IN ({placeholders}) AND is_published = 1 "
+            f"ORDER BY verified DESC, name",
+            tuple(names),
+        ).fetchall()
+        products = []
+        for row in rows:
+            p = dict(row)
+            if _classify_construction_product(p) != sub_name:
+                continue
+            p["image"] = _primary_image(db, row["id"])
+            products.append(p)
+    else:
+        rows = db.execute(
+            "SELECT id, name, supplier, location, price, moq, lead_time, verified, "
+            "category, description, capacity FROM products "
+            "WHERE category = %s AND is_published = 1 "
+            "ORDER BY verified DESC, name",
+            (sub_name,),
+        ).fetchall()
+        products = []
+        for row in rows:
+            p = dict(row)
+            p["image"] = _primary_image(db, row["id"])
+            products.append(p)
+
+    category_view = dict(cat)
+    category_view["name"] = sub_name
+    category_view["blurb"] = SUBCATEGORY_BLURBS.get(sub_name, cat.get("blurb", ""))
+    category_view["slug"] = _slugify(sub_name)
+    sections = _group_products_for_category(sub_name, products)
+    return render_template(
+        "category.html", active_page="products",
+        category=category_view, products=products, product_sections=sections,
+        subcategories=[], is_subcategory_page=True, parent_category=cat,
+    )
+
+
+@app.route("/product/<int:id>")
+def page_product(id):
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    # Unpublished products are invisible to the public; only an admin previewing
+    # from the dashboard may open them.
+    if not row["is_published"]:
+        u = get_current_user()
+        if not (u and u["role"] == "admin"):
+            abort(404)
+    product = dict(row)
+    product["image"] = _primary_image(db, id)
+    product["media"] = _get_media(db, id)
+    spec_rows = db.execute(
+        "SELECT label, value FROM product_specs WHERE product_id = %s ORDER BY sort_order ASC",
+        (id,),
+    ).fetchall()
+    product["specs"] = [dict(s) for s in spec_rows]
+    return render_template(
+        "product.html", active_page="products",
+        product=product, category_slug=_slugify(product["category"]),
+    )
+
+
+@app.route("/about")
+def page_about():
+    team = get_db().execute(
+        "SELECT name, role, bio, photo_url FROM team_members "
+        "WHERE is_published = 1 ORDER BY sort_order, id"
+    ).fetchall()
+    return render_template("about.html", active_page="about",
+                           team=[dict(t) for t in team],
+                           about_image=get_setting("about_image"))
+
+
+@app.route("/faq")
+def page_faq():
+    return render_template("faq.html", active_page="faq")
+
+
+@app.route("/contact", methods=["GET", "POST"])
+@limiter.limit("5 per hour", methods=["POST"])
+def page_contact():
+    site = get_site(_site_slug())
+    enquiry_categories = _enquiry_categories(site)
+    ctx = {
+        "active_page": "contact",
+        "enquiry_categories": enquiry_categories,
+        "csrf_token": session.get("csrf_token", ""),
+    }
+    if request.method == "POST":
+        # Honeypot: bots fill the hidden "website" field; a legitimate browser
+        # leaves it empty. Show the same success flow (PRG) but persist nothing,
+        # so a bot can't tell it was dropped.
+        if clean_str(request.form, "website"):
+            session["contact_sent"] = True
+            return redirect(url_for("page_contact"))
+
+        # Same-session CSRF check. verify_csrf_token only guards /api/*, so this
+        # public form POST is otherwise uncovered. The token rides in a hidden
+        # form field (this is a full form POST, not a fetch with a header).
+        expected = session.get("csrf_token", "")
+        provided = request.form.get("csrf_token", "")
+        if not expected or not hmac.compare_digest(expected, provided):
+            return render_template(
+                "contact.html",
+                form={k: clean_str(request.form, k)
+                      for k in ("name", "company", "email", "category", "message")},
+                error="Your session expired. Please reload the page and try again.",
+                **ctx,
+            )
+
+        form = {k: clean_str(request.form, k)
+                for k in ("name", "company", "email", "category", "message")}
+        if not form["name"] or not form["email"] or not form["message"]:
+            error = "Please provide your name, email, and a short description of what you need."
+        elif not _EMAIL_RE.match(form["email"]):
+            error = "Please enter a valid email address."
+        else:
+            error = None
+        if error:
+            return render_template("contact.html", form=form, error=error, **ctx)
+
+        db = get_db()
+        inquiry_id = db.execute(
+            """INSERT INTO contact_inquiries
+               (name, email, company, category, message, created_at)
+               VALUES (%s, %s, %s, %s, %s, %s) RETURNING id""",
+            (form["name"], form["email"].lower(), form["company"],
+             form["category"], form["message"], utc_now()),
+        ).fetchone()["id"]
+        log_audit("created", "contact_inquiry", inquiry_id,
+                  f"inquiry from {form['email'].lower()}", actor_id=None)
+        db.commit()
+
+        # Everything below is best-effort and off the critical path — the
+        # committed row above is the only thing the visitor's success depends on.
+        threading.Thread(
+            target=_notify_contact_inquiry,
+            args=(inquiry_id, resolve_site_id(request.host),
+                  form["name"], form["email"].lower(), form["category"],
+                  form["company"], form["message"]),
+            daemon=True,
+        ).start()
+
+        _forward_lead_to_portal({
+            "kind": "CONTACT",
+            "message": form["message"][:3000],
+            "contactName": form["name"][:120],
+            "contactEmail": form["email"].lower(),
+            "contactCompany": form["company"][:160],
+        })
+
+        # Post/Redirect/Get: redirect so a browser refresh re-issues the GET
+        # (showing the thank-you) instead of re-POSTing and duplicating the row.
+        session["contact_sent"] = True
+        return redirect(url_for("page_contact"))
+
+    sent = session.pop("contact_sent", False)
+    return render_template("contact.html", sent=sent, **ctx)
+
+
+@app.route("/admin/inquiries")
+def admin_inquiries():
+    """Server-rendered admin inbox for public contact-form leads. Its own page
+    (not merged into /api/admin/inquiries, which serves product inquiries) since
+    the two have different shapes. No login page exists yet, so logged-out users
+    are sent home; a proper admin login is deferred to the cutover."""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("page_home"))
+    if user["role"] != "admin":
+        abort(403)
+    # No WHERE site_id — RLS scopes the read to the current tenant.
+    rows = get_db().execute(
+        """SELECT id, name, company, email, category, message, created_at, notified_at
+           FROM contact_inquiries
+           ORDER BY created_at DESC, id DESC
+           LIMIT 100"""
+    ).fetchall()
+    inquiries = [row_to_dict(r) for r in rows]
+    return render_template("admin_inquiries.html", inquiries=inquiries,
+                           csrf_token=session.get("csrf_token", ""))
+
+
+# --- Admin dashboard: product management (admin-only, server-rendered) --------
+
+def _require_admin_page():
+    """Gate for server-rendered admin pages. Returns (user, None) for an admin,
+    else (None, response): a redirect to /login when logged out, or aborts 403
+    when logged in without the admin role."""
+    user = get_current_user()
+    if not user:
+        return None, redirect(url_for("page_login", next=request.path))
+    if user["role"] != "admin":
+        abort(403)
+    return user, None
+
+
+def _check_form_csrf():
+    """Manual CSRF check for server-rendered admin form POSTs (the global
+    verify_csrf_token only guards /api/*). Same hmac pattern as /login."""
+    expected = session.get("csrf_token", "")
+    provided = request.form.get("csrf_token", "")
+    return bool(expected and hmac.compare_digest(expected, provided))
+
+
+@app.route("/media/<path:filename>")
+def media(filename):
+    """Serve an admin-uploaded product photo from UPLOAD_DIR (kept outside the
+    code tree so redeploys never wipe it). send_from_directory blocks traversal."""
+    return send_from_directory(UPLOAD_DIR, filename)
+
+
+def _save_uploaded_photos(db, product_id, files, now, start_order=0):
+    """Validate + store uploaded image files under UPLOAD_DIR, one product_media
+    row each. Skips files with a disallowed extension or over MAX_UPLOAD_BYTES.
+    site_id is filled by the column default (current app.site_id) so RLS passes."""
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    saved = 0
+    order = start_order
+    for f in files:
+        if not f or not f.filename:
+            continue
+        ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+        if ext not in ALLOWED_IMAGE_EXT:
+            continue
+        data = f.read(MAX_UPLOAD_BYTES + 1)
+        if not data or len(data) > MAX_UPLOAD_BYTES:
+            continue
+        base = secure_filename(f.filename) or f"photo.{ext}"
+        fname = f"{secrets.token_hex(8)}-{base}"
+        with open(os.path.join(UPLOAD_DIR, fname), "wb") as out:
+            out.write(data)
+        url = f"/media/{fname}"
+        db.execute(
+            "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
+            "VALUES (%s, 'image', %s, %s, %s, 0, %s)",
+            (product_id, url, url, order, now),
+        )
+        saved += 1
+        order += 1
+    return saved
+
+
+def _delete_media_row(db, media_id, product_id):
+    """Delete one product_media row and best-effort remove its file from disk."""
+    row = db.execute(
+        "SELECT url FROM product_media WHERE id = %s AND product_id = %s",
+        (media_id, product_id),
+    ).fetchone()
+    if not row:
+        return
+    db.execute("DELETE FROM product_media WHERE id = %s AND product_id = %s",
+               (media_id, product_id))
+    url = row["url"] or ""
+    if url.startswith("/media/"):
+        fp = os.path.abspath(os.path.join(UPLOAD_DIR, url[len("/media/"):]))
+        try:
+            if os.path.commonpath([fp, os.path.abspath(UPLOAD_DIR)]) == os.path.abspath(UPLOAD_DIR):
+                os.remove(fp)
+        except OSError:
+            pass
+
+
+def _set_primary(db, product_id, media_id):
+    db.execute("UPDATE product_media SET is_primary = 0 WHERE product_id = %s", (product_id,))
+    db.execute("UPDATE product_media SET is_primary = 1 WHERE id = %s AND product_id = %s",
+               (media_id, product_id))
+
+
+def _ensure_primary(db, product_id):
+    """Guarantee exactly one primary image if any media exists."""
+    if db.execute("SELECT 1 FROM product_media WHERE product_id = %s AND is_primary = 1",
+                  (product_id,)).fetchone():
+        return
+    first = db.execute(
+        "SELECT id FROM product_media WHERE product_id = %s ORDER BY sort_order, id LIMIT 1",
+        (product_id,),
+    ).fetchone()
+    if first:
+        db.execute("UPDATE product_media SET is_primary = 1 WHERE id = %s", (first["id"],))
+
+
+def _admin_product_payload(form):
+    """Validate the product fields shared by add + edit. Returns (fields, error)."""
+    category = clean_str(form, "category")
+    name = clean_str(form, "name")
+    price = clean_str(form, "price")
+    if category not in PRODUCT_CATEGORIES:
+        return None, "Choose a valid category."
+    if not name:
+        return None, "Product name is required."
+    if not price:
+        return None, "Price is required (a figure or 'On request')."
+    return {
+        "category": category,
+        "name": name,
+        "price": price,
+        "description": clean_str(form, "description") or name,
+        "location": clean_str(form, "location") or "China",
+        "moq": clean_str(form, "moq"),
+        "lead_time": clean_str(form, "lead_time"),
+        "capacity": clean_str(form, "capacity"),
+        "certifications": clean_str(form, "certifications"),
+        "verified": 1 if form.get("verified") else 0,
+        "is_published": 1 if form.get("is_published") else 0,
+    }, None
+
+
+@app.route("/admin")
+def admin_home():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    return redirect(url_for("admin_products"))
+
+
+@app.route("/admin/products")
+def admin_products():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, name, category, price, verified, is_published, created_at "
+        "FROM products ORDER BY is_published DESC, category, name"
+    ).fetchall()
+    products = []
+    for r in rows:
+        p = dict(r)
+        p["image"] = _primary_image(db, r["id"])
+        products.append(p)
+    return render_template(
+        "admin_products.html", products=products,
+        csrf_token=session.get("csrf_token", ""),
+    )
+
+
+@app.route("/admin/products/new", methods=["GET", "POST"])
+def admin_product_new():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if request.method == "POST":
+        if not _check_form_csrf():
+            abort(400)
+        fields, error = _admin_product_payload(request.form)
+        if error:
+            return render_template(
+                "admin_product_form.html", mode="new", error=error,
+                form=request.form, categories=CATEGORY_GROUPS, media=[],
+                csrf_token=session.get("csrf_token", "")), 400
+        db = get_db()
+        now = utc_now()
+        pid = db.execute(
+            "INSERT INTO products (category, name, supplier, supplier_id, location, "
+            "description, price, moq, lead_time, capacity, certifications, image_url, "
+            "verified, is_published, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+            (fields["category"], fields["name"], (user["company"] or "Fast Flow"),
+             user["id"], fields["location"], fields["description"], fields["price"],
+             fields["moq"], fields["lead_time"], fields["capacity"],
+             fields["certifications"], "", fields["verified"], fields["is_published"], now),
+        ).fetchone()["id"]
+        _save_uploaded_photos(db, pid, request.files.getlist("photos"), now)
+        _ensure_primary(db, pid)
+        log_audit("created", "product", pid, f"admin added {fields['name']}")
+        db.commit()
+        flash(f"Product “{fields['name']}” created.")
+        return redirect(url_for("admin_products"))
+    return render_template(
+        "admin_product_form.html", mode="new", error=None, form={},
+        categories=CATEGORY_GROUPS, media=[],
+        csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/products/<int:id>/edit", methods=["GET", "POST"])
+def admin_product_edit(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    db = get_db()
+    row = db.execute("SELECT * FROM products WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    if request.method == "POST":
+        if not _check_form_csrf():
+            abort(400)
+        fields, error = _admin_product_payload(request.form)
+        if error:
+            return render_template(
+                "admin_product_form.html", mode="edit", product=dict(row), error=error,
+                form=request.form, categories=CATEGORY_GROUPS,
+                media=_get_media(db, id), csrf_token=session.get("csrf_token", "")), 400
+        now = utc_now()
+        db.execute(
+            "UPDATE products SET category=%s, name=%s, location=%s, description=%s, "
+            "price=%s, moq=%s, lead_time=%s, capacity=%s, certifications=%s, "
+            "verified=%s, is_published=%s WHERE id=%s",
+            (fields["category"], fields["name"], fields["location"], fields["description"],
+             fields["price"], fields["moq"], fields["lead_time"], fields["capacity"],
+             fields["certifications"], fields["verified"], fields["is_published"], id),
+        )
+        for mid in request.form.getlist("delete_media"):
+            if mid.isdigit():
+                _delete_media_row(db, int(mid), id)
+        nxt = db.execute(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM product_media WHERE product_id=%s",
+            (id,)).fetchone()["n"]
+        _save_uploaded_photos(db, id, request.files.getlist("photos"), now, start_order=nxt)
+        primary = request.form.get("primary_media", "")
+        if primary.isdigit():
+            _set_primary(db, id, int(primary))
+        _ensure_primary(db, id)
+        log_audit("updated", "product", id, f"admin edited {fields['name']}")
+        db.commit()
+        flash(f"Product “{fields['name']}” saved.")
+        return redirect(url_for("admin_products"))
+    return render_template(
+        "admin_product_form.html", mode="edit", product=dict(row), error=None,
+        form=dict(row), categories=CATEGORY_GROUPS, media=_get_media(db, id),
+        csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/products/<int:id>/toggle", methods=["POST"])
+def admin_product_toggle(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT is_published FROM products WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    new = 0 if row["is_published"] else 1
+    db.execute("UPDATE products SET is_published = %s WHERE id = %s", (new, id))
+    log_audit("published" if new else "unpublished", "product", id, "")
+    db.commit()
+    return redirect(url_for("admin_products"))
+
+
+@app.route("/admin/products/<int:id>/delete", methods=["POST"])
+def admin_product_delete(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT name FROM products WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    try:
+        for m in _get_media(db, id):
+            _delete_media_row(db, m["id"], id)
+        db.execute("DELETE FROM product_specs WHERE product_id = %s", (id,))
+        db.execute("DELETE FROM product_inquiries WHERE product_id = %s", (id,))
+        db.execute("DELETE FROM products WHERE id = %s", (id,))
+        log_audit("deleted", "product", id, f"admin deleted {row['name']}")
+        db.commit()
+        flash("Product deleted.")
+    except Exception:
+        db.rollback()
+        flash("Couldn't delete — this product has linked quotes/inquiries. Hide it instead.", "error")
+    return redirect(url_for("admin_products"))
+
+
+# --- Admin dashboard: team members (About page, admin-only) -------------------
+
+def _int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _remove_media_file(url):
+    """Best-effort delete of an uploaded file behind a /media/<name> URL."""
+    if not url or not url.startswith("/media/"):
+        return
+    fp = os.path.abspath(os.path.join(UPLOAD_DIR, url[len("/media/"):]))
+    try:
+        if os.path.commonpath([fp, os.path.abspath(UPLOAD_DIR)]) == os.path.abspath(UPLOAD_DIR):
+            os.remove(fp)
+    except OSError:
+        pass
+
+
+def _save_one_photo(files):
+    """Save the first valid uploaded image and return its /media URL, else None."""
+    for f in files:
+        if not f or not f.filename:
+            continue
+        ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+        if ext not in ALLOWED_IMAGE_EXT:
+            continue
+        data = f.read(MAX_UPLOAD_BYTES + 1)
+        if not data or len(data) > MAX_UPLOAD_BYTES:
+            continue
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        base = secure_filename(f.filename) or f"photo.{ext}"
+        fname = f"{secrets.token_hex(8)}-{base}"
+        with open(os.path.join(UPLOAD_DIR, fname), "wb") as out:
+            out.write(data)
+        return f"/media/{fname}"
+    return None
+
+
+@app.route("/admin/team")
+def admin_team():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    rows = get_db().execute(
+        "SELECT * FROM team_members ORDER BY sort_order, id"
+    ).fetchall()
+    return render_template("admin_team.html", members=[dict(r) for r in rows],
+                           about_image=get_setting("about_image"),
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/team/new", methods=["GET", "POST"])
+def admin_team_new():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if request.method == "POST":
+        if not _check_form_csrf():
+            abort(400)
+        name = clean_str(request.form, "name")
+        role = clean_str(request.form, "role")
+        if not name or not role:
+            return render_template(
+                "admin_team_form.html", mode="new", error="Name and role are required.",
+                form=request.form, csrf_token=session.get("csrf_token", "")), 400
+        db = get_db()
+        photo = _save_one_photo(request.files.getlist("photo")) or ""
+        db.execute(
+            "INSERT INTO team_members (name, role, bio, photo_url, sort_order, is_published, created_at) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (name, role, clean_str(request.form, "bio"), photo,
+             _int(request.form.get("sort_order"), 0),
+             1 if request.form.get("is_published") else 0, utc_now()),
+        )
+        db.commit()
+        flash(f"Team member “{name}” added.")
+        return redirect(url_for("admin_team"))
+    return render_template("admin_team_form.html", mode="new", error=None, form={},
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/team/<int:id>/edit", methods=["GET", "POST"])
+def admin_team_edit(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    db = get_db()
+    row = db.execute("SELECT * FROM team_members WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    if request.method == "POST":
+        if not _check_form_csrf():
+            abort(400)
+        name = clean_str(request.form, "name")
+        role = clean_str(request.form, "role")
+        if not name or not role:
+            return render_template(
+                "admin_team_form.html", mode="edit", error="Name and role are required.",
+                form=request.form, mid=id, csrf_token=session.get("csrf_token", "")), 400
+        photo_url = row["photo_url"]
+        if request.form.get("delete_photo") and photo_url:
+            _remove_media_file(photo_url)
+            photo_url = ""
+        new_photo = _save_one_photo(request.files.getlist("photo"))
+        if new_photo:
+            if photo_url:
+                _remove_media_file(photo_url)
+            photo_url = new_photo
+        db.execute(
+            "UPDATE team_members SET name=%s, role=%s, bio=%s, photo_url=%s, "
+            "sort_order=%s, is_published=%s WHERE id=%s",
+            (name, role, clean_str(request.form, "bio"), photo_url,
+             _int(request.form.get("sort_order"), 0),
+             1 if request.form.get("is_published") else 0, id),
+        )
+        db.commit()
+        flash(f"Team member “{name}” saved.")
+        return redirect(url_for("admin_team"))
+    return render_template("admin_team_form.html", mode="edit", error=None,
+                           form=dict(row), mid=id, csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/team/<int:id>/toggle", methods=["POST"])
+def admin_team_toggle(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT is_published FROM team_members WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    db.execute("UPDATE team_members SET is_published = %s WHERE id = %s",
+               (0 if row["is_published"] else 1, id))
+    db.commit()
+    return redirect(url_for("admin_team"))
+
+
+@app.route("/admin/team/<int:id>/delete", methods=["POST"])
+def admin_team_delete(id):
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT photo_url FROM team_members WHERE id = %s", (id,)).fetchone()
+    if not row:
+        abort(404)
+    db.execute("DELETE FROM team_members WHERE id = %s", (id,))
+    _remove_media_file(row["photo_url"])
+    db.commit()
+    flash("Team member removed.")
+    return redirect(url_for("admin_team"))
+
+
+# --- Per-site settings (admin-managed single values, e.g. About intro photo) --
+
+def get_setting(key, default=""):
+    row = get_db().execute(
+        "SELECT value FROM site_settings WHERE key = %s", (key,)
+    ).fetchone()
+    return row["value"] if row and row["value"] else default
+
+
+def set_setting(db, key, value):
+    db.execute(
+        "INSERT INTO site_settings (key, value) VALUES (%s, %s) "
+        "ON CONFLICT (site_id, key) DO UPDATE SET value = EXCLUDED.value",
+        (key, value),
+    )
+
+
+@app.route("/admin/about-image", methods=["POST"])
+def admin_about_image():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    current = get_setting("about_image")
+    if request.form.get("delete_photo") and current:
+        _remove_media_file(current)
+        set_setting(db, "about_image", "")
+        db.commit()
+        flash("About-page photo removed.")
+        return redirect(url_for("admin_team"))
+    new_photo = _save_one_photo(request.files.getlist("photo"))
+    if new_photo:
+        if current:
+            _remove_media_file(current)
+        set_setting(db, "about_image", new_photo)
+        db.commit()
+        flash("About-page photo updated.")
+    else:
+        flash("No image was uploaded (check the file type/size).", "error")
+    return redirect(url_for("admin_team"))
+
+
+@app.route("/admin/categories")
+def admin_categories():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    site = get_site(_site_slug())
+    imgs = _category_images()
+    cats = []
+    for entry in site["categories"]:
+        name = entry[0]
+        slug = _slugify(name)
+        cats.append({"name": name, "slug": slug, "image": imgs.get(slug, ""),
+                     "is_cta": name == "Custom sourcing"})
+    return render_template("admin_categories.html", cats=cats,
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/category-image", methods=["POST"])
+def admin_category_image():
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    site = get_site(_site_slug())
+    valid = {_slugify(entry[0]) for entry in site["categories"]}
+    slug = clean_str(request.form, "slug")
+    if slug not in valid:
+        abort(400)
+    db = get_db()
+    key = f"category_photo:{slug}"
+    current = get_setting(key)
+    if request.form.get("delete_photo") and current:
+        _remove_media_file(current)
+        set_setting(db, key, "")
+        db.commit()
+        flash("Category photo removed.")
+        return redirect(url_for("admin_categories"))
+    new_photo = _save_one_photo(request.files.getlist("photo"))
+    if new_photo:
+        if current:
+            _remove_media_file(current)
+        set_setting(db, key, new_photo)
+        db.commit()
+        flash("Category photo updated.")
+    else:
+        flash("No image was uploaded (check the file type/size).", "error")
+    return redirect(url_for("admin_categories"))
+
+
+@app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
+def page_login():
+    """Minimal server-rendered login. Not linked from the public nav/footer —
+    reached by direct URL, primarily to get an admin to /admin/inquiries. Brute
+    force is throttled harder here than anywhere else on the site."""
+    error = None
+    email = ""
+    if request.method == "POST":
+        # verify_csrf_token() only guards /api/*, so this form POST checks the
+        # hidden token itself — same pattern as /contact.
+        expected = session.get("csrf_token", "")
+        provided = request.form.get("csrf_token", "")
+        if not expected or not hmac.compare_digest(expected, provided):
+            return render_template(
+                "login.html", error="Your session expired. Please try again.",
+                email=clean_str(request.form, "email"),
+                next=request.form.get("next", ""),
+                csrf_token=session.get("csrf_token", ""),
+            ), 400
+
+        email = clean_str(request.form, "email")
+        password = request.form.get("password", "")
+        uid = _check_credentials(email, password)
+        if uid is None:
+            # One generic message for both unknown email and wrong password, so
+            # an attacker can't enumerate which accounts exist.
+            error = "Incorrect email or password."
+        else:
+            _login_user(uid)
+            user = get_current_user()
+            nxt = request.form.get("next", "")
+            if nxt.startswith("/") and not nxt.startswith("//"):
+                return redirect(nxt)
+            if user and user["role"] == "admin":
+                return redirect(url_for("admin_products"))
+            return redirect(url_for("page_home"))
+
+    return render_template("login.html", error=error, email=email,
+                           next=request.args.get("next", ""),
+                           csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/logout", methods=["POST"])
+def page_logout():
+    # CSRF-checked (same pattern) so a session can't be force-terminated.
+    expected = session.get("csrf_token", "")
+    provided = request.form.get("csrf_token", "")
+    if expected and hmac.compare_digest(expected, provided):
+        session.pop("user_id", None)
+    return redirect(url_for("page_home"))
 
 
 @app.route("/api/auth/register", methods=["POST"])
@@ -696,6 +1901,30 @@ def register():
     return jsonify({"user": row_to_dict(user)})
 
 
+def _check_credentials(email, password):
+    """Single source of truth for password verification, shared by the JSON
+    /api/auth/login endpoint and the server-rendered /login page. Returns the
+    user id for valid credentials, else None. Broker-managed accounts have an
+    empty hash and can never authenticate."""
+    email = (email or "").strip().lower()
+    if not isinstance(password, str) or not email or not password:
+        return None
+    row = get_db().execute(
+        "SELECT id, password_hash FROM users WHERE email = %s", (email,)
+    ).fetchone()
+    if not row or not row["password_hash"] or not check_password_hash(row["password_hash"], password):
+        return None
+    return row["id"]
+
+
+def _login_user(user_id):
+    """Establish an authenticated session for user_id and audit it."""
+    session.permanent = True
+    session["user_id"] = user_id
+    log_audit("logged_in", "user", user_id, "Session started", user_id)
+    get_db().commit()
+
+
 @app.route("/api/auth/login", methods=["POST"])
 @limiter.limit("10 per minute")
 def login():
@@ -708,17 +1937,14 @@ def login():
     if not email or not password:
         return jsonify({"error": "Email and password are required."}), 400
 
-    db = get_db()
-    row = db.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,)).fetchone()
-    # Broker-managed accounts have an empty hash — they can never log in.
-    if not row or not row["password_hash"] or not check_password_hash(row["password_hash"], password):
+    uid = _check_credentials(email, password)
+    if uid is None:
         return jsonify({"error": "Invalid email or password."}), 401
 
-    session.permanent = True
-    session["user_id"] = row["id"]
-    log_audit("logged_in", "user", row["id"], "Session started", row["id"])
-    db.commit()
-    user = db.execute("SELECT id, name, email, company, role FROM users WHERE id = %s", (row["id"],)).fetchone()
+    _login_user(uid)
+    user = get_db().execute(
+        "SELECT id, name, email, company, role FROM users WHERE id = %s", (uid,)
+    ).fetchone()
     return jsonify({"user": row_to_dict(user)})
 
 
@@ -730,6 +1956,8 @@ def logout():
 
 @app.route("/api/auth/me")
 def current_user_compat():
+    # Deprecated: duplicate of /api/me, kept as a compatibility alias. No caller
+    # in this repo; retained until any external consumer is confirmed gone.
     user = get_current_user()
     return jsonify({"authenticated": user is not None, "user": user})
 
@@ -836,6 +2064,10 @@ def marketplace():
         params.append(f"%{location}%")
     if verified_only:
         filters.append("verified = 1")
+    # Public callers only ever see published products; admins see everything.
+    _u = get_current_user()
+    if not (_u and _u["role"] == "admin"):
+        filters.append("is_published = 1")
     where = f"WHERE {' AND '.join(filters)}" if filters else ""
     products = db.execute(f"SELECT * FROM products {where} ORDER BY verified DESC, category, name", params).fetchall()
 
@@ -870,7 +2102,8 @@ def marketplace():
         categories.setdefault(product["category"], []).append(product)
 
     # Merge in live products published from the supplier portal (best-effort).
-    for prow in fetch_portal_products(query=query):
+    # Disabled by default now the catalogue is admin-curated (PORTAL_ENABLED).
+    for prow in (fetch_portal_products(query=query) if PORTAL_ENABLED else []):
         if category and prow["category"] not in expand_category_filter(category):
             continue
         if location and location.lower() not in (prow.get("location") or "").lower():
@@ -894,16 +2127,20 @@ def marketplace():
     ).fetchall()
     all_locations = [r["location"] for r in loc_rows]
 
+    # Hide supplier identity (name/location/contact) from the public — only
+    # vetted internal roles see it. Also drop the location facet for them.
+    show_supplier = _caller_sees_supplier()
     return jsonify({
         "categories": [
             {
                 "name": name,
                 "display_name": _translated_category(name, target_lang, db),
-                "items": items,
+                "items": items if show_supplier
+                         else [_scrub_supplier_fields(i) for i in items],
             }
             for name, items in categories.items()
         ],
-        "all_locations": all_locations,
+        "all_locations": all_locations if show_supplier else [],
     })
 
 
@@ -918,6 +2155,7 @@ def categories():
         SELECT category AS name, COUNT(*) AS product_count,
                SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) AS verified_count
         FROM products
+        WHERE is_published = 1
         GROUP BY category
         ORDER BY product_count DESC, category ASC
         """
@@ -926,7 +2164,7 @@ def categories():
 
     # Fold in portal product counts so portal-only categories show in the rail.
     by_name = {c["name"]: c for c in cats}
-    for prow in fetch_portal_products():
+    for prow in (fetch_portal_products() if PORTAL_ENABLED else []):
         bucket = by_name.get(prow["category"])
         if bucket is None:
             bucket = {"name": prow["category"], "product_count": 0, "verified_count": 0}
@@ -1248,6 +2486,8 @@ def product_detail(product_id):
             product["supplier_contact_phone"] = owner["contact_phone"] or ""
             created = owner["created_at"] or ""
             product["supplier_since"] = created[:4] if len(created) >= 4 and created[:4].isdigit() else ""
+    if not _caller_sees_supplier():
+        _scrub_supplier_fields(product)
     return jsonify({"product": product})
 
 
@@ -1260,11 +2500,18 @@ def product_detail_portal(product_id):
     data = _portal_get(f"/api/public/products/{urllib.parse.quote(product_id[len('portal-'):])}")
     if not data or not data.get("product"):
         return jsonify({"error": "Product not found."}), 404
-    return jsonify({"product": portal_product_row(data["product"])})
+    product = portal_product_row(data["product"])
+    if not _caller_sees_supplier():
+        _scrub_supplier_fields(product)
+    return jsonify({"product": product})
 
 
 @app.route("/api/suppliers")
 def suppliers():
+    # This endpoint is a supplier directory (company names + locations) — it must
+    # never be public for a trading company. Only vetted internal roles see it.
+    if not _caller_sees_supplier():
+        return jsonify({"suppliers": []})
     query = request.args.get("q", "").strip()
     params = []
     where = ""
