@@ -3,7 +3,22 @@
 
 {% block content %}
 
-<div class="hero">
+<style>
+.grid3 .card .ph {
+    width: 100%;
+    height: 225px;
+    background: #eee;
+    overflow: hidden;
+}
+.grid3 .card .ph img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+</style>
+
+<div class="hero" style="background-image:url('{{ url_for('static', filename='hero.jpg') }}')">
   <div class="shade"></div>
   <div class="wrap">
     <div class="rule"></div>
@@ -25,23 +40,84 @@
     </div>
 
     <div class="grid3">
-      {% for item in categories %}
-      <a class="card" href="{{ item.url }}">
-        <div class="ph"></div>
+      <!-- 1 Construction Machinery -->
+      <a class="card" href="/construction-machinery">
+        <div class="ph">
+          <img src="{{ url_for('static', filename='categories/construction_machinery.png') }}" alt="Construction_Machinery" loading="lazy">
+        </div>
         <div class="body">
-          <h3>{{ item.name }}</h3>
-          <p>{{ item.blurb }}</p>
-          <span class="more">{{ 'Send an enquiry' if item.is_cta else 'View category' }} &rarr;</span>
+          <h3>Construction Machinery</h3>
+          <p>Loaders, excavators, forklifts and mixer trucks</p>
+          <span class="more">View category &rarr;</span>
         </div>
       </a>
-      {% endfor %}
+
+      <!-- 2 Electric Bikes -->
+      <a class="card" href="/electric-bikes">
+        <div class="ph">
+          <img src="{{ url_for('static', filename='categories/electric_bike.png') }}" alt="Electric_Bikes" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Electric Bikes</h3>
+          <p>Electric bicycles and drive components</p>
+          <span class="more">View category &rarr;</span>
+        </div>
+      </a>
+
+      <!-- 3 Motorbikes -->
+      <a class="card" href="/motorbikes">
+        <div class="ph">
+          <img src="{{ url_for('static', filename='categories/motorbike.png') }}" alt="Motorbikes" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Motorbikes</h3>
+          <p>Motorcycles and scooters</p>
+          <span class="more">View category &rarr;</span>
+        </div>
+      </a>
+
+      <!-- 4 Auto Spare Parts -->
+      <a class="card" href="/auto-spare-parts">
+        <div class="ph">
+          <img src="{{ url_for('static', filename='categories/auto_parts.png') }}" alt="Auto_Spare_Parts" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Auto Spare Parts</h3>
+          <p>Replacement and wear parts for vehicles</p>
+          <span class="more">View category &rarr;</span>
+        </div>
+      </a>
+
+      <!-- 5 Moto Spare Parts -->
+      <a class="card" href="/moto-spare-parts">
+        <div class="ph">
+          <img src="{{ url_for('static', filename='categories/moto_spare_parts.png') }}" alt="Moto_Spare_Parts" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Moto Spare Parts</h3>
+          <p>Motorcycle replacement and wear parts</p>
+          <span class="more">View category &rarr;</span>
+        </div>
+      </a>
+
+      <!-- 6 Custom sourcing -->
+      <a class="card" href="/custom-sourcing">
+        <div class="ph">
+          <img src="{{ url_for('static', filename='categories/custom_sourcing.png') }}" alt="Custom_Sourcing" loading="lazy">
+        </div>
+        <div class="body">
+          <h3>Custom sourcing</h3>
+          <p>Send us a specification, drawing or sample</p>
+          <span class="more">Send an enquiry &rarr;</span>
+        </div>
+      </a>
     </div>
   </div>
 </section>
 
 <section class="alt">
   <div class="wrap split">
-    <div class="ph"></div>
+    <div class="ph">{% if about_image %}<img src="{{ about_image }}" alt="{{ site.company_name }}">{% endif %}</div>
     <div>
       <h2>About us</h2><div class="rule"></div>
       <p>{{ site.company_name }} was established in {{ site.founded }}. We are a
