@@ -844,6 +844,8 @@ def apply_security_headers(response):
         "img-src 'self' https: data:; "
         "media-src 'self' https:; "
         "connect-src 'self'; "
+        # Product-video embeds (admin pastes a YouTube/Vimeo link).
+        "frame-src https://www.youtube-nocookie.com https://player.vimeo.com; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
         "form-action 'self'"
@@ -982,7 +984,7 @@ def _primary_image(db, product_id):
     the legacy products.image_url, else None."""
     row = db.execute(
         "SELECT url FROM product_media WHERE product_id = %s "
-        "ORDER BY is_primary DESC, sort_order ASC, id ASC LIMIT 1",
+        "ORDER BY (type <> 'image'), is_primary DESC, sort_order ASC, id ASC LIMIT 1",
         (product_id,),
     ).fetchone()
     if row and row["url"]:
@@ -1325,6 +1327,47 @@ def _save_uploaded_photos(db, product_id, files, now, start_order=0):
     return saved
 
 
+def _parse_video_embed(raw):
+    """Turn a pasted YouTube or Vimeo URL into a privacy-friendly embed URL and a
+    poster thumbnail. Returns {'url': embed_url, 'thumb_url': poster} or None if
+    the link isn't a recognised YouTube/Vimeo video."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    m = re.search(
+        r"(?:youtube\.com/(?:watch\?v=|embed/|shorts/|v/)|youtu\.be/)([A-Za-z0-9_-]{6,})",
+        raw,
+    )
+    if m:
+        vid = m.group(1)
+        return {"url": f"https://www.youtube-nocookie.com/embed/{vid}",
+                "thumb_url": f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"}
+    m = re.search(r"vimeo\.com/(?:video/)?(\d+)", raw)
+    if m:
+        vid = m.group(1)
+        return {"url": f"https://player.vimeo.com/video/{vid}", "thumb_url": ""}
+    return None
+
+
+def _save_video_embeds(db, product_id, raw_text, now, start_order=0):
+    """Store pasted YouTube/Vimeo links as product_media rows (type='embed').
+    One URL per line; unrecognised lines are skipped."""
+    saved = 0
+    order = start_order
+    for line in (raw_text or "").splitlines():
+        embed = _parse_video_embed(line)
+        if not embed:
+            continue
+        db.execute(
+            "INSERT INTO product_media (product_id, type, url, thumb_url, sort_order, is_primary, created_at) "
+            "VALUES (%s, 'embed', %s, %s, %s, 0, %s)",
+            (product_id, embed["url"], embed["thumb_url"], order, now),
+        )
+        saved += 1
+        order += 1
+    return saved
+
+
 def _delete_media_row(db, media_id, product_id):
     """Delete one product_media row and best-effort remove its file from disk."""
     row = db.execute(
@@ -1357,7 +1400,8 @@ def _ensure_primary(db, product_id):
                   (product_id,)).fetchone():
         return
     first = db.execute(
-        "SELECT id FROM product_media WHERE product_id = %s ORDER BY sort_order, id LIMIT 1",
+        "SELECT id FROM product_media WHERE product_id = %s "
+        "ORDER BY (type <> 'image'), sort_order, id LIMIT 1",
         (product_id,),
     ).fetchone()
     if first:
@@ -1445,7 +1489,8 @@ def admin_product_new():
              fields["moq"], fields["lead_time"], fields["capacity"],
              fields["certifications"], "", fields["verified"], fields["is_published"], now),
         ).fetchone()["id"]
-        _save_uploaded_photos(db, pid, request.files.getlist("photos"), now)
+        n = _save_uploaded_photos(db, pid, request.files.getlist("photos"), now)
+        _save_video_embeds(db, pid, request.form.get("video_links", ""), now, start_order=n)
         _ensure_primary(db, pid)
         log_audit("created", "product", pid, f"admin added {fields['name']}")
         db.commit()
@@ -1490,7 +1535,8 @@ def admin_product_edit(id):
         nxt = db.execute(
             "SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM product_media WHERE product_id=%s",
             (id,)).fetchone()["n"]
-        _save_uploaded_photos(db, id, request.files.getlist("photos"), now, start_order=nxt)
+        added = _save_uploaded_photos(db, id, request.files.getlist("photos"), now, start_order=nxt)
+        _save_video_embeds(db, id, request.form.get("video_links", ""), now, start_order=nxt + added)
         primary = request.form.get("primary_media", "")
         if primary.isdigit():
             _set_primary(db, id, int(primary))

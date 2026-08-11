@@ -360,3 +360,65 @@ footer{background:var(--ink);color:#9A9A9A;padding:56px 0 26px}
 .panel h3{font-size:17px;font-weight:600}
 .panel .pform{margin-top:8px}
 .teamhead{font-size:20px;font-weight:600;margin:36px 0 16px}
+
+/* --- Product gallery: stage, controls, thumbnails, full-frame lightbox --- */
+.gstage{position:relative;background:var(--photo);aspect-ratio:1/1;
+  border:1px solid var(--line);overflow:hidden;display:flex}
+.gview{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  padding:28px;cursor:zoom-in}
+.gview img{max-width:100%;max-height:100%;object-fit:contain;
+  transition:transform .18s ease;transform-origin:center center}
+.gview.zoomed{cursor:zoom-out}
+.gview video{max-width:100%;max-height:100%}
+.gnav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;
+  width:42px;height:42px;border:0;border-radius:50%;cursor:pointer;
+  background:rgba(20,20,20,.55);color:#fff;font-size:26px;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:.15s}
+.gnav:hover{background:rgba(20,20,20,.85)}
+.gnav.prev{left:12px}
+.gnav.next{right:12px}
+.gtools{position:absolute;right:12px;bottom:12px;z-index:2;display:flex;gap:6px}
+.gtools button{width:38px;height:38px;border:0;border-radius:6px;cursor:pointer;
+  background:rgba(20,20,20,.55);color:#fff;font-size:18px;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:.15s}
+.gtools button:hover{background:rgba(20,20,20,.85)}
+.pdp-media .thumb{border:1px solid var(--line);cursor:pointer;position:relative;
+  padding:8px;background:var(--photo)}
+.pdp-media .thumb.active{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
+.pdp-media .thumb .playbadge{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-size:20px;background:rgba(0,0,0,.35)}
+
+.lightbox{position:fixed;inset:0;z-index:1000;background:rgba(10,10,10,.94);
+  display:flex;align-items:center;justify-content:center}
+.lightbox[hidden]{display:none}
+.lb-view{max-width:92vw;max-height:88vh;display:flex;align-items:center;justify-content:center;
+  overflow:auto}
+.lb-view img{max-width:92vw;max-height:88vh;object-fit:contain;
+  transition:transform .18s ease;transform-origin:center center}
+.lb-view video{max-width:92vw;max-height:88vh}
+.lb-close{position:absolute;top:18px;right:22px;z-index:2;width:44px;height:44px;
+  border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;
+  font-size:30px;line-height:1;cursor:pointer;transition:.15s}
+.lb-close:hover{background:rgba(255,255,255,.28)}
+.lightbox .gnav{width:52px;height:52px;font-size:32px}
+.lightbox .gnav.prev{left:24px}
+.lightbox .gnav.next{right:24px}
+.lightbox .gtools{right:24px;bottom:24px}
+@media(max-width:520px){
+  .lightbox .gnav{width:42px;height:42px;font-size:26px}
+  .lightbox .gnav.prev{left:8px}
+  .lightbox .gnav.next{right:8px}
+}
+
+/* Admin media tiles: videos render like the photo thumbnails, with a play badge. */
+.photo{position:relative}
+.photo video{width:100%;height:96px;object-fit:cover;border-radius:4px;display:block;background:#000}
+.photo .playbadge{position:absolute;top:8px;left:8px;right:8px;height:96px;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;
+  pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+
+/* Video embeds (YouTube/Vimeo iframes) in the gallery + lightbox. */
+.gview iframe{width:100%;aspect-ratio:16/9;max-height:100%;border:0;background:#000}
+.lb-view iframe{width:min(92vw,1280px);aspect-ratio:16/9;max-height:88vh;border:0;background:#000}
+.photo .novid{display:flex;align-items:center;justify-content:center;width:100%;height:96px;
+  background:#000;color:#fff;font-size:12px;border-radius:4px}

@@ -19,12 +19,47 @@
 
 <section>
   <div class="wrap pdp">
-    <div class="pdp-media">
-      <div class="ph main product-shot">{% if product.image %}<img src="{{ product.image }}" alt="{{ product.name }}">{% endif %}</div>
-      {% if product.media and product.media|length > 1 %}
+    {% set gallery = product.media if product.media else ([{'url': product.image, 'thumb_url': product.image, 'type': 'image', 'alt_text': product.name}] if product.image else []) %}
+    <div class="pdp-media gallery" data-gallery>
+      <div class="gstage">
+        {% if gallery %}
+        <button class="gnav prev" type="button" data-gprev aria-label="Previous">&#8249;</button>
+        <div class="gview" data-gview>
+          {% set first = gallery[0] %}
+          {% if first.type == 'embed' %}
+          <iframe src="{{ first.url }}" title="{{ product.name }}" loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen></iframe>
+          {% elif first.type == 'video' %}
+          <video src="{{ first.url }}" controls playsinline></video>
+          {% else %}
+          <img src="{{ first.url }}" alt="{{ first.alt_text or product.name }}" data-gimg>
+          {% endif %}
+        </div>
+        <button class="gnav next" type="button" data-gnext aria-label="Next">&#8250;</button>
+        <div class="gtools">
+          <button type="button" data-gzoom="out" aria-label="Zoom out">&minus;</button>
+          <button type="button" data-gzoom="in" aria-label="Zoom in">&plus;</button>
+          <button type="button" data-gfull aria-label="View full frame">&#9974;</button>
+        </div>
+        {% else %}
+        <div class="ph main product-shot"></div>
+        {% endif %}
+      </div>
+      {% if gallery|length > 1 %}
       <div class="thumbs">
-        {% for m in product.media %}
-        <div class="ph thumb product-shot">{% if m.url %}<img src="{{ m.thumb_url or m.url }}" alt="{{ m.alt_text or product.name }}" loading="lazy">{% endif %}</div>
+        {% for m in gallery %}
+        <button type="button" class="ph thumb product-shot{{ ' active' if loop.first else '' }}"
+                data-gthumb data-index="{{ loop.index0 }}"
+                data-type="{{ m.type or 'image' }}" data-url="{{ m.url }}"
+                data-alt="{{ m.alt_text or product.name }}">
+          {% if m.type in ('embed', 'video') %}
+            {% if m.thumb_url %}<img src="{{ m.thumb_url }}" alt="{{ m.alt_text or product.name }}" loading="lazy">{% endif %}
+            <span class="playbadge" aria-hidden="true">&#9654;</span>
+          {% elif m.url %}
+            <img src="{{ m.thumb_url or m.url }}" alt="{{ m.alt_text or product.name }}" loading="lazy">
+          {% endif %}
+        </button>
         {% endfor %}
       </div>
       {% endif %}
@@ -64,4 +99,19 @@
   {% endif %}
 </section>
 
+<div class="lightbox" data-lightbox hidden>
+  <button class="lb-close" type="button" data-lbclose aria-label="Close">&times;</button>
+  <button class="gnav prev" type="button" data-gprev aria-label="Previous">&#8249;</button>
+  <div class="lb-view" data-lbview></div>
+  <button class="gnav next" type="button" data-gnext aria-label="Next">&#8250;</button>
+  <div class="gtools">
+    <button type="button" data-gzoom="out" aria-label="Zoom out">&minus;</button>
+    <button type="button" data-gzoom="in" aria-label="Zoom in">&plus;</button>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
 {% endblock %}

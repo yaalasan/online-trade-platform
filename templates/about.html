@@ -45,6 +45,24 @@
   </div>
 </section>
 
+{% if team %}
+<section>
+  <div class="wrap">
+    <div class="sechead"><h2>Our team</h2><div class="rule"></div></div>
+    <div class="teamgrid">
+      {% for m in team %}
+      <div class="member">
+        <div class="mphoto">{% if m.photo_url %}<img src="{{ m.photo_url }}" alt="{{ m.name }}">{% endif %}</div>
+        <h3>{{ m.name }}</h3>
+        {% if m.role %}<div class="mrole">{{ m.role }}</div>{% endif %}
+        {% if m.bio %}<p>{{ m.bio }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <section>
   <div class="wrap" style="text-align:center">
     <h2 style="font-size:26px;font-weight:700;letter-spacing:-.02em">Let's work together</h2>
