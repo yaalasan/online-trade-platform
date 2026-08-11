@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Team · Admin &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}Admin: team members.{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>Team</h1>
+    <div class="crumb">Admin / Team</div>
+    <div class="adminbar">
+      <a class="btn primary" href="{{ url_for('admin_team_new') }}">+ Add member</a>
+      <a class="btn line" href="{{ url_for('admin_products') }}">Products</a>
+      <a class="btn line" href="{{ url_for('admin_categories') }}">Categories</a>
+      <a class="btn line" href="{{ url_for('admin_inquiries') }}">Inquiries</a>
+      <form method="post" action="{{ url_for('page_logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn line" type="submit">Log out</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash {{ 'flash-err' if cat == 'error' else 'flash-ok' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="panel">
+      <h3>About-page intro photo</h3>
+      <p class="hint">The large photo shown next to your company description on the public About page.</p>
+      <form class="pform" method="post" enctype="multipart/form-data" action="{{ url_for('admin_about_image') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if about_image %}
+        <div class="photos"><div class="photo">
+          <img src="{{ about_image }}" alt="">
+          <label class="chk del"><input type="checkbox" name="delete_photo" value="1"> Remove</label>
+        </div></div>
+        {% endif %}
+        <input name="photo" type="file" accept="image/*">
+        <p class="hint">JPG, PNG, WEBP or GIF &middot; up to 8&nbsp;MB. A landscape (wide) photo fits best.</p>
+        <div class="factions">
+          <button class="btn primary" type="submit">{{ 'Replace photo' if about_image else 'Upload photo' }}</button>
+        </div>
+      </form>
+    </div>
+
+    <h2 class="teamhead">Team members</h2>
+
+    {% if members %}
+    <table class="itable admintable">
+      <thead>
+        <tr><th>Photo</th><th>Name</th><th>Role</th><th>Order</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for m in members %}
+        <tr class="{{ '' if m.is_published else 'pending' }}">
+          <td><span class="thumb">{% if m.photo_url %}<img src="{{ m.photo_url }}" alt="{{ m.name }}">{% endif %}</span></td>
+          <td>{{ m.name }}</td>
+          <td>{{ m.role }}</td>
+          <td>{{ m.sort_order }}</td>
+          <td>{% if m.is_published %}<span class="badge">Shown</span>{% else %}<span class="badge warn">Hidden</span>{% endif %}</td>
+          <td class="rowactions">
+            <form method="post" action="{{ url_for('admin_team_toggle', id=m.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn line small" type="submit">{{ 'Hide' if m.is_published else 'Show' }}</button>
+            </form>
+            <a class="btn line small" href="{{ url_for('admin_team_edit', id=m.id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin_team_delete', id=m.id) }}"
+                  onsubmit="return confirm('Remove this team member?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn line small danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="meta" style="margin-top:16px;color:var(--muted)">
+      {{ members|length }} member{{ 's' if members|length != 1 else '' }} &middot;
+      lower &ldquo;Order&rdquo; shows first &middot; Hidden ones don't appear on the About page.
+    </p>
+    {% else %}
+    <div class="empty">
+      <h3>No team members yet</h3>
+      <p>Add your team so they appear on the public About page.</p>
+      <div class="btns"><a class="btn primary" href="{{ url_for('admin_team_new') }}">+ Add member</a></div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

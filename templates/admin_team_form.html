@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Add member' if mode == 'new' else 'Edit member' }} · Admin &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}Admin team form.{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>{{ 'Add team member' if mode == 'new' else 'Edit team member' }}</h1>
+    <div class="crumb"><a href="{{ url_for('admin_team') }}">Team</a> / {{ 'New' if mode == 'new' else 'Edit' }}</div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    {% if error %}<div class="flash flash-err">{{ error }}</div>{% endif %}
+
+    <form class="pform" method="post" enctype="multipart/form-data"
+          action="{{ url_for('admin_team_new') if mode == 'new' else url_for('admin_team_edit', id=mid) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="frow">
+        <div class="fcol grow">
+          <label for="name">Name *</label>
+          <input id="name" name="name" required value="{{ form.name or '' }}">
+        </div>
+        <div class="fcol grow">
+          <label for="role">Role / title *</label>
+          <input id="role" name="role" required value="{{ form.role or '' }}" placeholder="e.g. Sourcing Manager">
+        </div>
+        <div class="fcol">
+          <label for="sort_order">Order</label>
+          <input id="sort_order" name="sort_order" value="{{ form.sort_order or '' }}" placeholder="0">
+        </div>
+      </div>
+
+      <label for="bio">Short bio <span class="muted">(optional)</span></label>
+      <textarea id="bio" name="bio" rows="4">{{ form.bio or '' }}</textarea>
+
+      {% if form.photo_url %}
+      <label>Current photo</label>
+      <div class="photos">
+        <div class="photo">
+          <img src="{{ form.photo_url }}" alt="">
+          <label class="chk del"><input type="checkbox" name="delete_photo" value="1"> Remove</label>
+        </div>
+      </div>
+      {% endif %}
+
+      <label for="photo">{{ 'Replace photo' if form.photo_url else 'Photo' }}</label>
+      <input id="photo" name="photo" type="file" accept="image/*">
+      <p class="hint">JPG, PNG, WEBP or GIF &middot; up to 8&nbsp;MB. A square headshot looks best.</p>
+
+      <div class="fchecks">
+        <label class="chk"><input type="checkbox" name="is_published" {{ 'checked' if (form.is_published or mode == 'new') else '' }}> Show on the About page</label>
+      </div>
+
+      <div class="factions">
+        <button class="btn primary" type="submit">{{ 'Add member' if mode == 'new' else 'Save changes' }}</button>
+        <a class="btn line" href="{{ url_for('admin_team') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Categories · Admin &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}Admin: category photos.{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>Categories</h1>
+    <div class="crumb">Admin / Categories</div>
+    <div class="adminbar">
+      <a class="btn line" href="{{ url_for('admin_products') }}">Products</a>
+      <a class="btn line" href="{{ url_for('admin_team') }}">Team</a>
+      <a class="btn line" href="{{ url_for('admin_inquiries') }}">Inquiries</a>
+      <form method="post" action="{{ url_for('page_logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn line" type="submit">Log out</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash {{ 'flash-err' if cat == 'error' else 'flash-ok' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <p class="hint" style="margin-bottom:22px">
+      These photos appear on the home page category tiles. Upload a landscape
+      (wide) image for each. JPG, PNG, WEBP or GIF &middot; up to 8&nbsp;MB.
+    </p>
+
+    <div class="teamgrid">
+      {% for c in cats %}
+      <div class="panel">
+        <div class="teamhead" style="margin-top:0">
+          <h3 style="margin:0">{{ c.name }}</h3>
+          {% if c.is_cta %}<span class="badge">CTA tile</span>{% endif %}
+        </div>
+        <form class="pform" method="post" enctype="multipart/form-data"
+              action="{{ url_for('admin_category_image') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="slug" value="{{ c.slug }}">
+          {% if c.image %}
+          <div class="photos"><div class="photo">
+            <img src="{{ c.image }}" alt="{{ c.name }}">
+            <label class="chk del"><input type="checkbox" name="delete_photo" value="1"> Remove</label>
+          </div></div>
+          {% else %}
+          <p class="hint">No photo yet.</p>
+          {% endif %}
+          <input name="photo" type="file" accept="image/*">
+          <div class="factions">
+            <button class="btn primary" type="submit">{{ 'Replace photo' if c.image else 'Upload photo' }}</button>
+          </div>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Products · Admin &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}Admin: product management.{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>Products</h1>
+    <div class="crumb">Admin / Products</div>
+    <div class="adminbar">
+      <a class="btn primary" href="{{ url_for('admin_product_new') }}">+ Add product</a>
+      <a class="btn line" href="{{ url_for('admin_team') }}">Team</a>
+      <a class="btn line" href="{{ url_for('admin_categories') }}">Categories</a>
+      <a class="btn line" href="{{ url_for('admin_inquiries') }}">Inquiries</a>
+      <form method="post" action="{{ url_for('page_logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="btn line" type="submit">Log out</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash {{ 'flash-err' if cat == 'error' else 'flash-ok' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {% if products %}
+    <table class="itable admintable">
+      <thead>
+        <tr>
+          <th>Photo</th><th>Name</th><th>Category</th><th>Price</th>
+          <th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr class="{{ '' if p.is_published else 'pending' }}">
+          <td><span class="thumb">{% if p.image %}<img src="{{ p.image }}" alt="{{ p.name }}">{% endif %}</span></td>
+          <td>{{ p.name }}{% if p.verified %} <span class="badge">Verified</span>{% endif %}</td>
+          <td>{{ p.category }}</td>
+          <td>{{ p.price }}</td>
+          <td>
+            {% if p.is_published %}<span class="badge">Live</span>
+            {% else %}<span class="badge warn">Hidden</span>{% endif %}
+          </td>
+          <td class="rowactions">
+            <form method="post" action="{{ url_for('admin_product_toggle', id=p.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn line small" type="submit">{{ 'Hide' if p.is_published else 'Show' }}</button>
+            </form>
+            <a class="btn line small" href="{{ url_for('admin_product_edit', id=p.id) }}">Edit</a>
+            <form method="post" action="{{ url_for('admin_product_delete', id=p.id) }}"
+                  onsubmit="return confirm('Delete this product permanently?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="btn line small danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="meta" style="margin-top:16px;color:var(--muted)">
+      {{ products|length }} product{{ 's' if products|length != 1 else '' }} &middot;
+      &ldquo;Hidden&rdquo; products do not appear on the public website.
+    </p>
+    {% else %}
+    <div class="empty">
+      <h3>No products yet</h3>
+      <p>Add your first product to show it on the website.</p>
+      <div class="btns"><a class="btn primary" href="{{ url_for('admin_product_new') }}">+ Add product</a></div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

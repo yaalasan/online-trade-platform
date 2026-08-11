@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Add product' if mode == 'new' else 'Edit product' }} · Admin &mdash; {{ site.brand_name }}{% endblock %}
+{% block description %}Admin product form.{% endblock %}
+
+{% block content %}
+
+<div class="banner">
+  <div class="shade"></div>
+  <div class="wrap">
+    <h1>{{ 'Add product' if mode == 'new' else 'Edit product' }}</h1>
+    <div class="crumb"><a href="{{ url_for('admin_products') }}">Products</a> / {{ 'New' if mode == 'new' else 'Edit' }}</div>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    {% if error %}<div class="flash flash-err">{{ error }}</div>{% endif %}
+
+    <form class="pform" method="post" enctype="multipart/form-data"
+          action="{{ url_for('admin_product_new') if mode == 'new' else url_for('admin_product_edit', id=product.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="frow">
+        <div class="fcol grow">
+          <label for="name">Product name *</label>
+          <input id="name" name="name" required value="{{ form.name or '' }}">
+        </div>
+        <div class="fcol">
+          <label for="category">Category *</label>
+          <select id="category" name="category" required>
+            <option value="">&mdash; choose &mdash;</option>
+            {% for parent, subs in categories.items() %}
+            <optgroup label="{{ parent }}">
+              {% for sub in subs %}
+              <option value="{{ sub }}" {{ 'selected' if form.category == sub else '' }}>{{ sub }}</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="fcol">
+          <label for="price">Price *</label>
+          <input id="price" name="price" required value="{{ form.price or '' }}" placeholder="On request / $1,200">
+        </div>
+        <div class="fcol">
+          <label for="moq">MOQ</label>
+          <input id="moq" name="moq" value="{{ form.moq or '' }}" placeholder="1 unit">
+        </div>
+        <div class="fcol">
+          <label for="lead_time">Lead time</label>
+          <input id="lead_time" name="lead_time" value="{{ form.lead_time or '' }}" placeholder="~1 month">
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="fcol">
+          <label for="capacity">Capacity / key spec</label>
+          <input id="capacity" name="capacity" value="{{ form.capacity or '' }}">
+        </div>
+        <div class="fcol">
+          <label for="certifications">Certifications</label>
+          <input id="certifications" name="certifications" value="{{ form.certifications or '' }}">
+        </div>
+        <div class="fcol">
+          <label for="location">Origin <span class="muted">(internal, hidden from buyers)</span></label>
+          <input id="location" name="location" value="{{ form.location or '' }}" placeholder="China">
+        </div>
+      </div>
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="5">{{ form.description or '' }}</textarea>
+
+      {% if media %}
+      <label>Current photos</label>
+      <div class="photos">
+        {% for m in media %}
+        <div class="photo">
+          <img src="{{ m.url }}" alt="">
+          <label class="chk"><input type="radio" name="primary_media" value="{{ m.id }}" {{ 'checked' if m.is_primary else '' }}> Main</label>
+          <label class="chk del"><input type="checkbox" name="delete_media" value="{{ m.id }}"> Delete</label>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <label for="photos">{{ 'Add more photos' if media else 'Photos' }}</label>
+      <input id="photos" name="photos" type="file" accept="image/*" multiple>
+      <p class="hint">JPG, PNG, WEBP or GIF &middot; up to 8&nbsp;MB each &middot; the first photo becomes the main image.</p>
+
+      <div class="fchecks">
+        <label class="chk"><input type="checkbox" name="verified" {{ 'checked' if form.verified else '' }}> Show &ldquo;Verified supplier&rdquo; badge</label>
+        <label class="chk"><input type="checkbox" name="is_published" {{ 'checked' if form.is_published else '' }}> Show on website (publish now)</label>
+      </div>
+
+      <div class="factions">
+        <button class="btn primary" type="submit">{{ 'Create product' if mode == 'new' else 'Save changes' }}</button>
+        <a class="btn line" href="{{ url_for('admin_products') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% endblock %}

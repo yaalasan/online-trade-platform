@@ -33,11 +33,12 @@ _BASE = {
         ("faq",      "FAQ"),
     ],
     "faq": [
-        ("Minimum order quantity (MOQ)",
-         "For machines, the minimum order is 1 unit. For spare parts, "
+        ("Minimum order quantity MOQ",
+         "For finished units, the minimum order is 1-5 units. For spare parts, "
          "please contact us for details."),
         ("Payment terms and methods",
-         "T/T &mdash; 30% in advance, 70% before shipment."),
+         "T/T &mdash; 30% in advance, 70% before shipment."
+         " We accept Letter of Credit, terms are subject to order value."),
         ("Shipping methods",
          "We arrange the method that suits your order and destination:"
          "<ul>"
@@ -47,13 +48,12 @@ _BASE = {
          "<li>Railway transport</li>"
          "<li>Cross-border trucking</li>"
          "</ul>"),
-        ("Lead time",
-         "Approximately one month for machines. Lead times for other products "
-         "are confirmed at quotation."),
+        ("Production lead time",
+         "Standard orders: 7-20 working days. Custom/OEM orders will be quoted separately. "),
         ("Sample policy",
-         "Samples are free of charge. Freight is collect &mdash; paid by the buyer."),
-        ("After-sales service",
-         "Warranty period is 1 year."),
+         "Samples are available. Sample cost and freight will be on buyer's side."),
+        ("Quality & After-sales service",
+         "Quality warranty for qualified products. Spare parts and remote technical support provided."),
     ],
     # Product categories.
     # (name, blurb, moq, lead_time) -- moq/lead_time may be "" if not fixed.
