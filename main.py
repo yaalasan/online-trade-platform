@@ -63,8 +63,6 @@ IS_PRODUCTION = (
     APP_ENV == "production"
     or os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
 )
-CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-
 # Contact-form staff notifications. Default "console" just logs (no provider
 # needed for dev); set CONTACT_EMAIL_MODE=smtp to deliver via SMTP. Tuned for
 # Namecheap Private Email (mail.privateemail.com:587, STARTTLS, username = the
@@ -455,42 +453,10 @@ def _translate_free(text, target_lang):
         return text
 
 
-def _translate_via_claude(text, target_lang):
-    """Optional paid fallback: Claude API. Only used when CLAUDE_API_KEY is set.
-    Returns translated text, or original on error."""
-    if not CLAUDE_API_KEY or not text:
-        return text
-    try:
-        import anthropic  # lazy import – only needed when API key is set
-        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-        lang_names = {"en": "English", "zh": "Simplified Chinese", "ru": "Russian"}
-        lang_name = lang_names.get(target_lang, target_lang)
-        msg = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=512,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Translate the following B2B product or company text to {lang_name}. "
-                    f"Return ONLY the translated text, no commentary:\n\n{text}"
-                ),
-            }],
-        )
-        return msg.content[0].text.strip()
-    except Exception:
-        return text
-
-
 def _machine_translate(text, target_lang):
-    """Primary translation entry point: free engine, with the paid Claude path
-    as an opt-in fallback when configured. Used behind the SQLite cache so each
-    string is only ever translated once."""
-    translated = _translate_free(text, target_lang)
-    # If the free engine failed (returned the input unchanged) and a paid key is
-    # available, try Claude as a backstop for higher-value fields.
-    if translated == text and CLAUDE_API_KEY:
-        return _translate_via_claude(text, target_lang)
-    return translated
+    """Primary translation entry point: free engine only. Used behind the SQLite
+    cache so each string is only ever translated once."""
+    return _translate_free(text, target_lang)
 
 
 def _cache_key(text, target_lang):
@@ -1000,10 +966,29 @@ def _primary_image(db, product_id):
 @app.route("/")
 def page_home():
     site = get_site(_site_slug())
+    # Real team faces for the homepage "people behind your order" strip. Same
+    # source as the About page; capped so the strip stays a single tidy row.
+    db = get_db()
+    team = db.execute(
+        "SELECT name, role, bio, photo_url FROM team_members "
+        "WHERE is_published = 1 AND photo_url <> '' "
+        "ORDER BY sort_order, id LIMIT 6"
+    ).fetchall()
+    # Live count for the proof band. RLS scopes it to this site; no site_id clause.
+    product_count = db.execute(
+        "SELECT COUNT(*) AS n FROM products WHERE is_published = 1"
+    ).fetchone()["n"]
+    # Fill any None-valued metric (see site_config) with the real product count.
+    metrics = [
+        (str(product_count) if value is None else value, label)
+        for value, label in site["metrics"]
+    ]
     return render_template(
         "home.html", active_page="home",
         categories=_categories_with_counts(site),
         about_image=get_setting("about_image"),
+        team=[dict(t) for t in team],
+        metrics=metrics,
     )
 
 

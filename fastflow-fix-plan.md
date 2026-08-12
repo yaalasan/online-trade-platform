@@ -48,7 +48,7 @@ existing affected columns **exactly once** (product name/specs label+value, inqu
 supplier fields). Guard against unescaping twice. Only escape manually at non-HTML outputs (emails/exports).
 
 ### [S3] Close `/api/translate` abuse (Flask stack)
-**Reality:** main.py:937, unauthenticated, 20/min. Anyone can drain the Claude quota.
+**Reality:** main.py:937, unauthenticated, 20/min. Anyone can hammer the translation endpoint.
 **Done-check:** anonymous cross-origin calls are refused; page translation still works for real visitors.
 **Do:** restrict to same-origin (check Origin/Referer against your domains), rate-limit on the **real
 client IP behind Cloudflare** (`CF-Connecting-IP`/ProxyFix, not `remote_addr`), cap input length, and

@@ -75,6 +75,45 @@ _BASE = {
          "", "Quote within 48h"),
     ],
 
+    # Hero accountability chain -- the four things we own, in order, dramatised
+    # on the homepage hero. Order matters (it is the sequence of an order).
+    "chain": [
+        "Find the supplier",
+        "Audit the factory",
+        "Inspect the goods",
+        "Ship to your door",
+    ],
+
+    # Proof stats for the homepage "track record" band. Keep these HONEST -- this
+    # is the live site. The four below are already true and verifiable. Replace
+    # or extend them with stronger confirmed figures the moment you have them
+    # (e.g. orders shipped, countries served, average reply time in hours).
+    # A value of None is filled in live by the view (page_home) with a real,
+    # verified count from the database -- never hardcode a product number here.
+    "metrics": [
+        ("2022", "Sourcing &amp; export from Shanghai since"),
+        ("48h", "Typical quote turnaround"),
+        (None, "Products sourced end to end"),
+        ("6", "Services from enquiry to delivery"),
+    ],
+
+    # "How we work" -- each step names what the buyer actually receives, so the
+    # process reads as accountability, not filler. (title, detail, deliverable)
+    "process": [
+        ("Tell us what you need",
+         "Send your specification, drawing, or reference product. We identify "
+         "suitable manufacturers and shortlist them for you.",
+         "A shortlist of vetted, capable factories."),
+        ("Quotation and samples",
+         "We negotiate pricing, arrange samples, and collect compliance "
+         "documents on your behalf.",
+         "Quotes, samples, and paperwork in one place."),
+        ("Inspection and shipping",
+         "Goods are inspected before dispatch, then shipped by the method that "
+         "suits your order and destination.",
+         "A pre-shipment inspection report with photos."),
+    ],
+
     "services": [
         ("Product sourcing",
          "We identify and shortlist manufacturers matching your specification and budget."),

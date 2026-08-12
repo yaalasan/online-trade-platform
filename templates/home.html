@@ -10,9 +10,16 @@
     <h1>{{ site.hero_title }}</h1>
     <p>{{ site.hero_text | safe }}</p>
     <div class="btns">
-      <a class="btn primary" href="{{ url_for('page_products') }}">Browse products</a>
-      <a class="btn ghost" href="{{ url_for('page_contact') }}">Request a quote</a>
+      <a class="btn primary" href="{{ url_for('page_contact') }}">Get a quote</a>
+      <a class="btn ghost" href="{{ url_for('page_products') }}">Browse products</a>
     </div>
+    {% if site.chain %}
+    <ul class="chain" aria-label="How your order flows, end to end">
+      {% for step in site.chain %}
+      <li>{{ step }}{% if not loop.last %}<span class="arw" aria-hidden="true"></span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
   </div>
 </div>
 
@@ -31,11 +38,30 @@
           {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">{% endif %}
         </div>
         <div class="body">
-          <h3>{{ item.name }}</h3>
+          <h3>{{ item.name }}{% if not item.is_cta and item.count %}<span class="cnt">{{ item.count }}</span>{% endif %}</h3>
           <p>{{ item.blurb }}</p>
           <span class="more">{{ 'Send an enquiry' if item.is_cta else 'View category' }} &rarr;</span>
         </div>
       </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="proof">
+  <div class="wrap">
+    <div class="proof-head">
+      <h2>Why buyers trust us with the order</h2>
+      <p>One accountable partner in China. We find the supplier, audit the
+         factory, and inspect the goods before they ship &mdash; so problems are
+         caught here, not at your door.</p>
+    </div>
+    <div class="stats">
+      {% for value, label in metrics %}
+      <div class="stat">
+        <div class="sv">{{ value | safe }}</div>
+        <div class="sl">{{ label | safe }}</div>
+      </div>
       {% endfor %}
     </div>
   </div>
@@ -63,25 +89,57 @@
   </div>
 </section>
 
+{% if team %}
 <section>
+  <div class="wrap">
+    <div class="sechead">
+      <h2>The people behind your order</h2><div class="rule"></div>
+      <p>A real team in Shanghai handles your enquiry from the first message
+         through to delivery.</p>
+    </div>
+    <div class="faces">
+      {% for m in team %}
+      <a class="face" href="{{ url_for('page_about') }}#team">
+        <div class="fphoto">
+          {% if m.photo_url %}<img src="{{ m.photo_url }}" alt="{{ m.name }}" loading="lazy">{% endif %}
+        </div>
+        <div class="fname">{{ m.name }}</div>
+        {% if m.role %}<div class="frole">{{ m.role }}</div>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="alt">
   <div class="wrap">
     <div class="sechead">
       <h2>How we work</h2><div class="rule"></div>
       <p>One point of contact from enquiry to delivery.</p>
     </div>
-    <div class="services">
-      <div class="service"><div class="n">1</div>
-        <h3>Tell us what you need</h3>
-        <p>Send your specification, drawing, or reference product. We identify
-           suitable manufacturers.</p></div>
-      <div class="service"><div class="n">2</div>
-        <h3>Quotation and samples</h3>
-        <p>We negotiate pricing, arrange samples, and collect compliance
-           documents on your behalf.</p></div>
-      <div class="service"><div class="n">3</div>
-        <h3>Inspection and shipping</h3>
-        <p>Goods are inspected before dispatch, then shipped by the method that
-           suits your order.</p></div>
+    <div class="services steps">
+      {% for title, text, deliverable in site.process %}
+      <div class="service step">
+        <div class="n">{{ loop.index }}</div>
+        <h3>{{ title }}</h3>
+        <p>{{ text }}</p>
+        <div class="deliver"><span>You receive</span>{{ deliverable }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="cta-band">
+  <div class="wrap">
+    <h2>Tell us what you need &mdash; we reply within 48 hours.</h2>
+    <p>Send a specification, drawing, or reference product. We'll come back with
+       options, pricing, and a plan to get it to you.</p>
+    <div class="btns">
+      <a class="btn primary" href="{{ url_for('page_contact') }}">Get a quote</a>
+      <a class="btn ghost dark" href="https://wa.me/{{ site.whatsapp_link }}"
+         target="_blank" rel="noopener">Message us on WhatsApp</a>
     </div>
   </div>
 </section>

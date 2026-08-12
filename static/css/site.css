@@ -16,6 +16,7 @@
   --paper:#FAFAFA;
   --photo:#E6E7E8;
   --max:1280px;
+  --display:'Archivo','Inter',system-ui,sans-serif;
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0}
@@ -422,3 +423,98 @@ footer{background:var(--ink);color:#9A9A9A;padding:56px 0 26px}
 .lb-view iframe{width:min(92vw,1280px);aspect-ratio:16/9;max-height:88vh;border:0;background:#000}
 .photo .novid{display:flex;align-items:center;justify-content:center;width:100%;height:96px;
   background:#000;color:#fff;font-size:12px;border-radius:4px}
+
+/* ============================================================
+   Homepage 2026 refresh: display face, hero accountability chain,
+   track-record proof band, team faces, process deliverables, close.
+   ============================================================ */
+
+/* Distinctive display face for headline moments (body stays Inter). */
+.logo,.flogo,.hero h1,.banner h1,.sechead h2,.split h2,.proof-head h2,
+.cta-band h2,.subcatblock h3,.pdp-info h2,.empty h3,.teamhead,.faces .fname{
+  font-family:var(--display)}
+.hero h1,.cta-band h2,.proof-head h2{letter-spacing:-.035em}
+
+/* ---------- hero: one authored entrance + accountability chain ---------- */
+.hero .wrap>*{animation:hero-rise .7s cubic-bezier(.2,.7,.2,1) both}
+.hero .wrap .rule{animation-delay:.02s}
+.hero h1{animation-delay:.06s}
+.hero p{animation-delay:.12s}
+.hero .btns{animation-delay:.18s}
+.hero .chain{animation-delay:.24s}
+@keyframes hero-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+.hero .btns .btn.ghost{border-color:rgba(255,255,255,.7)}
+.chain{list-style:none;display:flex;flex-wrap:wrap;align-items:center;
+  gap:12px 4px;margin-top:34px;padding-top:26px;
+  border-top:1px solid rgba(255,255,255,.16)}
+.chain li{display:flex;align-items:center;position:relative;color:#fff;
+  font-size:13px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;
+  padding-left:16px}
+.chain li::before{content:"";position:absolute;left:0;top:50%;
+  width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--brand)}
+.chain .arw{width:9px;height:9px;margin:0 16px;flex-shrink:0;
+  border-top:2px solid rgba(255,255,255,.5);border-right:2px solid rgba(255,255,255,.5);
+  transform:rotate(45deg)}
+
+/* ---------- category tile: live product count ---------- */
+.card h3 .cnt{display:inline-block;margin-left:8px;vertical-align:middle;
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0;
+  color:var(--brand-dark);background:var(--brand-soft);padding:1px 9px;border-radius:999px}
+
+/* ---------- track-record proof band (dark) ---------- */
+.proof{background:var(--ink);color:#fff;padding:66px 0}
+.proof-head{max-width:60ch}
+.proof-head h2{font-size:clamp(24px,3vw,32px);font-weight:800;color:#fff}
+.proof-head p{font-size:15px;color:rgba(255,255,255,.72);margin-top:14px;
+  line-height:1.7;max-width:56ch}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;
+  margin-top:42px;padding-top:36px;border-top:1px solid #333}
+.stat .sv{font-family:var(--display);font-size:clamp(36px,4.4vw,48px);font-weight:800;
+  color:var(--brand);letter-spacing:-.04em;line-height:1}
+.stat .sl{font-size:13px;color:rgba(255,255,255,.66);margin-top:12px;
+  line-height:1.5;max-width:24ch}
+
+/* ---------- team faces strip ---------- */
+.faces{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:24px}
+.face{text-align:center}
+.face .fphoto{aspect-ratio:1/1;background:var(--photo);border-radius:10px;
+  overflow:hidden;margin-bottom:13px;transition:transform .18s,box-shadow .18s}
+.face:hover .fphoto{transform:translateY(-3px);
+  box-shadow:0 14px 30px -18px rgba(0,0,0,.5)}
+.face .fphoto img{width:100%;height:100%;object-fit:cover}
+.face .fname{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.face .frole{font-size:13px;color:var(--brand-dark);font-weight:500;margin-top:3px}
+
+/* ---------- process: the deliverable each step hands back ---------- */
+.step .deliver{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line-2);
+  font-size:14px;font-weight:600;color:var(--ink);line-height:1.5}
+.step .deliver span{display:block;font-size:11px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--brand-dark);margin-bottom:4px}
+
+/* ---------- closing conversion band (brand) ---------- */
+.cta-band{background:var(--brand);color:#fff;text-align:center;padding:74px 0}
+.cta-band h2{font-size:clamp(26px,3.6vw,40px);font-weight:800;color:#fff;
+  max-width:20ch;margin:0 auto}
+.cta-band p{font-size:16px;color:rgba(255,255,255,.92);margin:16px auto 0;
+  max-width:48ch;line-height:1.6}
+.cta-band .btns{display:flex;gap:12px;justify-content:center;margin-top:30px;flex-wrap:wrap}
+.cta-band .btn.primary{background:#fff;color:var(--ink)}
+.cta-band .btn.primary:hover{background:#f1f1f1;color:var(--ink)}
+.cta-band .btn.ghost.dark{background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
+.cta-band .btn.ghost.dark:hover{background:rgba(255,255,255,.14);color:#fff}
+
+@media(max-width:1000px){
+  .stats{grid-template-columns:repeat(2,1fr);gap:32px 24px}
+}
+@media(max-width:760px){
+  .proof{padding:52px 0}
+  .stats{margin-top:32px;padding-top:28px}
+  .chain{gap:10px 2px}
+  .chain .arw{margin:0 11px}
+  .cta-band{padding:58px 0}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero .wrap>*{animation:none}
+  .face,.face .fphoto{transition:none}
+}

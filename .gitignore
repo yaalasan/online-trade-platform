@@ -13,6 +13,12 @@ data.db
 .agents/
 .codex/
 
+# Local AI/editor tooling — keep out of the repo
+.claude/
+.cursor/
+.impeccable/
+CLAUDE.md
+
 # Binary design docs (kept locally, not in the repo)
 *.odt
 
