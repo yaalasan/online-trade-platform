@@ -171,13 +171,30 @@ SITES = {
         brand_name="FASTFLOW TOOLS",
         brand_split=("FASTFLOW", " TOOLS"),
         domain="fastflow.tools",
-        tagline="Heavy machinery and equipment.",
-        hero_title="Heavy machinery, sourced and shipped",
-        hero_text="Loaders, excavators, forklifts and mixer trucks from audited "
-                  "Chinese manufacturers &mdash; inspected before dispatch.",
-        meta_description="Fastflow Tools &mdash; heavy machinery, construction "
-                         "equipment and spare parts sourced from verified "
-                         "Chinese manufacturers.",
+        tagline="Industrial equipment, sourced with confidence.",
+        hero_title="Industrial equipment and components from verified Chinese suppliers",
+        hero_text="Metal-processing machinery, industrial equipment, electronic "
+                  "components and hardware tools &mdash; we find the supplier, "
+                  "audit the factory, inspect the goods, and ship them to you.",
+        meta_description="Fastflow Tools sources metal plate processing machinery, "
+                         "industrial equipment, electronic components and hardware "
+                         "tools from verified Chinese manufacturers.",
+        categories=[
+            ("Metal Plate Processing Machinery",
+             "Fabrication, cutting, bending and forming equipment",
+             "1 unit", "Quoted per model"),
+            ("Industrial Equipment",
+             "Production, handling and workshop equipment",
+             "On request", "Quoted per model"),
+            ("Electronic Components",
+             "Components and assemblies for industrial applications",
+             "On request", ""),
+            ("Hardware Tools",
+             "Professional tools and hardware for trade and industry",
+             "On request", ""),
+            ("Custom sourcing", "Send us a specification, drawing or sample",
+             "", "Quote within 48h"),
+        ],
         accent="#E8400C",
     ),
 }

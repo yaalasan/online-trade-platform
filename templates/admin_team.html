@@ -31,6 +31,27 @@
     {% endwith %}
 
     <div class="panel">
+      <h3>Homepage hero photo</h3>
+      <p class="hint">The full-width photo behind the public homepage headline.</p>
+      <form class="pform" method="post" enctype="multipart/form-data" action="{{ url_for('admin_hero_image') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if hero_image %}
+        <div class="photos"><div class="photo">
+          <img src="{{ hero_image }}" alt="">
+          {% if hero_image_override %}
+          <label class="chk del"><input type="checkbox" name="delete_photo" value="1"> Use default</label>
+          {% endif %}
+        </div></div>
+        {% endif %}
+        <input name="photo" type="file" accept="image/*">
+        <p class="hint">JPG, PNG, WEBP or GIF &middot; up to 8&nbsp;MB. A wide image works best.</p>
+        <div class="factions">
+          <button class="btn primary" type="submit">{{ 'Replace hero photo' if hero_image_override else 'Upload hero photo' }}</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel">
       <h3>About-page intro photo</h3>
       <p class="hint">The large photo shown next to your company description on the public About page.</p>
       <form class="pform" method="post" enctype="multipart/form-data" action="{{ url_for('admin_about_image') }}">

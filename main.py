@@ -213,7 +213,8 @@ from portal import (  # noqa: E402
 # Category taxonomy: parent -> subcategories. Products store the subcategory
 # name; filtering by the parent matches the parent itself plus all its subs.
 # Mirrored in static/app.js (CATEGORY_TREE) for the category rail dropdown.
-CATEGORY_GROUPS = {
+SITE_CATEGORY_GROUPS = {
+    "fastflow": {
     "Construction Machinery": [
         "Excavator",
         "Forklift",
@@ -233,12 +234,26 @@ CATEGORY_GROUPS = {
     "Moto Spare Parts": [
         "Moto Spare Parts",
     ],
+    },
+    # These categories are intentionally flat for launch. Subcategories can be
+    # added later without changing the tenant or product schema.
+    "tools": {
+        "Metal Plate Processing Machinery": ["Metal Plate Processing Machinery"],
+        "Industrial Equipment": ["Industrial Equipment"],
+        "Electronic Components": ["Electronic Components"],
+        "Hardware Tools": ["Hardware Tools"],
+    },
 }
 
-# Flat, ordered list of the real (sub)category names products are tagged with —
-# the single source of truth for the admin category dropdown. Kept in sync with
-# CATEGORY_GROUPS; parent names are display groupings, never stored on a product.
-PRODUCT_CATEGORIES = [sub for subs in CATEGORY_GROUPS.values() for sub in subs]
+
+def category_groups(site_slug=None):
+    """Return the category tree for a site, defaulting to Fastflow's taxonomy."""
+    return SITE_CATEGORY_GROUPS.get(site_slug or _site_slug(), SITE_CATEGORY_GROUPS["fastflow"])
+
+
+def product_categories(site_slug=None):
+    """The accepted product category values for the active site."""
+    return [sub for subs in category_groups(site_slug).values() for sub in subs]
 
 STATIC_CATEGORY_IMAGES = {
     "construction-machinery": "categories/construction_machinery.png",
@@ -262,13 +277,14 @@ def expand_category_filter(category):
     """Return the list of category names a filter value should match. A parent
     name (e.g. 'Vehicles') expands to its subcategories; a leaf name matches
     itself."""
-    return [category, *CATEGORY_GROUPS.get(category, [])]
+    return [category, *category_groups().get(category, [])]
 
 
 def _default_category_images():
     images = {}
-    names = list(CATEGORY_GROUPS.keys())
-    for subs in CATEGORY_GROUPS.values():
+    groups = category_groups()
+    names = list(groups.keys())
+    for subs in groups.values():
         names.extend(subs)
     names.append("Custom sourcing")
 
@@ -300,7 +316,8 @@ def _classify_construction_product(product):
     subcategories using product text, so old rows remain browsable until they
     are retagged in admin."""
     category = (product.get("category") or "").strip()
-    if category in CATEGORY_GROUPS["Construction Machinery"]:
+    construction_categories = category_groups().get("Construction Machinery", [])
+    if category in construction_categories:
         return category
     if category != "Construction Machinery":
         return category
@@ -325,7 +342,7 @@ def _classify_construction_product(product):
 
 
 def _group_products_for_category(category_name, products):
-    order = CATEGORY_GROUPS.get(category_name, [])
+    order = category_groups().get(category_name, [])
     if not order:
         return [{"name": category_name, "slug": _slugify(category_name), "products": products}]
     grouped = {name: [] for name in order}
@@ -354,13 +371,13 @@ def _group_products_for_category(category_name, products):
 
 
 def _is_parent_category(name):
-    subs = CATEGORY_GROUPS.get(name, [])
+    subs = category_groups().get(name, [])
     # A parent category with one identical child behaves as a leaf.
     return len(subs) > 1
 
 
 def _subcategory_counts(parent_name):
-    subs = CATEGORY_GROUPS.get(parent_name, [])
+    subs = category_groups().get(parent_name, [])
     if not subs:
         return {}
     names = [*subs]
@@ -389,7 +406,7 @@ def _parent_subcategory_cards(parent_name):
     counts = _subcategory_counts(parent_name)
     images = _category_images()
     cards = []
-    for sub in CATEGORY_GROUPS.get(parent_name, []):
+    for sub in category_groups().get(parent_name, []):
         slug = _slugify(sub)
         cards.append({
             "name": sub,
@@ -536,7 +553,7 @@ def _notify_supplier_inquiry(product_id, supplier_id, inquiry_id):
     )
 
 
-def _send_inquiry_email(inquiry_id, name, email, category, company="", message=""):
+def _send_inquiry_email(inquiry_id, name, email, category, company="", message="", site_slug="fastflow"):
     """Deliver the staff notification for a contact inquiry.
 
     In "console" mode (the default) this just logs — no provider needed for dev.
@@ -560,13 +577,15 @@ def _send_inquiry_email(inquiry_id, name, email, category, company="", message="
             "CONTACT_EMAIL_TO are not all set"
         )
 
+    source_domain = get_site(site_slug)["domain"]
     msg = EmailMessage()
-    msg["Subject"] = f"New enquiry #{inquiry_id}: {category or 'general'} — {name}"
+    msg["Subject"] = f"[{source_domain}] New enquiry #{inquiry_id}: {category or 'general'} — {name}"
     msg["From"] = CONTACT_EMAIL_FROM
     msg["To"] = CONTACT_EMAIL_TO
     msg["Reply-To"] = email
     msg.set_content(
-        f"New contact-form enquiry (#{inquiry_id})\n\n"
+        f"New contact-form enquiry (#{inquiry_id})\n"
+        f"Source:   {source_domain}\n\n"
         f"Name:     {name}\n"
         f"Email:    {email}\n"
         f"Company:  {company or '-'}\n"
@@ -585,7 +604,7 @@ def _send_inquiry_email(inquiry_id, name, email, category, company="", message="
 
 
 def _notify_contact_inquiry(inquiry_id, site_id, name, email, category,
-                            company="", message=""):
+                            company="", message="", site_slug="fastflow"):
     """Background staff notification for a public contact-form inquiry. Attempts
     delivery, then stamps notified_at so pending/failed sends are distinguishable
     and retryable. Runs in its own daemon thread with its own pooled connection;
@@ -595,7 +614,7 @@ def _notify_contact_inquiry(inquiry_id, site_id, name, email, category,
     delivery failure only leaves notified_at NULL — it can never lose the lead
     or surface as an error to the visitor."""
     try:
-        _send_inquiry_email(inquiry_id, name, email, category, company, message)
+        _send_inquiry_email(inquiry_id, name, email, category, company, message, site_slug)
     except Exception:
         app.logger.exception("contact inquiry notification failed for #%s", inquiry_id)
         return
@@ -885,12 +904,13 @@ def _category_counts():
         "SELECT category, COUNT(*) AS n FROM products "
         "WHERE is_published = 1 GROUP BY category"
     ).fetchall()
+    groups = category_groups()
     counts = {}
     for row in rows:
         name = row["category"]
         count = row["n"]
         parent = next(
-            (parent_name for parent_name, subs in CATEGORY_GROUPS.items() if name in subs),
+            (parent_name for parent_name, subs in groups.items() if name in subs),
             name,
         )
         counts[parent] = counts.get(parent, 0) + count
@@ -963,6 +983,14 @@ def _primary_image(db, product_id):
     return None
 
 
+def _site_hero_image(site):
+    """The tenant's uploaded hero photo, or its configured static fallback."""
+    return get_setting(
+        "hero_image",
+        url_for("static", filename=site.get("hero_image", "hero.jpg")),
+    )
+
+
 @app.route("/")
 def page_home():
     site = get_site(_site_slug())
@@ -986,6 +1014,7 @@ def page_home():
     return render_template(
         "home.html", active_page="home",
         categories=_categories_with_counts(site),
+        hero_image=_site_hero_image(site),
         about_image=get_setting("about_image"),
         team=[dict(t) for t in team],
         metrics=metrics,
@@ -1054,7 +1083,7 @@ def page_subcategory(slug, subslug):
     if not cat or not _is_parent_category(cat["name"]):
         abort(404)
     sub_name = next(
-        (name for name in CATEGORY_GROUPS.get(cat["name"], [])
+        (name for name in category_groups().get(cat["name"], [])
          if _slugify(name) == subslug),
         None,
     )
@@ -1063,7 +1092,7 @@ def page_subcategory(slug, subslug):
 
     db = get_db()
     if cat["name"] == "Construction Machinery":
-        names = CATEGORY_GROUPS["Construction Machinery"] + ["Construction Machinery"]
+        names = category_groups()["Construction Machinery"] + ["Construction Machinery"]
         placeholders = ", ".join(["%s"] * len(names))
         rows = db.execute(
             f"SELECT id, name, supplier, location, price, moq, lead_time, verified, "
@@ -1208,7 +1237,7 @@ def page_contact():
             target=_notify_contact_inquiry,
             args=(inquiry_id, resolve_site_id(request.host),
                   form["name"], form["email"].lower(), form["category"],
-                  form["company"], form["message"]),
+                  form["company"], form["message"], _site_slug()),
             daemon=True,
         ).start()
 
@@ -1398,7 +1427,7 @@ def _admin_product_payload(form):
     category = clean_str(form, "category")
     name = clean_str(form, "name")
     price = clean_str(form, "price")
-    if category not in PRODUCT_CATEGORIES:
+    if category not in product_categories():
         return None, "Choose a valid category."
     if not name:
         return None, "Product name is required."
@@ -1460,7 +1489,7 @@ def admin_product_new():
         if error:
             return render_template(
                 "admin_product_form.html", mode="new", error=error,
-                form=request.form, categories=CATEGORY_GROUPS, media=[],
+                form=request.form, categories=category_groups(), media=[],
                 csrf_token=session.get("csrf_token", "")), 400
         db = get_db()
         now = utc_now()
@@ -1483,7 +1512,7 @@ def admin_product_new():
         return redirect(url_for("admin_products"))
     return render_template(
         "admin_product_form.html", mode="new", error=None, form={},
-        categories=CATEGORY_GROUPS, media=[],
+        categories=category_groups(), media=[],
         csrf_token=session.get("csrf_token", ""))
 
 
@@ -1503,7 +1532,7 @@ def admin_product_edit(id):
         if error:
             return render_template(
                 "admin_product_form.html", mode="edit", product=dict(row), error=error,
-                form=request.form, categories=CATEGORY_GROUPS,
+                form=request.form, categories=category_groups(),
                 media=_get_media(db, id), csrf_token=session.get("csrf_token", "")), 400
         now = utc_now()
         db.execute(
@@ -1532,7 +1561,7 @@ def admin_product_edit(id):
         return redirect(url_for("admin_products"))
     return render_template(
         "admin_product_form.html", mode="edit", product=dict(row), error=None,
-        form=dict(row), categories=CATEGORY_GROUPS, media=_get_media(db, id),
+        form=dict(row), categories=category_groups(), media=_get_media(db, id),
         csrf_token=session.get("csrf_token", ""))
 
 
@@ -1631,6 +1660,8 @@ def admin_team():
     ).fetchall()
     return render_template("admin_team.html", members=[dict(r) for r in rows],
                            about_image=get_setting("about_image"),
+                           hero_image=_site_hero_image(get_site(_site_slug())),
+                           hero_image_override=get_setting("hero_image"),
                            csrf_token=session.get("csrf_token", ""))
 
 
@@ -1779,6 +1810,34 @@ def admin_about_image():
         set_setting(db, "about_image", new_photo)
         db.commit()
         flash("About-page photo updated.")
+    else:
+        flash("No image was uploaded (check the file type/size).", "error")
+    return redirect(url_for("admin_team"))
+
+
+@app.route("/admin/hero-image", methods=["POST"])
+def admin_hero_image():
+    """Set the current tenant's homepage hero image."""
+    user, resp = _require_admin_page()
+    if resp:
+        return resp
+    if not _check_form_csrf():
+        abort(400)
+    db = get_db()
+    current = get_setting("hero_image")
+    if request.form.get("delete_photo") and current:
+        _remove_media_file(current)
+        set_setting(db, "hero_image", "")
+        db.commit()
+        flash("Homepage hero photo removed. The default will be used.")
+        return redirect(url_for("admin_team"))
+    new_photo = _save_one_photo(request.files.getlist("photo"))
+    if new_photo:
+        if current:
+            _remove_media_file(current)
+        set_setting(db, "hero_image", new_photo)
+        db.commit()
+        flash("Homepage hero photo updated.")
     else:
         flash("No image was uploaded (check the file type/size).", "error")
     return redirect(url_for("admin_team"))
