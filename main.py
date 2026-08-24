@@ -239,7 +239,13 @@ SITE_CATEGORY_GROUPS = {
     # added later without changing the tenant or product schema.
     "tools": {
         "Metal Plate Processing Machinery": ["Metal Plate Processing Machinery"],
-        "Industrial Equipment": ["Industrial Equipment"],
+        "Industrial Equipment": [
+            "Cable",
+            "Wire",
+            "PV Energy Storage",
+            "Pump",
+            "Drones"
+        ],
         "Electronic Components": ["Electronic Components"],
         "Hardware Tools": ["Hardware Tools"],
     },
