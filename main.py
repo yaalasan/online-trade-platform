@@ -249,6 +249,27 @@ SITE_CATEGORY_GROUPS = {
         "Electronic Components": ["Electronic Components"],
         "Hardware Tools": ["Hardware Tools"],
     },
+
+
+    "asia": {
+        "Agricultural Machinery": [
+            "Agricultural Tractors",
+            "Rotary Tiller",
+            "Transplanter",
+        ],
+        "Harvesting Machinery": [
+            "Corn Harvester",
+            "Wheat Harvester",
+            "Tracked Combine Harvester",
+            "Specialty Harvesting Machinery",
+            "Mobile Wood Chipper & Grinder",
+        ],
+        "Agrochemicals": [
+            "Herbicides",
+            "Fungicides",
+            "Insecticides",
+        ],
+    }
 }
 
 
@@ -276,6 +297,18 @@ SUBCATEGORY_BLURBS = {
     "Mini Loader": "Compact loaders for tight job sites and multi-attachment work.",
     "Mixer Truck": "Concrete mixer and self-loading mixer trucks for project delivery.",
     "Crawler Transporter": "Tracked transporters and crawler dumpers for rough terrain.",
+    "Agricultural Tractor": "Farm tractors for field work and hauling.",
+    "Rotary Tiller": "Rotary tillers for seedbed preparation and soil mixing.",
+    "Transplanter": "Mechanical transplanters for efficient crop planting.",
+    "Corn Harvester": "Combine harvesters for corn and maize harvesting.",
+    "Wheat Harvester": "Combine harvesters for wheat and grain crops.",
+    "Tracked Combine Harvester": "Tracked combines for wet and muddy field conditions.",
+    "Specialty Harvesting Machinery": "Specialized harvesters for fruit, vegetable and niche crops.",
+    "Mobile Wood Chipper & Grinder": "Portable wood chippers and grinders for land clearing and biomass.",
+    "Fungicide": "Agricultural fungicides for disease control and crop protection.",
+    "Herbicide": "Selective and non-selective herbicides for weed management.",
+    "Insecticide": "Insecticides for pest control across field and orchard crops.",
+
 }
 
 

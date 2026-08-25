@@ -160,10 +160,27 @@ SITES = {
         brand_name="FASTFLOW ASIA",
         brand_split=("FASTFLOW", " ASIA"),
         domain="fastflow.asia",
-        tagline="Regional sourcing across Asia.",
-        hero_title="Sourcing across Asian manufacturing",
-        hero_text="Placeholder copy &mdash; replace when the Asia vertical is defined.",
-        meta_description="Fastflow Asia &mdash; regional sourcing and export services.",
+        tagline="Agricultural machinery and agrochemicals, sourced with confidence.",
+        hero_title="Agricultural equipment and crop protection from verified Chinese suppliers",
+        hero_text="Tractors, harvesters, tillage equipment and agrochemicals — we find "
+              "the supplier, audit the factory, inspect the goods, and ship them to you.",
+        meta_description="Fastflow ASIA sources agricultural machinery, harvesting equipment "
+                     "and agrochemicals from verified Chinese manufacturers.",
+        
+
+        categories=[
+            ("Agricultural Machinery",
+            "Tractors, tillers and transplanters for field preparation and planting",
+            "1 unit", "Quoted per model"),
+            ("Harvesting Machinery",
+            "Combine harvesters, specialty harvesters and wood chippers",
+            "1 unit", "Quoted per model"),
+            ("Agrochemicals",
+            "Fungicides, herbicides and insecticides for crop protection",
+            "On request", "Quoted per order"),
+            ("Custom sourcing", "Send us a specification, drawing or sample",
+            "", "Quote within 48h"),
+        ],
         accent="#E8400C",
     ),
 
