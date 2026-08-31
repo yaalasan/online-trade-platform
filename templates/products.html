@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+    {% extends "base.html" %}
 {% block title %}Products &mdash; {{ site.brand_name }}{% endblock %}
 
 {% block content %}
@@ -23,7 +23,7 @@
     <div class="grid3">
       {% for item in categories %}
       <a class="card" href="{{ item.url }}">
-        <div class="ph">
+        <div class="ph product-shot">
           {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" loading="lazy">{% endif %}
         </div>
         <div class="body">
