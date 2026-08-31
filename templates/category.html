@@ -30,7 +30,7 @@
     <div class="grid3">
       {% for sub in subcategories %}
       <a class="card" href="{{ sub.url }}">
-        <div class="ph">{% if sub.image %}<img src="{{ sub.image }}" alt="{{ sub.name }}" loading="lazy">{% endif %}</div>
+        <div class="ph product-shot">{% if sub.image %}<img src="{{ sub.image }}" alt="{{ sub.name }}" loading="lazy">{% endif %}</div>
         <div class="body">
           <h3>{{ sub.name }}</h3>
           {% if sub.blurb %}<p>{{ sub.blurb }}</p>{% endif %}
