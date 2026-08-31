@@ -4,3 +4,4 @@ flask-limiter>=3.5
 deep-translator>=1.11
 psycopg[binary]>=3.2
 psycopg_pool>=3.2
+requests>=2.31

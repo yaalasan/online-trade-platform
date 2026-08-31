@@ -84,6 +84,13 @@
         <textarea id="cmsg" name="message" required
           placeholder="Product, specification, quantity, destination port&hellip;">{{ form.message if form else '' }}</textarea>
 
+        {% if recaptcha_site_key %}
+        <div style="margin:12px 0">
+          <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+          <div class="g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+        </div>
+        {% endif %}
+
         <button class="btn primary" type="submit">Send enquiry</button>
       </form>
     </div>

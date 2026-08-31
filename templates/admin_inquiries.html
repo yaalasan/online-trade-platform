@@ -49,6 +49,18 @@
             {% endif %}
           </td>
           <td class="when">{{ q.notified_at or '&mdash;'|safe }}</td>
+          <td style="white-space:nowrap;">
+            <form method="post" action="{{ url_for('admin_inquiries_mark_spam') }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="id" value="{{ q.id }}">
+              <button class="btn line" type="submit">Mark spam</button>
+            </form>
+            <form method="post" action="{{ url_for('admin_inquiries_delete') }}" style="display:inline;margin-left:6px">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="id" value="{{ q.id }}">
+              <button class="btn danger" type="submit">Delete</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

@@ -8,6 +8,7 @@ import threading
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
+import requests
 
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -76,6 +77,11 @@ SMTP_USER = os.environ.get("SMTP_USER", "").strip()
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 CONTACT_EMAIL_FROM = os.environ.get("CONTACT_EMAIL_FROM", "").strip() or SMTP_USER
 CONTACT_EMAIL_TO = os.environ.get("CONTACT_EMAIL_TO", "").strip() or SMTP_USER
+
+# reCAPTCHA (optional). Set RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET in env to
+# enable server-side validation of the widget token.
+RECAPTCHA_SITE_KEY = os.environ.get("RECAPTCHA_SITE_KEY", "").strip()
+RECAPTCHA_SECRET = os.environ.get("RECAPTCHA_SECRET", "").strip()
 
 # Supplier-portal bridge toggle. The site was originally a multi-supplier B2B
 # marketplace that pulled live products from the Next.js portal. We are now a
@@ -722,6 +728,60 @@ def _apply_translations(products, target_lang, db):
     return result
 
 
+def _is_suspicious_inquiry(form: dict) -> bool:
+    """Heuristic checks to detect spammy contact-form submissions.
+
+    - external links (http/https)
+    - shortlink/share patterns (share.google, bit.ly, goo.gl, tinyurl)
+    - Cyrillic characters (if unexpected)
+    - explicit blacklist of known spammer emails
+    """
+    message = (form.get("message") or "")
+    email = (form.get("email") or "").lower()
+    # Any URL is highly suspicious for this site's contact form.
+    if re.search(r"https?://", message, re.I):
+        return True
+    if re.search(r"share\.google|bit\.ly|goo\.gl|tinyurl\.com", message, re.I):
+        return True
+    # Cyrillic characters (U+0400–U+04FF)
+    if re.search(r"[\u0400-\u04FF]", message):
+        return True
+    # Known spammer addresses seen in incoming mails
+    BLACKLISTED_EMAILS = {"killlboy912@gmail.com"}
+    if email in BLACKLISTED_EMAILS:
+        return True
+    return False
+
+
+def _verify_recaptcha(response_token: str, remote_ip: str = None) -> bool:
+    """Verify a reCAPTCHA v2/v3 token with Google's siteverify API.
+
+    Returns True on successful verification, False otherwise. If RECAPTCHA_SECRET
+    is not set, the function returns True (no-op) to avoid blocking environments
+    where the secret isn't configured yet.
+    """
+    if not RECAPTCHA_SECRET:
+        # Not configured — accept silently but log for visibility.
+        app.logger.debug("reCAPTCHA secret not configured; skipping verification")
+        return True
+    if not response_token:
+        return False
+    data = {
+        "secret": RECAPTCHA_SECRET,
+        "response": response_token,
+    }
+    if remote_ip:
+        data["remoteip"] = remote_ip
+    try:
+        r = requests.post("https://www.google.com/recaptcha/api/siteverify", data=data, timeout=5)
+        r.raise_for_status()
+        j = r.json()
+        return bool(j.get("success"))
+    except Exception:
+        app.logger.exception("reCAPTCHA verification request failed")
+        return False
+
+
 def log_audit(action, entity_type, entity_id=None, details="", actor_id=None):
     db = get_db()
     if actor_id is None:
@@ -1224,6 +1284,7 @@ def page_contact():
         "active_page": "contact",
         "enquiry_categories": enquiry_categories,
         "csrf_token": session.get("csrf_token", ""),
+        "recaptcha_site_key": RECAPTCHA_SITE_KEY,
     }
     if request.method == "POST":
         # Honeypot: bots fill the hidden "website" field; a legitimate browser
@@ -1253,6 +1314,11 @@ def page_contact():
             error = "Please provide your name, email, and a short description of what you need."
         elif not _EMAIL_RE.match(form["email"]):
             error = "Please enter a valid email address."
+        # If reCAPTCHA is configured, require a valid token.
+        elif RECAPTCHA_SECRET:
+            token = request.form.get("g-recaptcha-response", "")
+            if not _verify_recaptcha(token, request.remote_addr):
+                error = "CAPTCHA verification failed. Please try again."
         else:
             error = None
         if error:
@@ -1272,21 +1338,37 @@ def page_contact():
 
         # Everything below is best-effort and off the critical path — the
         # committed row above is the only thing the visitor's success depends on.
-        threading.Thread(
-            target=_notify_contact_inquiry,
-            args=(inquiry_id, resolve_site_id(request.host),
-                  form["name"], form["email"].lower(), form["category"],
-                  form["company"], form["message"], _site_slug()),
-            daemon=True,
-        ).start()
+        # Suppress outgoing notifications for submissions that look like spam.
+        if _is_suspicious_inquiry(form):
+            app.logger.warning(
+                "contact_inquiry#%s flagged as suspicious; suppressing notification/forward",
+                inquiry_id,
+            )
+            try:
+                # Mark as suppressed so admins can filter it out in the inbox.
+                with pool.connection() as db2:
+                    db2.execute("SELECT set_config('app.site_id', %s, false)", (str(resolve_site_id(request.host)),))
+                    db2.execute("UPDATE contact_inquiries SET notified_at = %s WHERE id = %s",
+                                ("suppressed:spam", inquiry_id))
+                    db2.commit()
+            except Exception:
+                app.logger.exception("failed to mark contact_inquiry#%s suppressed", inquiry_id)
+        else:
+            threading.Thread(
+                target=_notify_contact_inquiry,
+                args=(inquiry_id, resolve_site_id(request.host),
+                      form["name"], form["email"].lower(), form["category"],
+                      form["company"], form["message"], _site_slug()),
+                daemon=True,
+            ).start()
 
-        _forward_lead_to_portal({
-            "kind": "CONTACT",
-            "message": form["message"][:3000],
-            "contactName": form["name"][:120],
-            "contactEmail": form["email"].lower(),
-            "contactCompany": form["company"][:160],
-        })
+            _forward_lead_to_portal({
+                "kind": "CONTACT",
+                "message": form["message"][:3000],
+                "contactName": form["name"][:120],
+                "contactEmail": form["email"].lower(),
+                "contactCompany": form["company"][:160],
+            })
 
         # Post/Redirect/Get: redirect so a browser refresh re-issues the GET
         # (showing the thank-you) instead of re-POSTing and duplicating the row.
@@ -1318,6 +1400,59 @@ def admin_inquiries():
     inquiries = [row_to_dict(r) for r in rows]
     return render_template("admin_inquiries.html", inquiries=inquiries,
                            csrf_token=session.get("csrf_token", ""))
+
+
+@app.route("/admin/inquiries/mark_spam", methods=["POST"])
+def admin_inquiries_mark_spam():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("page_home"))
+    if user["role"] != "admin":
+        abort(403)
+    # Same-session CSRF (hidden form field) — mirror contact form logic.
+    expected = session.get("csrf_token", "")
+    provided = request.form.get("csrf_token", "")
+    if not expected or not hmac.compare_digest(expected, provided):
+        abort(400)
+    try:
+        inquiry_id = int(request.form.get("id", "0"))
+    except ValueError:
+        abort(400)
+    try:
+        db = get_db()
+        db.execute("UPDATE contact_inquiries SET notified_at = %s WHERE id = %s",
+                   ("suppressed:admin", inquiry_id))
+        db.commit()
+        log_audit("marked_spam", "contact_inquiry", inquiry_id,
+                  "marked as spam by admin")
+    except Exception:
+        app.logger.exception("failed to mark inquiry %s as spam", inquiry_id)
+    return redirect(url_for("admin_inquiries"))
+
+
+@app.route("/admin/inquiries/delete", methods=["POST"])
+def admin_inquiries_delete():
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("page_home"))
+    if user["role"] != "admin":
+        abort(403)
+    expected = session.get("csrf_token", "")
+    provided = request.form.get("csrf_token", "")
+    if not expected or not hmac.compare_digest(expected, provided):
+        abort(400)
+    try:
+        inquiry_id = int(request.form.get("id", "0"))
+    except ValueError:
+        abort(400)
+    try:
+        db = get_db()
+        db.execute("DELETE FROM contact_inquiries WHERE id = %s", (inquiry_id,))
+        db.commit()
+        log_audit("deleted", "contact_inquiry", inquiry_id, "deleted by admin")
+    except Exception:
+        app.logger.exception("failed to delete inquiry %s", inquiry_id)
+    return redirect(url_for("admin_inquiries"))
 
 
 # --- Admin dashboard: product management (admin-only, server-rendered) --------
